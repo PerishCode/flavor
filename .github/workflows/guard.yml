@@ -1,0 +1,45 @@
+name: guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: guard (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        working-directory: app
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        working-directory: app
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: app
+        run: cargo test --locked
+
+      - name: Flavor self-check
+        run: cargo run --locked --manifest-path app/Cargo.toml -- check --root . --config flavor.json

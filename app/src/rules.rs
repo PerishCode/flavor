@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::model::Severity;
 
 pub(crate) const NAMING_TOO_MANY_WORDS: &str = "core/naming/too-many-words";
+pub(crate) const DISPATCH_BRANCH_TOO_LONG: &str = "core/dispatch/branch-too-long";
 pub(crate) const FS_TOO_MANY_CHILDREN: &str = "core/fs/too-many-children";
 pub(crate) const SOURCE_TOO_LONG: &str = "core/source/too-long";
 pub(crate) const SOURCE_TOO_DEEP: &str = "core/source/too-deep";
@@ -14,6 +15,7 @@ pub(crate) const RUST_PARSE_ERROR: &str = "rust/parse/error";
 pub(crate) const TS_PARSE_ERROR: &str = "ts/parse/error";
 
 pub(crate) const PAYLOAD_MAX_WORDS: &str = "max_words";
+pub(crate) const PAYLOAD_MAX_BRANCH_LINES: &str = "max_branch_lines";
 pub(crate) const PAYLOAD_MAX_CHILDREN: &str = "max_children";
 pub(crate) const PAYLOAD_MAX_LINES: &str = "max_lines";
 pub(crate) const PAYLOAD_MAX_DEPTH: &str = "max_depth";
@@ -44,6 +46,14 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             default_payload: payload([(PAYLOAD_MAX_WORDS, 4)]),
             bad_flavor: "Names may be carrying scenario, path, or assertion context that belongs near an owner boundary.",
             action_hint: "Consider lifting repeated context into a namespace, object, class, module, impl block, or test module before shortening names.",
+        }),
+        DISPATCH_BRANCH_TOO_LONG => Some(RuleDescriptor {
+            id: DISPATCH_BRANCH_TOO_LONG,
+            target: RuleTarget::File,
+            default_severity: Severity::Warning,
+            default_payload: payload([(PAYLOAD_MAX_BRANCH_LINES, 24)]),
+            bad_flavor: "Dispatch may be carrying implementation bodies instead of routing quickly to named behavior.",
+            action_hint: "Keep switch/match arms as handoff points; extract the branch body into a local concept when the branch grows a second-stage flow.",
         }),
         FS_TOO_MANY_CHILDREN => Some(RuleDescriptor {
             id: FS_TOO_MANY_CHILDREN,
@@ -100,6 +110,7 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
 pub(crate) fn known_rule_ids() -> Vec<&'static str> {
     vec![
         NAMING_TOO_MANY_WORDS,
+        DISPATCH_BRANCH_TOO_LONG,
         FS_TOO_MANY_CHILDREN,
         SOURCE_TOO_LONG,
         SOURCE_TOO_DEEP,

@@ -63,7 +63,7 @@ Example config:
 }
 ```
 
-Rules use namespaced ids such as `core/fs/too-many-children`, `core/source/too-long`, `core/naming/too-many-words`, and `rust/tests/in-source`.
+Rules use namespaced ids such as `core/fs/too-many-children`, `core/source/too-long`, `core/naming/too-many-words`, `core/dispatch/branch-too-long`, and `rust/tests/in-source`.
 
 ## Scope
 

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use swc_common::{sync::Lrc, FileName, SourceMap, Span};
 use swc_ecma_ast::{
-    ClassMethod, FnDecl, FnExpr, Ident, MethodProp, Param, Pat, PropName, VarDeclarator,
+    ClassMethod, FnDecl, FnExpr, Ident, MethodProp, Param, Pat, PropName, SwitchCase, VarDeclarator,
 };
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_visit::{Visit, VisitWith};
@@ -11,7 +11,7 @@ use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     model::{issue, Issue},
     naming::check_name,
-    rules::NAMING_TOO_MANY_WORDS,
+    rules::{DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_MAX_BRANCH_LINES},
 };
 
 pub(crate) fn check_ts_names(
@@ -33,6 +33,7 @@ pub(crate) fn check_ts_names(
     };
 
     let name_rule = config.rule(relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
+    let dispatch_rule = config.rule(relative, NodeKind::File, DISPATCH_BRANCH_TOO_LONG);
     for script in scripts {
         check_script(
             path,
@@ -40,6 +41,7 @@ pub(crate) fn check_ts_names(
             script,
             issues,
             &name_rule,
+            &dispatch_rule,
             parse_rule,
         );
     }
@@ -56,6 +58,7 @@ fn check_script(
     script: ScriptBlock,
     issues: &mut Vec<Issue>,
     name_rule: &RuleSettings,
+    dispatch_rule: &RuleSettings,
     parse_rule: &RuleSettings,
 ) {
     let cm: Lrc<SourceMap> = Default::default();
@@ -89,6 +92,7 @@ fn check_script(
         cm,
         line_offset: script.start_line,
         rule: name_rule,
+        dispatch_rule,
     };
     module.visit_with(&mut visitor);
 }
@@ -113,9 +117,33 @@ struct TsNameVisitor<'a> {
     cm: Lrc<SourceMap>,
     line_offset: usize,
     rule: &'a RuleSettings,
+    dispatch_rule: &'a RuleSettings,
 }
 
 impl Visit for TsNameVisitor<'_> {
+    fn visit_switch_case(&mut self, node: &SwitchCase) {
+        if self.dispatch_rule.enabled {
+            let max_lines = self
+                .dispatch_rule
+                .usize(PAYLOAD_MAX_BRANCH_LINES)
+                .unwrap_or(24);
+            let start = self.line_for(node.span);
+            let end = self.cm.lookup_char_pos(node.span.hi()).line + self.line_offset;
+            let lines = end.saturating_sub(start) + 1;
+            if lines > max_lines {
+                self.issues.push(issue(
+                    self.dispatch_rule.severity,
+                    self.dispatch_rule.id,
+                    self.path,
+                    Some(start),
+                    format!("switch case spans {lines} lines; max is {max_lines}"),
+                ));
+            }
+        }
+
+        node.visit_children_with(self);
+    }
+
     fn visit_fn_decl(&mut self, node: &FnDecl) {
         self.check_ident("function", &node.ident);
         node.visit_children_with(self);

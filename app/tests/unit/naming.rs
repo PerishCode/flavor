@@ -6,7 +6,7 @@ use std::{
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     naming::{check_rust_names, check_ts_names, count_name_words},
-    rules::{RUST_PARSE_ERROR, TS_PARSE_ERROR},
+    rules::{DISPATCH_BRANCH_TOO_LONG, RUST_PARSE_ERROR, TS_PARSE_ERROR},
 };
 
 static CONFIG: LazyLock<GuardConfig> = LazyLock::new(|| GuardConfig::core(PathBuf::from(".")));
@@ -76,6 +76,53 @@ fn vue_offsets_lines() {
     );
 
     assert_eq!(issues[0].line, Some(3));
+}
+
+#[test]
+fn flags_match_arm() {
+    let mut issues = Vec::new();
+    let relative = Path::new("sample.rs");
+    let parse_rule = rule(relative, RUST_PARSE_ERROR);
+    let repeated_body = "let a = 1;\n".repeat(25);
+    let source =
+        format!("fn route(x: i32) {{\nmatch x {{\n1 => {{\n{repeated_body}}}\n_ => {{}}\n}}\n}}");
+
+    check_rust_names(
+        &CONFIG,
+        relative,
+        "sample.rs",
+        &source,
+        &mut issues,
+        &parse_rule,
+    );
+
+    assert!(issues
+        .iter()
+        .any(|issue| issue.rule == DISPATCH_BRANCH_TOO_LONG));
+}
+
+#[test]
+fn flags_switch_case() {
+    let mut issues = Vec::new();
+    let relative = Path::new("sample.ts");
+    let parse_rule = rule(relative, TS_PARSE_ERROR);
+    let repeated_body = "x += 1;\n".repeat(25);
+    let source = format!(
+        "function route(x: number) {{\nswitch (x) {{\ncase 1:\n{repeated_body}break;\ndefault:\nbreak;\n}}\n}}"
+    );
+
+    check_ts_names(
+        &CONFIG,
+        relative,
+        "sample.ts",
+        &source,
+        &mut issues,
+        &parse_rule,
+    );
+
+    assert!(issues
+        .iter()
+        .any(|issue| issue.rule == DISPATCH_BRANCH_TOO_LONG));
 }
 
 fn rule(relative: &Path, rule_id: &'static str) -> RuleSettings {

@@ -1,15 +1,16 @@
 use std::path::Path;
 
 use syn::{
+    spanned::Spanned,
     visit::{self, Visit},
-    ImplItemFn, ItemFn, PatIdent, TraitItemFn,
+    ExprMatch, ImplItemFn, ItemFn, PatIdent, TraitItemFn,
 };
 
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     model::{issue, Issue},
     naming::check_name,
-    rules::NAMING_TOO_MANY_WORDS,
+    rules::{DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_MAX_BRANCH_LINES},
 };
 
 pub(crate) fn check_rust_names(
@@ -23,10 +24,12 @@ pub(crate) fn check_rust_names(
     match syn::parse_file(source) {
         Ok(file) => {
             let rule = config.rule(relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
+            let dispatch_rule = config.rule(relative, NodeKind::File, DISPATCH_BRANCH_TOO_LONG);
             let mut visitor = RustNameVisitor {
                 path,
                 issues,
                 rule: &rule,
+                dispatch_rule: &dispatch_rule,
             };
             visitor.visit_file(&file);
         }
@@ -48,9 +51,36 @@ struct RustNameVisitor<'a> {
     path: &'a str,
     issues: &'a mut Vec<Issue>,
     rule: &'a RuleSettings,
+    dispatch_rule: &'a RuleSettings,
 }
 
 impl<'ast> Visit<'ast> for RustNameVisitor<'_> {
+    fn visit_expr_match(&mut self, node: &'ast ExprMatch) {
+        if self.dispatch_rule.enabled {
+            let max_lines = self
+                .dispatch_rule
+                .usize(PAYLOAD_MAX_BRANCH_LINES)
+                .unwrap_or(24);
+            for arm in &node.arms {
+                let span = arm.body.span();
+                let start = span.start().line;
+                let end = span.end().line;
+                let lines = end.saturating_sub(start) + 1;
+                if lines > max_lines {
+                    self.issues.push(issue(
+                        self.dispatch_rule.severity,
+                        self.dispatch_rule.id,
+                        self.path,
+                        Some(start),
+                        format!("match arm body spans {lines} lines; max is {max_lines}"),
+                    ));
+                }
+            }
+        }
+
+        visit::visit_expr_match(self, node);
+    }
+
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
         check_name(
             self.issues,

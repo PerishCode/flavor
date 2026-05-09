@@ -9,19 +9,21 @@ Personal check-only code flavor lint CLI.
 Unix:
 
 ```bash
-curl -fsSL "$FLAVOR_RELEASES_PUBLIC_URL/stable/latest/install.sh" | sh -s -- install
+curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/latest/install.sh \
+  | sh -s -- install --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
 ```
 
 Windows PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((irm "$env:FLAVOR_RELEASES_PUBLIC_URL/stable/latest/install.ps1"))) install
+& ([scriptblock]::Create((irm "https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/latest/install.ps1"))) install --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
 ```
 
 Pin a version:
 
 ```bash
-curl -fsSL "$FLAVOR_RELEASES_PUBLIC_URL/stable/latest/install.sh" | sh -s -- install --version v0.1.0
+curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/versions/v0.1.0/install.sh \
+  | sh -s -- install --version v0.1.0 --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
 ```
 
 ## Usage

@@ -9,28 +9,28 @@ Personal check-only code flavor lint CLI.
 Unix:
 
 ```bash
-curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/latest/install.sh \
-  | sh -s -- install --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
+curl -fsSL https://releases.flavor.perish.uk/stable/latest/install.sh \
+  | sh -s -- install --public-url https://releases.flavor.perish.uk
 ```
 
 Windows PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((irm "https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/latest/install.ps1"))) install --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
+& ([scriptblock]::Create((irm "https://releases.flavor.perish.uk/stable/latest/install.ps1"))) install --public-url https://releases.flavor.perish.uk
 ```
 
 Pin a version:
 
 ```bash
-curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/versions/v0.1.0/install.sh \
-  | sh -s -- install --version v0.1.0 --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
+curl -fsSL https://releases.flavor.perish.uk/stable/versions/v0.1.0/install.sh \
+  | sh -s -- install --version v0.1.0 --public-url https://releases.flavor.perish.uk
 ```
 
 Install the latest beta:
 
 ```bash
-curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/beta/latest/install.sh \
-  | sh -s -- install --channel beta --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
+curl -fsSL https://releases.flavor.perish.uk/beta/latest/install.sh \
+  | sh -s -- install --channel beta --public-url https://releases.flavor.perish.uk
 ```
 
 ## Usage

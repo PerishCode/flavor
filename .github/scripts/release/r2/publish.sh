@@ -67,6 +67,7 @@ METADATA_PATH="$metadata_path" \
 python3 <<'PY'
 import json
 import os
+import re
 from pathlib import Path
 
 env = os.environ
@@ -117,6 +118,21 @@ metadata = {
         "checksums": artifact("checksums.txt", "text/plain; charset=utf-8"),
     },
 }
+
+if env["RELEASE_CHANNEL"] == "beta":
+    match = re.match(r"^v?(\d+\.\d+\.\d+)-beta\.([1-9][0-9]*)$", env["RELEASE_VERSION"])
+    if not match:
+        raise SystemExit(f"invalid beta release version: {env['RELEASE_VERSION']}")
+    base_version = env.get("BASE_VERSION") or match.group(1)
+    beta_number = int(env.get("BETA_NUMBER") or match.group(2))
+    if base_version != match.group(1):
+        raise SystemExit(f"beta base mismatch: {base_version} != {match.group(1)}")
+    if beta_number != int(match.group(2)):
+        raise SystemExit(f"beta number mismatch: {beta_number} != {match.group(2)}")
+    metadata["baseVersion"] = base_version
+    metadata["betaNumber"] = beta_number
+    metadata["betaVersion"] = env["RELEASE_VERSION"]
+    metadata["stateSource"] = env.get("STATE_SOURCE") or "workflow input"
 
 Path(env["METADATA_PATH"]).write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 PY

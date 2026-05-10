@@ -2,7 +2,7 @@
 
 Personal check-only code flavor lint CLI.
 
-`flavor` turns abstract code-shape preferences into executable checks over Rust, TypeScript, TSX, and Vue script source. Reports include bad-flavor notes and action hints. They are review pressure, not automatic repair recipes.
+`flavor` turns abstract code-shape preferences into executable checks over Rust, TypeScript, TSX, Vue, and Svelte source. Reports include bad-flavor notes and action hints. They are review pressure, not automatic repair recipes.
 
 ## Install
 
@@ -24,6 +24,13 @@ Pin a version:
 ```bash
 curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/stable/versions/v0.1.0/install.sh \
   | sh -s -- install --version v0.1.0 --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
+```
+
+Install the latest beta:
+
+```bash
+curl -fsSL https://pub-86db96420d0543db99527606c10f62ba.r2.dev/beta/latest/install.sh \
+  | sh -s -- install --channel beta --public-url https://pub-86db96420d0543db99527606c10f62ba.r2.dev
 ```
 
 ## Usage
@@ -63,7 +70,13 @@ Example config:
 }
 ```
 
-Rules use namespaced ids such as `core/fs/too-many-children`, `core/source/too-long`, `core/naming/too-many-words`, `core/dispatch/branch-too-long`, and `rust/tests/in-source`.
+Rules use namespaced ids such as `core/fs/too-many-children`, `core/source/too-long`, `core/naming/too-many-words`, `core/dispatch/branch-too-long`, `rust/tests/in-source`, and `vue/parse/error`.
+
+Run `flavor help` for the product boundary and issue URL. Report parser gaps, rule noise, and install issues at <https://github.com/PerishCode/flavor/issues>.
+
+## Workspace
+
+The installable binary lives in `crates/flavor-cli`. Compiler frontends grow as sibling crates: `flavor-compiler-core` owns compiler substrate primitives, `flavor-compiler-ts` owns TS/JS syntax facts, `flavor-compiler-vue` owns Vue SFC/template/style facts, and `flavor-compiler-svelte` owns Svelte descriptor/markup facts. Compiler crates accept typed config through state and do not define config file names.
 
 ## Scope
 

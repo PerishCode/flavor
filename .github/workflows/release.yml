@@ -30,7 +30,7 @@ jobs:
       - name: Validate stable version
         run: |
           set -euo pipefail
-          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' app/Cargo.toml | head -n 1)
+          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' crates/flavor-cli/Cargo.toml | head -n 1)
           [ "v$cargo_version" = "${GITHUB_REF_NAME}" ] || {
             printf 'version mismatch: Cargo.toml=%s tag=%s\n' "v$cargo_version" "${GITHUB_REF_NAME}" >&2
             exit 1

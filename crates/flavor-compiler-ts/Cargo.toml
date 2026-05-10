@@ -1,0 +1,9 @@
+[package]
+name = "flavor-compiler-ts"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TypeScript and JavaScript AST frontend for flavor."
+
+[dependencies]
+flavor-compiler-core = { path = "../flavor-compiler-core" }

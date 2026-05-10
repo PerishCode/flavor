@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))))
-$appDir = Join-Path $root 'app'
+$appDir = Join-Path $root 'crates/flavor-cli'
 $name = 'flavor'
 $cargoToml = Join-Path $appDir 'Cargo.toml'
 $version = (Select-String -Path $cargoToml -Pattern '^version = "(.+)"$').Matches[0].Groups[1].Value
@@ -11,14 +11,15 @@ $distDir = if ($env:DIST_DIR) { $env:DIST_DIR } else { Join-Path $root 'dist' }
 $artifactDir = Join-Path $distDir $releaseVersion
 
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-cargo build --release --locked --manifest-path $cargoToml --target $target
+$env:FLAVOR_BUILD_VERSION = $releaseVersion
+cargo build --release --locked -p flavor-cli --target $target
 
 $archive = "$name-$target.zip"
 $tmpdir = Join-Path ([System.IO.Path]::GetTempPath()) ("$name-" + [System.Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmpdir | Out-Null
 
 try {
-    $bin = Join-Path $appDir "target/$target/release/$name.exe"
+    $bin = Join-Path $root "target/$target/release/$name.exe"
     Copy-Item $bin (Join-Path $tmpdir "$name.exe")
     Compress-Archive -LiteralPath (Join-Path $tmpdir "$name.exe") -DestinationPath (Join-Path $artifactDir $archive) -Force
     Write-Output (Join-Path $artifactDir $archive)

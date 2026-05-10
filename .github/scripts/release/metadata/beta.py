@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 BOOTSTRAP_404_RETRY_SECONDS = 15
+USER_AGENT = "flavor-release-beta/1.0"
 
 
 STABLE_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
@@ -57,7 +58,11 @@ def output(name: str, value: str) -> None:
 
 
 def _try_fetch(url: str) -> tuple[str | None, int | None]:
-    request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
+    # Explicit UA: Cloudflare WAF/Bot Fight Mode 403s the default Python-urllib UA.
+    request = urllib.request.Request(
+        url,
+        headers={"Cache-Control": "no-cache", "User-Agent": USER_AGENT},
+    )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             return response.read().decode("utf-8"), None

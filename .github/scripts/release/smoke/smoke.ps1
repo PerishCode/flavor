@@ -18,6 +18,14 @@ try {
     & (Join-Path $root 'scripts/manage/flavor.ps1') install --channel $channel --version $version
     & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') --version
     & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') check --root $root --config (Join-Path $root 'flavor.json')
+
+    if ($env:SMOKE_LATEST -eq '1') {
+        Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe')
+        $env:FLAVOR_INSTALL_ROOT = Join-Path $tmpdir 'latest-smoke'
+        & (Join-Path $root 'scripts/manage/flavor.ps1') install --channel $channel
+        & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') --version
+        & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') check --root $root --config (Join-Path $root 'flavor.json')
+    }
 }
 finally {
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpdir

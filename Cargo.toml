@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "crates/flavor-cli",
+    "crates/flavor-compiler-core",
+    "crates/flavor-compiler-svelte",
+    "crates/flavor-compiler-ts",
+    "crates/flavor-compiler-vue",
+]
+resolver = "2"

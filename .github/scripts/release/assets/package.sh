@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../../../.." && pwd)
-APP_DIR="$ROOT/app"
+APP_DIR="$ROOT/crates/flavor-cli"
 NAME=flavor
 VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$APP_DIR/Cargo.toml" | head -n 1)
 RELEASE_VERSION=${1:-${RELEASE_VERSION:-v$VERSION}}
@@ -13,11 +13,11 @@ ARTIFACT_DIR="$DIST_DIR/$RELEASE_VERSION"
 mkdir -p "$ARTIFACT_DIR"
 
 if [ -n "${TARGET:-}" ]; then
-  cargo build --release --locked --manifest-path "$APP_DIR/Cargo.toml" --target "$TARGET"
-  BIN="$APP_DIR/target/$TARGET/release/$NAME"
+  FLAVOR_BUILD_VERSION="$RELEASE_VERSION" cargo build --release --locked -p flavor-cli --target "$TARGET"
+  BIN="$ROOT/target/$TARGET/release/$NAME"
 else
-  cargo build --release --locked --manifest-path "$APP_DIR/Cargo.toml"
-  BIN="$APP_DIR/target/release/$NAME"
+  FLAVOR_BUILD_VERSION="$RELEASE_VERSION" cargo build --release --locked -p flavor-cli
+  BIN="$ROOT/target/release/$NAME"
 fi
 
 tmpdir=$(mktemp -d)

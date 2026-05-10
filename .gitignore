@@ -2,4 +2,4 @@
 .tmp/
 dist/
 target/
-app/target/
+crates/*/target/

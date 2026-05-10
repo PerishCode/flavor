@@ -1,7 +1,7 @@
 {
   "scan": {
-    "include": ["app/src/**", "app/tests/**"],
-    "exclude": ["app/target/**"]
+    "include": ["crates/*/src/**", "crates/*/tests/**"],
+    "exclude": ["**/target/**"]
   },
   "overrides": []
 }

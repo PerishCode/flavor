@@ -5,9 +5,13 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+
+BOOTSTRAP_404_RETRY_SECONDS = 15
 
 
 STABLE_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
@@ -52,17 +56,40 @@ def output(name: str, value: str) -> None:
             handle.write(f"{name}={value}\n")
 
 
-def fetch_optional_text(url: str) -> str | None:
+def _try_fetch(url: str) -> tuple[str | None, int | None]:
     request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
-            return response.read().decode("utf-8")
+            return response.read().decode("utf-8"), None
     except urllib.error.HTTPError as error:
-        if error.code in (403, 404):
-            return None
-        fail(f"failed to fetch R2 beta metadata: HTTP {error.code}")
+        return None, error.code
     except urllib.error.URLError as error:
         fail(f"failed to fetch R2 beta metadata: {error}")
+        return None, None
+
+
+def fetch_optional_text(url: str) -> str | None:
+    text, code = _try_fetch(url)
+    if text is not None:
+        return text
+    if code == 403:
+        fail("R2 beta metadata returned HTTP 403; permission errors must not be treated as missing metadata")
+    if code == 404:
+        # Confirm a true 404 across the R2 propagation window before bootstrapping.
+        print(
+            f"[release-beta] R2 beta metadata returned 404; retrying after "
+            f"{BOOTSTRAP_404_RETRY_SECONDS}s to confirm absence"
+        )
+        time.sleep(BOOTSTRAP_404_RETRY_SECONDS)
+        text, code = _try_fetch(url)
+        if text is not None:
+            return text
+        if code == 403:
+            fail("R2 beta metadata returned HTTP 403 on retry; refusing to bootstrap on permission error")
+        if code == 404:
+            return None
+    fail(f"failed to fetch R2 beta metadata: HTTP {code}")
+    return None
 
 
 def read_metadata_beta(metadata: dict[str, object]) -> tuple[str, int, str]:

@@ -58,7 +58,7 @@ def fetch_optional_text(url: str) -> str | None:
         with urllib.request.urlopen(request, timeout=10) as response:
             return response.read().decode("utf-8")
     except urllib.error.HTTPError as error:
-        if error.code == 404:
+        if error.code in (403, 404):
             return None
         fail(f"failed to fetch R2 beta metadata: HTTP {error.code}")
     except urllib.error.URLError as error:

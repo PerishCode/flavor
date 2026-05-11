@@ -15,10 +15,22 @@ pub(crate) struct CliOptions {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct RulesOptions {
+    pub(crate) format: OutputFormat,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum CliCommand {
     Check(CliOptions),
+    Rules(RulesOptions),
     Help,
     Version,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum CommandMode {
+    Check,
+    Rules,
 }
 
 pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
@@ -27,12 +39,18 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
     let mut format = OutputFormat::Text;
     let mut strict_warnings = false;
     let mut command_seen = false;
+    let mut mode = CommandMode::Check;
     let mut args = args.into_iter();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "check" if !command_seen => {
                 command_seen = true;
+                mode = CommandMode::Check;
+            }
+            "rules" if !command_seen => {
+                command_seen = true;
+                mode = CommandMode::Rules;
             }
             "help" | "--help" | "-h" => {
                 return Ok(CliCommand::Help);
@@ -79,12 +97,15 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
         }
     }
 
-    Ok(CliCommand::Check(CliOptions {
-        root,
-        config,
-        format,
-        strict_warnings,
-    }))
+    Ok(match mode {
+        CommandMode::Check => CliCommand::Check(CliOptions {
+            root,
+            config,
+            format,
+            strict_warnings,
+        }),
+        CommandMode::Rules => CliCommand::Rules(RulesOptions { format }),
+    })
 }
 
 pub(crate) fn help_text() -> &'static str {
@@ -95,6 +116,7 @@ It does not format, rewrite, run services, or manage runtime state.
 
 Commands:
   check [--root <path>] [--config <path>] [--format text|json] [--strict-warnings]
+  rules [--format text|json]
   help
   version
 

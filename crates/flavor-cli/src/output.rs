@@ -3,7 +3,61 @@ use std::fmt::Write as _;
 use crate::{
     cli::OutputFormat,
     model::{Report, Severity},
+    rules::{self, RuleDescriptor, RuleTarget},
 };
+
+pub(crate) fn print_rules(format: OutputFormat) -> Result<(), String> {
+    let descriptors: Vec<RuleDescriptor> = rules::known_rule_ids()
+        .into_iter()
+        .filter_map(rules::descriptor)
+        .collect();
+
+    match format {
+        OutputFormat::Text => {
+            print!("{}", text_rules(&descriptors));
+            Ok(())
+        }
+        OutputFormat::Json => {
+            let json = serde_json::to_string_pretty(&descriptors)
+                .map_err(|error| format!("failed to serialize rule descriptors: {error}"))?;
+            println!("{json}");
+            Ok(())
+        }
+    }
+}
+
+pub(crate) fn text_rules(descriptors: &[RuleDescriptor]) -> String {
+    let mut text = String::new();
+    for (index, descriptor) in descriptors.iter().enumerate() {
+        if index > 0 {
+            text.push('\n');
+        }
+        let target = match descriptor.target {
+            RuleTarget::File => "file",
+            RuleTarget::Dir => "dir",
+        };
+        let severity = severity_label(descriptor.default_severity);
+        let payload = if descriptor.default_payload.is_empty() {
+            String::new()
+        } else {
+            let pairs = descriptor
+                .default_payload
+                .iter()
+                .map(|(key, value)| format!("{key}={value}"))
+                .collect::<Vec<_>>();
+            format!(", {}", pairs.join(", "))
+        };
+        writeln!(
+            &mut text,
+            "{} ({target}, {severity}{payload})",
+            descriptor.id
+        )
+        .expect("write string");
+        writeln!(&mut text, "  bad flavor: {}", descriptor.bad_flavor).expect("write string");
+        writeln!(&mut text, "  action hint: {}", descriptor.action_hint).expect("write string");
+    }
+    text
+}
 
 pub(crate) fn print_report(report: &Report, format: OutputFormat) -> Result<(), String> {
     match format {

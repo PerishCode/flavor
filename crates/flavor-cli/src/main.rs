@@ -13,7 +13,7 @@ mod scan;
 use cli::{help_text, parse_args, CliCommand};
 use config::ConfigSource;
 use model::Report;
-use output::print_report;
+use output::{print_report, print_rules};
 use scan::run_scan;
 
 fn main() {
@@ -30,6 +30,10 @@ fn run() -> Result<i32, String> {
     let options = parse_args(env::args().skip(1).collect())?;
     let options = match options {
         CliCommand::Check(options) => options,
+        CliCommand::Rules(rules_options) => {
+            print_rules(rules_options.format)?;
+            return Ok(0);
+        }
         CliCommand::Help => {
             println!("{}", help_text());
             return Ok(0);

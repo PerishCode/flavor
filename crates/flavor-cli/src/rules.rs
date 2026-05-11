@@ -35,6 +35,7 @@ pub(crate) enum RuleTarget {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct RuleDescriptor {
     pub(crate) id: &'static str,
     pub(crate) target: RuleTarget,

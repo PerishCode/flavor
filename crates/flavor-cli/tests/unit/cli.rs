@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::{help_text, parse_args, CliCommand, OutputFormat};
+use crate::cli::{help_text, parse_args, CliCommand, OutputFormat, RulesOptions};
 
 #[test]
 fn parses_check_options() {
@@ -37,6 +37,26 @@ fn help_command_is_parsed() {
 }
 
 #[test]
+fn rules_subcommand_defaults_to_text() {
+    assert_eq!(
+        parse_args(vec!["rules".into()]).unwrap(),
+        CliCommand::Rules(RulesOptions {
+            format: OutputFormat::Text,
+        })
+    );
+}
+
+#[test]
+fn rules_subcommand_honours_format_flag() {
+    assert_eq!(
+        parse_args(vec!["rules".into(), "--format=json".into()]).unwrap(),
+        CliCommand::Rules(RulesOptions {
+            format: OutputFormat::Json,
+        })
+    );
+}
+
+#[test]
 fn version_command_is_parsed() {
     assert_eq!(
         parse_args(vec!["--version".into()]).unwrap(),
@@ -49,6 +69,7 @@ fn help_stays_operational() {
     let help = help_text();
 
     assert!(help.contains("check [--root <path>]"));
+    assert!(help.contains("rules [--format text|json]"));
     assert!(help.contains("rule-level bad-flavor notes"));
     assert!(help.contains("Rust, TypeScript, TSX, Vue, and Svelte"));
     assert!(help.contains("https://github.com/PerishCode/flavor/issues"));

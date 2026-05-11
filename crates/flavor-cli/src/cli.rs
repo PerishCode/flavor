@@ -113,6 +113,12 @@ Reports:
   check reports include rule-level bad-flavor notes and action hints when
   issues exist. The hints are review pressure, not automatic fix instructions.
 
+Exit codes:
+  0  scan matched at least one file and produced no deny issues (and no
+     warnings when --strict-warnings is set).
+  1  deny issues, strict-warning failure, or scan.include matched 0 files
+     (which usually means the config or --root is wrong).
+
 Feedback:
   Report parser gaps, rule noise, and install issues at:
   https://github.com/PerishCode/flavor/issues

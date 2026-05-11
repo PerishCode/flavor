@@ -141,9 +141,11 @@ Exit codes:
   1  deny issues, strict-warning failure, or scan.include matched 0 files
      (which usually means the config or --root is wrong).
 
-Feedback:
-  Report parser gaps, rule noise, and install issues at:
-  https://github.com/PerishCode/flavor/issues
+Project:
+  Source:  https://github.com/PerishCode/flavor
+  Issues:  https://github.com/PerishCode/flavor/issues
+  Contributing: see AGENTS.md in the source tree for branch / commit / PR
+                shape conventions, including how agents land changes.
 "#
 }
 

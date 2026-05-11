@@ -45,15 +45,16 @@ fn run() -> Result<i32, String> {
     }
     let scan = run_scan(&config)?;
     let report = Report::with_scan(config.root, scan.stats, scan.issues);
-    let deny_count = report.deny_count();
-    let warning_count = report.warning_count();
 
     print_report(&report, options.format)?;
 
-    if deny_count > 0 || (options.strict_warnings && warning_count > 0) {
-        return Ok(1);
+    if report.is_empty_scan() {
+        eprintln!(
+            "flavor: warning: scan.include matched 0 files — check the patterns in your config and --root",
+        );
     }
-    Ok(0)
+
+    Ok(report.exit_code(options.strict_warnings))
 }
 
 fn build_version() -> &'static str {

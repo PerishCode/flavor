@@ -60,6 +60,30 @@ impl Report {
             .filter(|issue| issue.severity == Severity::Warning)
             .count()
     }
+
+    /// `true` when scan.include matched no files.
+    ///
+    /// Treated as a failure: a successful run with zero matches is almost
+    /// always a misconfigured include / exclude pattern or a wrong --root,
+    /// and silently exiting 0 makes CI lie.
+    pub(crate) fn is_empty_scan(&self) -> bool {
+        self.scan.matched_files == 0
+    }
+
+    /// Final process exit code.
+    ///
+    /// 1 if any deny issue fired, if `--strict-warnings` is set and warnings
+    /// were emitted, or if the scan matched no files. 0 otherwise.
+    pub(crate) fn exit_code(&self, strict_warnings: bool) -> i32 {
+        if self.deny_count() > 0
+            || (strict_warnings && self.warning_count() > 0)
+            || self.is_empty_scan()
+        {
+            1
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Serialize)]

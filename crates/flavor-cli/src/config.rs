@@ -104,8 +104,18 @@ impl GuardConfig {
         let mut overrides = Vec::with_capacity(file.overrides.len());
         for (order, item) in file.overrides.into_iter().enumerate() {
             validate_rules(item.kind.unwrap_or(MatchKind::Any), &item.rules)?;
+            let raw_patterns = item.matches.into_vec();
+            if raw_patterns.is_empty() {
+                return Err(format!(
+                    "override at index {order} has empty 'match'; use a glob string or a non-empty array"
+                ));
+            }
+            let patterns = raw_patterns
+                .iter()
+                .map(|pattern| PathPattern::new(pattern))
+                .collect();
             overrides.push(RuleMatcher {
-                pattern: PathPattern::new(&item.matches),
+                patterns,
                 kind: item.kind.unwrap_or(MatchKind::Any),
                 priority: item.priority.unwrap_or_default(),
                 order,
@@ -194,12 +204,31 @@ struct ScanConfigFile {
 #[derive(Debug, Deserialize)]
 struct OverrideConfigFile {
     #[serde(rename = "match")]
-    matches: String,
+    matches: MatchPatterns,
     #[serde(default)]
     kind: Option<MatchKind>,
     #[serde(default)]
     priority: Option<i32>,
     rules: BTreeMap<String, RuleOverride>,
+}
+
+/// Accepts either a single `match: "<glob>"` or `match: ["<glob>", ...]` to
+/// scope one override entry over multiple paths without duplicating the
+/// surrounding `kind` / `priority` / `rules` block.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum MatchPatterns {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl MatchPatterns {
+    fn into_vec(self) -> Vec<String> {
+        match self {
+            MatchPatterns::One(value) => vec![value],
+            MatchPatterns::Many(values) => values,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq)]
@@ -224,7 +253,7 @@ pub(crate) struct RuleOverride {
 
 #[derive(Debug, Clone)]
 struct RuleMatcher {
-    pattern: PathPattern,
+    patterns: Vec<PathPattern>,
     kind: MatchKind,
     priority: i32,
     order: usize,
@@ -239,7 +268,11 @@ impl RuleMatcher {
             (MatchKind::Dir, NodeKind::Dir) => true,
             (MatchKind::File | MatchKind::Dir, _) => false,
         };
-        kind_matches && self.pattern.matches(relative)
+        kind_matches
+            && self
+                .patterns
+                .iter()
+                .any(|pattern| pattern.matches(relative))
     }
 }
 

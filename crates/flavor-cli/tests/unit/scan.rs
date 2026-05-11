@@ -167,6 +167,79 @@ fn override_priority_wins() {
 }
 
 #[test]
+fn override_match_accepts_string_array() {
+    let root = test_root("match-array");
+    fs::create_dir_all(root.join("tools/demo/src")).unwrap();
+    fs::create_dir_all(root.join("tools/other/src")).unwrap();
+    fs::write(
+        root.join("tools/demo/src/large.rs"),
+        "fn ok() {}\n".repeat(501),
+    )
+    .unwrap();
+    fs::write(
+        root.join("tools/other/src/large.rs"),
+        "fn ok() {}\n".repeat(501),
+    )
+    .unwrap();
+
+    let config = config_from(
+        &root,
+        r#"{
+            "scan": { "include": ["tools/*/src/**"] },
+            "overrides": [
+                {
+                    "match": ["tools/demo/src/**", "tools/other/src/**"],
+                    "kind": "file",
+                    "rules": {
+                        "core/source/too-long": {
+                            "enabled": false,
+                            "reason": "fixtures intentionally exercise line-count pressure"
+                        }
+                    }
+                }
+            ]
+        }"#,
+    );
+    let issues = issues(&config);
+
+    assert!(
+        !issues.iter().any(|issue| issue.rule == SOURCE_TOO_LONG),
+        "array-form match should silence the rule across both paths; got: {issues:?}"
+    );
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn override_match_rejects_empty_array() {
+    let root = test_root("match-empty");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("flavor.json");
+    fs::write(
+        &path,
+        r#"{
+            "scan": { "include": ["**/*.rs"] },
+            "overrides": [
+                {
+                    "match": [],
+                    "kind": "file",
+                    "rules": {}
+                }
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    let error = GuardConfig::from_file(root.clone(), &path).unwrap_err();
+    assert!(
+        error.contains("empty 'match'"),
+        "expected empty-match error, got: {error}"
+    );
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn reports_scan_coverage() {
     let root = test_root("scan-coverage");
     let source_dir = root.join("tools/demo/src");

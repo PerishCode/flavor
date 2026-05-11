@@ -98,6 +98,11 @@ Commands:
   help
   version
 
+Config:
+  --config <path>  Load this JSON config. When omitted, flavor looks for
+                   flavor.json at the scan root and falls back to built-in
+                   include/exclude patterns if the file is absent.
+
 Scope:
   The check covers handwritten Rust, TypeScript, TSX, Vue, and Svelte source
   through scan.include / scan.exclude path patterns. Rule behavior is adjusted

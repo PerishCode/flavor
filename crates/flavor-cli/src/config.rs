@@ -44,6 +44,42 @@ impl RuleSettings {
     }
 }
 
+/// File name flavor looks for at `--root` when no `--config` is passed.
+pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "flavor.json";
+
+/// Where the active `GuardConfig` came from.
+///
+/// `Explicit` and `Discovered` both point at a file on disk; the split lets
+/// callers tell the user when a config was picked up without being asked for,
+/// so a stray `flavor.json` at the scan root never silently changes behavior.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum ConfigSource {
+    Explicit(PathBuf),
+    Discovered(PathBuf),
+    BuiltIn,
+}
+
+/// Resolve which config to use, honouring the explicit `--config` path first,
+/// then falling back to `<root>/flavor.json`, then to the built-in defaults.
+///
+/// The explicit path is never silently replaced — a missing or malformed
+/// explicit config is still an error, same as before.
+pub(crate) fn resolve(
+    root: PathBuf,
+    explicit: Option<PathBuf>,
+) -> Result<(GuardConfig, ConfigSource), String> {
+    if let Some(path) = explicit {
+        let config = GuardConfig::from_file(root, &path)?;
+        return Ok((config, ConfigSource::Explicit(path)));
+    }
+    let candidate = root.join(DEFAULT_CONFIG_FILENAME);
+    if candidate.is_file() {
+        let config = GuardConfig::from_file(root, &candidate)?;
+        return Ok((config, ConfigSource::Discovered(candidate)));
+    }
+    Ok((GuardConfig::core(root), ConfigSource::BuiltIn))
+}
+
 impl GuardConfig {
     pub(crate) fn core(root: PathBuf) -> Self {
         Self {

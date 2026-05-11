@@ -11,7 +11,7 @@ mod rust_tests;
 mod scan;
 
 use cli::{help_text, parse_args, CliCommand};
-use config::GuardConfig;
+use config::ConfigSource;
 use model::Report;
 use output::print_report;
 use scan::run_scan;
@@ -39,10 +39,10 @@ fn run() -> Result<i32, String> {
             return Ok(0);
         }
     };
-    let config = match options.config {
-        Some(config_path) => GuardConfig::from_file(options.root, &config_path)?,
-        None => GuardConfig::core(options.root),
-    };
+    let (config, source) = config::resolve(options.root, options.config)?;
+    if let ConfigSource::Discovered(path) = &source {
+        eprintln!("flavor: using config {}", path.display());
+    }
     let scan = run_scan(&config)?;
     let report = Report::with_scan(config.root, scan.stats, scan.issues);
     let deny_count = report.deny_count();

@@ -37,7 +37,7 @@ fn help_command_is_parsed() {
 }
 
 #[test]
-fn rules_subcommand_defaults_to_text() {
+fn rules_defaults_to_text() {
     assert_eq!(
         parse_args(vec!["rules".into()]).unwrap(),
         CliCommand::Rules(RulesOptions {
@@ -47,7 +47,7 @@ fn rules_subcommand_defaults_to_text() {
 }
 
 #[test]
-fn rules_subcommand_honours_format_flag() {
+fn rules_honours_format_flag() {
     assert_eq!(
         parse_args(vec!["rules".into(), "--format=json".into()]).unwrap(),
         CliCommand::Rules(RulesOptions {

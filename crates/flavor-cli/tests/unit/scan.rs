@@ -167,7 +167,7 @@ fn override_priority_wins() {
 }
 
 #[test]
-fn override_match_accepts_string_array() {
+fn override_match_array() {
     let root = test_root("match-array");
     fs::create_dir_all(root.join("tools/demo/src")).unwrap();
     fs::create_dir_all(root.join("tools/other/src")).unwrap();
@@ -211,7 +211,7 @@ fn override_match_accepts_string_array() {
 }
 
 #[test]
-fn override_match_rejects_empty_array() {
+fn empty_match_rejected() {
     let root = test_root("match-empty");
     fs::create_dir_all(&root).unwrap();
     let path = root.join("flavor.json");

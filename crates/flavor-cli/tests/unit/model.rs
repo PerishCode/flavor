@@ -32,7 +32,7 @@ fn report_guides_rules() {
 }
 
 #[test]
-fn exit_code_signals_empty_scan_even_without_issues() {
+fn empty_scan_exits_one() {
     let report = Report::with_scan(PathBuf::from("root"), ScanStats::default(), Vec::new());
 
     assert!(report.is_empty_scan());
@@ -41,7 +41,7 @@ fn exit_code_signals_empty_scan_even_without_issues() {
 }
 
 #[test]
-fn exit_code_zero_when_scan_matched_and_no_issues() {
+fn clean_scan_exits_zero() {
     let stats = ScanStats {
         matched_files: 5,
         scanned_files: 5,
@@ -55,7 +55,7 @@ fn exit_code_zero_when_scan_matched_and_no_issues() {
 }
 
 #[test]
-fn exit_code_one_for_deny_regardless_of_strict_flag() {
+fn deny_always_exits_one() {
     let stats = ScanStats {
         matched_files: 5,
         scanned_files: 5,
@@ -74,7 +74,7 @@ fn exit_code_one_for_deny_regardless_of_strict_flag() {
 }
 
 #[test]
-fn exit_code_respects_strict_warnings() {
+fn strict_warnings_exit_one() {
     let stats = ScanStats {
         matched_files: 5,
         scanned_files: 5,

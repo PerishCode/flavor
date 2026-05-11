@@ -48,7 +48,7 @@ fn shows_scan_summary() {
 }
 
 #[test]
-fn text_rules_lists_every_registered_rule_with_target_severity_and_payload() {
+fn text_rules_full_catalog() {
     let descriptors: Vec<_> = rules::known_rule_ids()
         .into_iter()
         .filter_map(rules::descriptor)

@@ -22,7 +22,7 @@ fn resolves_explicit_config_path() {
 }
 
 #[test]
-fn discovers_flavor_json_at_root() {
+fn discovers_flavor_json_root() {
     let root = test_root("discovery");
     fs::create_dir_all(&root).unwrap();
     let discovered = root.join(DEFAULT_CONFIG_FILENAME);
@@ -36,7 +36,7 @@ fn discovers_flavor_json_at_root() {
 }
 
 #[test]
-fn falls_back_to_built_in_when_no_config_found() {
+fn built_in_fallback() {
     let root = test_root("builtin");
     fs::create_dir_all(&root).unwrap();
 
@@ -64,7 +64,7 @@ fn propagates_explicit_path_errors() {
 }
 
 #[test]
-fn explicit_path_does_not_fall_back_to_discovery() {
+fn explicit_overrides_discovery() {
     let root = test_root("explicit-wins");
     fs::create_dir_all(&root).unwrap();
     // A flavor.json sitting at root should be ignored when --config points

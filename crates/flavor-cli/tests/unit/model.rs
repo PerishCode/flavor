@@ -92,3 +92,31 @@ fn strict_warnings_exit_one() {
     assert_eq!(report.exit_code(false), 0);
     assert_eq!(report.exit_code(true), 1);
 }
+
+#[test]
+fn allow_empty_exit_zero() {
+    let report =
+        Report::with_scan_allow_empty(PathBuf::from("root"), ScanStats::default(), Vec::new());
+
+    // With allowEmptyScan: true, a 0-match report is no longer considered
+    // empty — exit 0 regardless of strict_warnings.
+    assert!(!report.is_empty_scan());
+    assert_eq!(report.exit_code(false), 0);
+    assert_eq!(report.exit_code(true), 0);
+}
+
+#[test]
+fn allow_empty_still_denies() {
+    let issues = vec![issue(
+        Severity::Deny,
+        NAMING_TOO_MANY_WORDS,
+        "sample.rs",
+        Some(1),
+        "long name",
+    )];
+    let report = Report::with_scan_allow_empty(PathBuf::from("root"), ScanStats::default(), issues);
+
+    // allowEmptyScan only quiets the 0-match path; actual deny issues still
+    // exit 1 (otherwise the opt-out would silence real failures too).
+    assert_eq!(report.exit_code(false), 1);
+}

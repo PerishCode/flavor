@@ -121,9 +121,19 @@ Commands:
   version
 
 Config:
-  --config <path>  Load this JSON config. When omitted, flavor looks for
-                   flavor.json at the scan root and falls back to built-in
-                   include/exclude patterns if the file is absent.
+  --config <path>  Load this JSON config. The file's directory becomes the
+                   project root for scan patterns.
+  (no --config)    Walk ancestors of --root (default: cwd) looking for a
+                   flavor.json. The nearest match wins; its directory
+                   becomes the project root. Falls back to built-in
+                   include/exclude patterns if none is found before the
+                   filesystem root.
+
+  Optional flavor.json field:
+    allowEmptyScan  Suppress the "0 files matched" warning + exit 1.
+                    Reserved for workspace-root configs that intentionally
+                    exclude every submodule and delegate to per-submodule
+                    flavor.json files via walk-up.
 
 Scope:
   The check covers handwritten Rust, TypeScript, TSX, Vue, and Svelte source
@@ -137,9 +147,11 @@ Reports:
 
 Exit codes:
   0  scan matched at least one file and produced no deny issues (and no
-     warnings when --strict-warnings is set).
+     warnings when --strict-warnings is set), or scan.include matched 0
+     files and the active config set allowEmptyScan: true.
   1  deny issues, strict-warning failure, or scan.include matched 0 files
-     (which usually means the config or --root is wrong).
+     without allowEmptyScan (which usually means the config or --root is
+     wrong).
 
 Project:
   Source:  https://github.com/PerishCode/flavor

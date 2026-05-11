@@ -34,16 +34,36 @@ pub(crate) struct Report {
     pub(crate) scan: ScanStats,
     pub(crate) guidance: Vec<RuleGuide>,
     pub(crate) issues: Vec<Issue>,
+    #[serde(skip)]
+    allow_empty_scan: bool,
 }
 
 impl Report {
     pub(crate) fn with_scan(root: PathBuf, scan: ScanStats, issues: Vec<Issue>) -> Self {
+        Self::build(root, scan, issues, false)
+    }
+
+    /// Construct a report that opts out of the empty-scan failure.
+    ///
+    /// Used when the active `flavor.json` declared `allowEmptyScan: true` —
+    /// typically a workspace-root config that intentionally excludes every
+    /// submodule and delegates real checks to per-submodule configs.
+    pub(crate) fn with_scan_allow_empty(
+        root: PathBuf,
+        scan: ScanStats,
+        issues: Vec<Issue>,
+    ) -> Self {
+        Self::build(root, scan, issues, true)
+    }
+
+    fn build(root: PathBuf, scan: ScanStats, issues: Vec<Issue>, allow_empty_scan: bool) -> Self {
         let guidance = guides_for(&issues);
         Self {
             root: root.display().to_string(),
             scan,
             guidance,
             issues,
+            allow_empty_scan,
         }
     }
 
@@ -61,19 +81,23 @@ impl Report {
             .count()
     }
 
-    /// `true` when scan.include matched no files.
+    /// `true` when scan.include matched no files and the active config has
+    /// not opted out of treating that as a failure.
     ///
-    /// Treated as a failure: a successful run with zero matches is almost
-    /// always a misconfigured include / exclude pattern or a wrong --root,
-    /// and silently exiting 0 makes CI lie.
+    /// A 0-match scan is almost always a misconfigured include / exclude
+    /// pattern or a wrong --root, and silently exiting 0 makes CI lie. The
+    /// `allowEmptyScan` opt-out is reserved for workspace-root configs that
+    /// intentionally cover nothing (they exist as walk-up boundaries while
+    /// per-submodule configs do the actual work).
     pub(crate) fn is_empty_scan(&self) -> bool {
-        self.scan.matched_files == 0
+        self.scan.matched_files == 0 && !self.allow_empty_scan
     }
 
     /// Final process exit code.
     ///
     /// 1 if any deny issue fired, if `--strict-warnings` is set and warnings
-    /// were emitted, or if the scan matched no files. 0 otherwise.
+    /// were emitted, or if the scan matched no files (unless the config opted
+    /// into allowEmptyScan). 0 otherwise.
     pub(crate) fn exit_code(&self, strict_warnings: bool) -> i32 {
         if self.deny_count() > 0
             || (strict_warnings && self.warning_count() > 0)

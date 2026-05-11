@@ -47,8 +47,13 @@ fn run() -> Result<i32, String> {
     if let ConfigSource::Discovered(path) = &source {
         eprintln!("flavor: using config {}", path.display());
     }
+    let allow_empty_scan = config.allow_empty_scan();
     let scan = run_scan(&config)?;
-    let report = Report::with_scan(config.root, scan.stats, scan.issues);
+    let report = if allow_empty_scan {
+        Report::with_scan_allow_empty(config.root, scan.stats, scan.issues)
+    } else {
+        Report::with_scan(config.root, scan.stats, scan.issues)
+    };
 
     print_report(&report, options.format)?;
 

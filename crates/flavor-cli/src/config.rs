@@ -19,6 +19,7 @@ pub(crate) struct GuardConfig {
     scan_include: Vec<PathPattern>,
     scan_exclude: Vec<PathPattern>,
     overrides: Vec<RuleMatcher>,
+    allow_empty_scan: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -44,14 +45,15 @@ impl RuleSettings {
     }
 }
 
-/// File name flavor looks for at `--root` when no `--config` is passed.
+/// File name flavor walks ancestors of `--root` to find.
 pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "flavor.json";
 
 /// Where the active `GuardConfig` came from.
 ///
 /// `Explicit` and `Discovered` both point at a file on disk; the split lets
 /// callers tell the user when a config was picked up without being asked for,
-/// so a stray `flavor.json` at the scan root never silently changes behavior.
+/// so a stray `flavor.json` somewhere above the scan root never silently
+/// changes behavior.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ConfigSource {
     Explicit(PathBuf),
@@ -59,25 +61,62 @@ pub(crate) enum ConfigSource {
     BuiltIn,
 }
 
-/// Resolve which config to use, honouring the explicit `--config` path first,
-/// then falling back to `<root>/flavor.json`, then to the built-in defaults.
+/// Resolve which config to use.
 ///
-/// The explicit path is never silently replaced — a missing or malformed
-/// explicit config is still an error, same as before.
+/// Order:
+/// 1. `--config <path>` is honoured verbatim. The directory containing the
+///    explicit file becomes the project root for scan patterns (tsconfig-style).
+/// 2. Otherwise, walk ancestors of `start` looking for `flavor.json`. The
+///    nearest match wins; its directory becomes the project root.
+/// 3. Otherwise, fall back to the built-in defaults rooted at `start`.
+///
+/// `start` is the walk-up entry point (typically `--root`, defaulting to the
+/// current directory). It is canonicalized to make ancestor traversal robust
+/// against `.` / `..` segments.
 pub(crate) fn resolve(
-    root: PathBuf,
+    start: PathBuf,
     explicit: Option<PathBuf>,
 ) -> Result<(GuardConfig, ConfigSource), String> {
     if let Some(path) = explicit {
+        let root = config_parent(&path);
         let config = GuardConfig::from_file(root, &path)?;
         return Ok((config, ConfigSource::Explicit(path)));
     }
-    let candidate = root.join(DEFAULT_CONFIG_FILENAME);
-    if candidate.is_file() {
+    let start = canonicalize_start(&start)?;
+    if let Some(candidate) = walk_up_for_config(&start) {
+        let root = config_parent(&candidate);
         let config = GuardConfig::from_file(root, &candidate)?;
         return Ok((config, ConfigSource::Discovered(candidate)));
     }
-    Ok((GuardConfig::core(root), ConfigSource::BuiltIn))
+    Ok((GuardConfig::core(start), ConfigSource::BuiltIn))
+}
+
+fn canonicalize_start(start: &Path) -> Result<PathBuf, String> {
+    start
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve {}: {error}", start.display()))
+}
+
+fn walk_up_for_config(start: &Path) -> Option<PathBuf> {
+    for ancestor in start.ancestors() {
+        let candidate = ancestor.join(DEFAULT_CONFIG_FILENAME);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// Project root for a config file path: the directory containing it.
+///
+/// `Path::parent` returns `Some("")` for bare filenames like `flavor.json`,
+/// which downstream code reads as the empty path and fails to canonicalize.
+/// Treat both `None` and an empty parent as "the current directory".
+fn config_parent(config_path: &Path) -> PathBuf {
+    match config_path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
+        _ => PathBuf::from("."),
+    }
 }
 
 impl GuardConfig {
@@ -87,7 +126,17 @@ impl GuardConfig {
             scan_include: patterns(core_include_patterns()),
             scan_exclude: patterns(core_exclude_patterns()),
             overrides: Vec::new(),
+            allow_empty_scan: false,
         }
+    }
+
+    /// Whether the active config opted out of the "0 files matched" failure.
+    ///
+    /// A workspace-root `flavor.json` that intentionally excludes every
+    /// submodule (delegating real checks to per-submodule configs) sets this
+    /// so the 0-match warning + exit 1 from PR #6 stays quiet.
+    pub(crate) fn allow_empty_scan(&self) -> bool {
+        self.allow_empty_scan
     }
 
     pub(crate) fn from_file(root: PathBuf, config_path: &Path) -> Result<Self, String> {
@@ -129,6 +178,7 @@ impl GuardConfig {
             scan_include: required_patterns(scan.include, "scan.include")?,
             scan_exclude: patterns(scan.exclude.unwrap_or_default()),
             overrides,
+            allow_empty_scan: file.allow_empty_scan,
         })
     }
 
@@ -192,6 +242,8 @@ struct GuardConfigFile {
     scan: ScanConfigFile,
     #[serde(default)]
     overrides: Vec<OverrideConfigFile>,
+    #[serde(default, rename = "allowEmptyScan")]
+    allow_empty_scan: bool,
 }
 
 #[derive(Debug, Deserialize)]

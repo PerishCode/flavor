@@ -72,7 +72,9 @@ fn help_stays_operational() {
     assert!(help.contains("rules [--format text|json]"));
     assert!(help.contains("rule-level bad-flavor notes"));
     assert!(help.contains("Rust, TypeScript, TSX, Vue, and Svelte"));
-    assert!(help.contains("https://github.com/PerishCode/flavor/issues"));
+    assert!(help.contains("Source:  https://github.com/PerishCode/flavor"));
+    assert!(help.contains("Issues:  https://github.com/PerishCode/flavor/issues"));
+    assert!(help.contains("AGENTS.md"));
     assert!(!help.contains("Preferred repair"));
     assert!(help.contains("does not format, rewrite"));
 }

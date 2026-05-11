@@ -122,3 +122,9 @@ The installable binary lives in `crates/flavor-cli`. Compiler frontends grow as 
 ## Scope
 
 `flavor` does not format, rewrite, run services, manage repositories, or inspect product semantics.
+
+## Contributing
+
+Open issues at <https://github.com/PerishCode/flavor/issues> for parser gaps, rule noise, or install problems.
+
+For source-change shape — branch names, commit/PR conventions, where to put tests, how agents land their own PRs — see the **Contribution Loop** section in [AGENTS.md](./AGENTS.md#contribution-loop).

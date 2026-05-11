@@ -21,6 +21,8 @@ mod scan;
 
 #[path = "unit/cli.rs"]
 mod cli_cases;
+#[path = "unit/config.rs"]
+mod config_cases;
 #[path = "unit/model.rs"]
 mod model_cases;
 #[path = "unit/naming.rs"]

@@ -27,9 +27,9 @@ for ($i = 0; $i -lt $remaining.Length; $i++) {
 flavor installer
 
 Usage:
-  flavor.ps1 install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
-  flavor.ps1 upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
-  flavor.ps1 uninstall
+  install.ps1 install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
+  install.ps1 upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
+  install.ps1 uninstall
 
 Environment:
   FLAVOR_RELEASES_PUBLIC_URL

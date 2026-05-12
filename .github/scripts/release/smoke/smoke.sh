@@ -16,14 +16,14 @@ export FLAVOR_INSTALL_ROOT="$tmpdir/install"
 export FLAVOR_LOCAL_BIN_DIR="$tmpdir/bin"
 mkdir -p "$HOME" "$FLAVOR_INSTALL_ROOT" "$FLAVOR_LOCAL_BIN_DIR"
 
-sh "$ROOT/scripts/manage/flavor.sh" install --channel "$CHANNEL" --version "$VERSION"
+sh "$ROOT/install.sh" install --channel "$CHANNEL" --version "$VERSION"
 "$FLAVOR_LOCAL_BIN_DIR/flavor" --version
 "$FLAVOR_LOCAL_BIN_DIR/flavor" check --root "$ROOT" --config "$ROOT/flavor.json"
 
 if [ "${SMOKE_LATEST:-}" = "1" ]; then
   rm -f "$FLAVOR_LOCAL_BIN_DIR/flavor"
   rm -rf "$FLAVOR_INSTALL_ROOT/latest-smoke"
-  sh "$ROOT/scripts/manage/flavor.sh" install --channel "$CHANNEL" --install-root "$FLAVOR_INSTALL_ROOT/latest-smoke"
+  sh "$ROOT/install.sh" install --channel "$CHANNEL" --install-root "$FLAVOR_INSTALL_ROOT/latest-smoke"
   "$FLAVOR_LOCAL_BIN_DIR/flavor" --version
   "$FLAVOR_LOCAL_BIN_DIR/flavor" check --root "$ROOT" --config "$ROOT/flavor.json"
 fi

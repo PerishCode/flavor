@@ -2,28 +2,132 @@
 
 `flavor` is a personal check-only code flavor lint CLI.
 
-It owns AST-backed code-shape rules, path-scoped checks, report output, bad-flavor notes, and action hints. It does not own product semantics, formatting, rewriting, service execution, repository orchestration, or runtime management.
+It owns AST-backed code-shape rules, path-scoped checks, report output,
+bad-flavor notes, and action hints. It does not own product semantics,
+formatting, rewriting, service execution, repository orchestration, or runtime
+management.
 
-## Workspace Boundaries
+## Directory Rules
 
-- `crates/flavor-cli/` owns the installable `flavor` binary, rule execution, reports, and CLI-facing scan configuration.
-- `crates/flavor-compiler-core/` owns compiler substrate primitives: source text, spans, syntax tree glue, diagnostics, recovery, snapshots, and state/config injection.
-- `crates/flavor-compiler-ts/` owns TypeScript/JavaScript/TSX syntax and facts on top of `flavor-compiler-core`.
-- `crates/flavor-compiler-vue/` owns Vue SFC/template/style facts on top of `flavor-compiler-core`, and delegates script blocks to `flavor-compiler-ts`.
-- Compiler crates expose typed config injection through state; they do not define config file names, discovery rules, or historical ecosystem compatibility.
+### Repository Shape
 
-## Rules
+- `crates/` contains the Rust workspace crates. Each core crate owns its local
+  `AGENTS.md`; read the child file before editing that subtree.
+- `.github/workflows/` contains CI and release workflows.
+- `.github/scripts/` contains workflow-only helper scripts. Keep workflow-only
+  scripts there.
+- `scripts/init.py` is the idempotent post-clone initializer. It quick-fails on
+  missing required tools or repository entrypoints, installs local hooks, and
+  exits cleanly only when the checkout is ready for development.
+- `install.sh` and `install.ps1` are the public installation entrypoints at the
+  repository root.
+- Release and installer downloads use R2 metadata and artifacts as the source of
+  truth.
+
+### Recursive AGENTS Index
+
+- `crates/flavor-cli/AGENTS.md`: installable `flavor` binary, scan config,
+  rule execution, reports, and CLI-facing behavior.
+- `crates/flavor-compiler-core/AGENTS.md`: compiler substrate primitives,
+  source text, spans, syntax tree glue, diagnostics, recovery, snapshots, and
+  typed state/config injection.
+- `crates/flavor-compiler-ts/AGENTS.md`: TypeScript, JavaScript, and TSX lexer,
+  parser, AST, facts, visitor, and frontend state.
+- `crates/flavor-compiler-vue/AGENTS.md`: Vue SFC descriptor, template/style
+  facts, template parsing, and embedded expression validation.
+- `crates/flavor-compiler-svelte/AGENTS.md`: Svelte descriptor, markup parsing,
+  facts, and embedded expression validation.
+
+When adding or removing a core subtree, update this index in the same change.
+Child `AGENTS.md` files should stay local: ownership, directory shape, commands,
+workflow notes, and FAQ for that subtree.
+
+### Project Boundaries
 
 - Keep the CLI check-only.
 - Keep rules about syntax, file shape, path shape, and abstract style attributes.
 - Do not encode product-specific business concepts in built-in rules.
 - Prefer reports that explain the bad flavor and suggest a direction of thought.
 - Keep consumer-specific scope in consumer config files.
-- Keep root workflow-only scripts under `.github/scripts/`.
-- Keep public installation entrypoints under `scripts/manage/`.
-- Release and installer downloads use R2 metadata and artifacts as the source of truth.
+- Compiler crates expose typed config injection through state. They do not define
+  config file names, discovery rules, or historical ecosystem compatibility.
 
 ## Common Commands
+
+```bash
+python3 scripts/init.py
+cargo fmt --all --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace
+cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+```
+
+`python3 scripts/init.py` is the default post-clone command. Use `--force` only
+when intentionally replacing existing non-init hooks; the script backs them up
+first.
+
+## Standard Workflow
+
+### Initialize
+
+After cloning or when hooks look stale, run:
+
+```bash
+python3 scripts/init.py
+```
+
+The generated hooks contain their concrete actions directly. The pre-commit hook
+currently runs fmt, cargo check, flavor self-check, shell syntax checks, and
+PowerShell syntax checks when `pwsh` is available. The commit-msg hook validates
+the commit subject shape.
+
+### When To File An Issue First
+
+Open <https://github.com/PerishCode/flavor/issues> first when the right shape is
+not obvious from behavior or this AGENTS tree. Examples include a new rule with a
+payload decision, a CLI shape change that affects output stability, or a release
+flow tweak. For clear, scoped fixes, open a PR directly and reference any related
+issue from the PR body with `Closes #N`.
+
+### Branch Names
+
+Use `<area>/<kebab-case-slug>`, where `<area>` matches the touched crate or
+concern. Recent examples:
+
+- `cli/auto-discover-config`
+- `cli/warn-empty-scan`
+- `config/match-array`
+- `cli/rules-subcommand`
+- `docs/config-schema`
+
+### Commit Messages
+
+Subject: `<area>: <imperative summary>` on one line, ideally <= 72 characters.
+The body explains why the change is shaped this way first, then the change list.
+End with any `Co-Authored-By:` trailers when pair-coded or agent-assisted.
+
+### Tests
+
+Unit tests for `flavor-cli` live under `crates/flavor-cli/tests/unit/<area>.rs`
+and are registered in `crates/flavor-cli/tests/unit.rs`:
+
+```rust
+// in crates/flavor-cli/tests/unit.rs
+#[path = "../src/<file>.rs"]   // only if the touched module is not already mounted
+mod <module>;
+#[path = "unit/<area>.rs"]
+mod <area>_cases;
+```
+
+Tests that need a writable fixture follow the
+`std::env::temp_dir().join(format!("flavor-<slug>-{pid}-{seq}"))` pattern and
+clean up with `fs::remove_dir_all` at the end of each case. See
+`tests/unit/scan.rs` and `tests/unit/config.rs` for live examples. Pure-function
+tests follow `tests/unit/model.rs` and `tests/unit/naming.rs`.
+
+### Pre-PR Checks
+
+Every PR must pass these commands before review:
 
 ```bash
 cargo fmt --all --check
@@ -32,66 +136,76 @@ cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 ```
 
-## Contribution Loop
+CI reruns them across Linux, Windows, and macOS.
 
-This section describes how source-change contributions are shaped so an agent can land a PR without per-change guidance. The aim is to match the historical shape rather than invent new conventions; the examples here are taken from recent merged PRs.
+### PR Descriptions
 
-### When to file an issue first
+Use these top-level sections, in order:
 
-Open <https://github.com/PerishCode/flavor/issues> first when the right shape isn't obvious from a rule's behavior or this AGENTS.md — for example, a new rule with a payload decision, a CLI shape change that affects output stability, or a release-flow tweak. For clear, scoped fixes (a discoverability gap, a misleading exit code, a missing accessor), opening a PR directly is fine; reference any related issue from the PR body via `Closes #N`.
-
-### Branch names
-
-`<area>/<kebab-case-slug>` where `<area>` matches the touched crate or concern. Recent examples:
-
-- `cli/auto-discover-config`
-- `cli/warn-empty-scan`
-- `config/match-array`
-- `cli/rules-subcommand`
-- `docs/config-schema`
-
-### Commit messages
-
-Subject: `<area>: <imperative summary>` on one line, ideally ≤ 72 chars. The body explains *why* the change is shaped this way first, then the change list. End with any `Co-Authored-By:` trailers when pair-coded or agent-assisted.
-
-### PR descriptions
-
-Three top-level sections, in order:
-
-```
+```markdown
 ## Why
-<what's broken / missing today; one paragraph or short bullets>
+<what is broken or missing today>
 
 ## What
 <concrete change list; reference filenames and modules>
 
 ## Tests
-<commands run + their results, e.g.,
-  cargo test --locked -p flavor-cli --test unit  ->  N passed
-  cargo fmt --all --check                        ->  clean
-  cargo clippy --locked --workspace --all-targets -- -D warnings  ->  clean>
+<commands run and results>
 ```
 
-Add `## Compatibility` when an output shape, config field, or exit-code behavior moves. Add `## Trade-off worth flagging` when the change has a downside that reviewers should hold in mind.
-
-### Tests
-
-Unit tests live under `crates/flavor-cli/tests/unit/<area>.rs` and are registered in `crates/flavor-cli/tests/unit.rs`:
-
-```rust
-// in crates/flavor-cli/tests/unit.rs
-#[path = "../src/<file>.rs"]   // only if the touched module isn't already mounted
-mod <module>;
-#[path = "unit/<area>.rs"]
-mod <area>_cases;
-```
-
-Tests that need a writable fixture follow the `std::env::temp_dir().join(format!("flavor-<slug>-{pid}-{seq}"))` pattern and clean up with `fs::remove_dir_all` at the end of each case (see `tests/unit/scan.rs` / `tests/unit/config.rs` for live examples). Pure-function tests (no fs) follow the `tests/unit/model.rs` / `tests/unit/naming.rs` shape.
-
-### Pre-PR checks
-
-Every PR must pass the four commands listed under "Common Commands" above. CI re-runs them; matching locally avoids a round-trip.
+Add `## Compatibility` when an output shape, config field, or exit-code behavior
+moves. Add `## Trade-off worth flagging` when the change has a downside that
+reviewers should hold in mind.
 
 ### Merging
 
-Default to `gh pr merge <num> --merge --delete-branch` once checks are green. Repos that disable merge commits fall back to `--squash`. Agents merge their own PRs after the issue resolution is concrete and CI has passed; no manual approval handoff is part of this loop.
+`main` is PR-only and protected by the `guard` workflow. Required approvals are
+intentionally `0`; the guard matrix is the merge gate.
+
+After opening a non-draft PR, default to enabling repository auto-merge:
+
+```bash
+gh pr merge <num> --auto --squash --delete-branch
+```
+
+Do not add workflow files just to auto-enable auto-merge. If auto-merge cannot
+be enabled or the repository disables merge commits, wait for green checks and
+fall back to the smallest equivalent manual command, usually
+`gh pr merge <num> --squash --delete-branch`. Agents merge their own PRs after
+the issue resolution is concrete and CI has passed; no manual approval handoff
+is part of this loop.
+
+## FAQ
+
+### Does `flavor` Format Or Rewrite Code?
+
+No. The CLI is check-only. It reports bad flavor and action hints, but it does
+not format, rewrite, run services, or manage runtime state.
+
+### Where Do Consumer-Specific Rules Belong?
+
+In consumer config files. Built-in rules stay about syntax, file shape, path
+shape, and abstract style attributes.
+
+### Which Crate Owns Config Discovery?
+
+`flavor-cli` owns config file names, discovery, scan setup, report output, and
+exit behavior. Compiler crates only expose typed config/state injection.
+
+### Where Do Installer Changes Go?
+
+Public installation entrypoints live at the repository root as `install.sh` and
+`install.ps1`. Release and smoke scripts should reference those root files.
+
+### Where Do Workflow Helper Scripts Go?
+
+Workflow-only helpers belong under `.github/scripts/`. The repository
+initialization entrypoint is `scripts/init.py`; additional local developer
+harness helpers, if added, belong under `scripts/dev/`.
+
+### Does Init Replace Existing Hooks?
+
+Not by default. If a hook exists and was not generated by `scripts/init.py`, the
+script stops and asks for `--force`. With `--force`, it backs up the existing
+hook to a numbered `.bak` path before replacing it. Older bootstrap-generated
+hooks are treated as generated and are replaced idempotently.

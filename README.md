@@ -119,6 +119,16 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 
 The installable binary lives in `crates/flavor-cli`. Compiler frontends grow as sibling crates: `flavor-compiler-core` owns compiler substrate primitives, `flavor-compiler-ts` owns TS/JS syntax facts, `flavor-compiler-vue` owns Vue SFC/template/style facts, and `flavor-compiler-svelte` owns Svelte descriptor/markup facts. Compiler crates accept typed config through state and do not define config file names.
 
+## Development
+
+```bash
+python3 scripts/init.py                       # initialize hooks and verify local prerequisites
+cargo fmt --all --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace
+cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+```
+
 ## Scope
 
 `flavor` does not format, rewrite, run services, manage repositories, or inspect product semantics.
@@ -127,4 +137,4 @@ The installable binary lives in `crates/flavor-cli`. Compiler frontends grow as 
 
 Open issues at <https://github.com/PerishCode/flavor/issues> for parser gaps, rule noise, or install problems.
 
-For source-change shape — branch names, commit/PR conventions, where to put tests, how agents land their own PRs — see the **Contribution Loop** section in [AGENTS.md](./AGENTS.md#contribution-loop).
+For source-change shape — branch names, commit/PR conventions, where to put tests, how agents land their own PRs — see the **Standard Workflow** section in [AGENTS.md](./AGENTS.md#standard-workflow).

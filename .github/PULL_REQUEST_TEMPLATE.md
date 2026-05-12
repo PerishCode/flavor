@@ -23,5 +23,5 @@ Optional sections, add when relevant:
 ## Trade-off worth flagging
 - A known downside reviewers should hold in mind.
 
-See AGENTS.md → "Contribution Loop" for the full shape.
+See "Standard Workflow" in AGENTS.md for the full shape.
 -->

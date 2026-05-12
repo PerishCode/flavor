@@ -1,4 +1,5 @@
 .DS_Store
+.task/
 .tmp/
 dist/
 target/

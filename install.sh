@@ -62,9 +62,9 @@ while [ $# -gt 0 ]; do
 flavor installer
 
 Usage:
-  flavor.sh install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
-  flavor.sh upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
-  flavor.sh uninstall
+  install.sh install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
+  install.sh upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
+  install.sh uninstall
 
 Environment:
   FLAVOR_RELEASES_PUBLIC_URL

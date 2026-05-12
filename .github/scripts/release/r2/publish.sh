@@ -54,10 +54,10 @@ for file_path in "$release_root"/flavor-*.tar.gz "$release_root"/flavor-*.zip "$
   upload "$file_path" "$version_prefix/$name" "$(artifact_content_type "$name")" "public, max-age=31536000, immutable"
 done
 
-upload "$GITHUB_WORKSPACE/scripts/manage/flavor.sh" "$version_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/scripts/manage/flavor.ps1" "$version_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/scripts/manage/flavor.sh" "$latest_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
-upload "$GITHUB_WORKSPACE/scripts/manage/flavor.ps1" "$latest_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+upload "$GITHUB_WORKSPACE/install.sh" "$version_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
+upload "$GITHUB_WORKSPACE/install.ps1" "$version_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
+upload "$GITHUB_WORKSPACE/install.sh" "$latest_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
+upload "$GITHUB_WORKSPACE/install.ps1" "$latest_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
 
 PUBLIC_URL="$public_url" \
 VERSION_PREFIX="$version_prefix" \

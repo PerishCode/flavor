@@ -138,8 +138,9 @@ Config:
 Scope:
   The check covers handwritten Rust, TypeScript, TSX, Vue, and Svelte source
   through scan.include / scan.exclude path patterns. Rule behavior is adjusted
-  through ordered overrides that match files or directories and set rule
-  payload, severity, or enabled state.
+  through named preferences and ordered overrides that match files or
+  directories and set rule payload, severity, or enabled state. Preferences
+  expand first; explicit overrides remain the final adjustment layer.
 
 Reports:
   check reports include rule-level bad-flavor notes and action hints when

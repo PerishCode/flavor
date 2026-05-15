@@ -37,6 +37,11 @@ pub(crate) fn text_rules(descriptors: &[RuleDescriptor]) -> String {
             RuleTarget::Dir => "dir",
         };
         let severity = severity_label(descriptor.default_severity);
+        let enabled = if descriptor.default_enabled {
+            ""
+        } else {
+            ", off-by-default"
+        };
         let payload = if descriptor.default_payload.is_empty() {
             String::new()
         } else {
@@ -49,7 +54,7 @@ pub(crate) fn text_rules(descriptors: &[RuleDescriptor]) -> String {
         };
         writeln!(
             &mut text,
-            "{} ({target}, {severity}{payload})",
+            "{} ({target}, {severity}{enabled}{payload})",
             descriptor.id
         )
         .expect("write string");

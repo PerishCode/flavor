@@ -12,7 +12,7 @@ use swc_ecma_visit::{Visit, VisitWith};
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     model::{issue, Issue},
-    naming::check_name,
+    naming::{check_name, tsx::check_tsx_rules},
     rules::{
         DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_MAX_BRANCH_LINES, VUE_PARSE_ERROR,
     },
@@ -50,8 +50,17 @@ pub(crate) fn check_ts_script_blocks(
 ) {
     let name_rule = config.rule(relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
     let dispatch_rule = config.rule(relative, NodeKind::File, DISPATCH_BRANCH_TOO_LONG);
+    let mut context = TsCheckContext {
+        config,
+        relative,
+        path,
+        issues,
+        name_rule: &name_rule,
+        dispatch_rule: &dispatch_rule,
+        parse_rule,
+    };
     for script in scripts {
-        check_script(path, script, issues, &name_rule, &dispatch_rule, parse_rule);
+        check_script(script, &mut context);
     }
 }
 
@@ -61,16 +70,22 @@ pub(crate) struct TsScriptBlock {
     pub(crate) tsx: bool,
 }
 
-fn check_script(
-    path: &str,
-    script: TsScriptBlock,
-    issues: &mut Vec<Issue>,
-    name_rule: &RuleSettings,
-    dispatch_rule: &RuleSettings,
-    parse_rule: &RuleSettings,
-) {
+struct TsCheckContext<'a> {
+    config: &'a GuardConfig,
+    relative: &'a Path,
+    path: &'a str,
+    issues: &'a mut Vec<Issue>,
+    name_rule: &'a RuleSettings,
+    dispatch_rule: &'a RuleSettings,
+    parse_rule: &'a RuleSettings,
+}
+
+fn check_script(script: TsScriptBlock, context: &mut TsCheckContext<'_>) {
     let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.to_string()).into(), script.content);
+    let fm = cm.new_source_file(
+        FileName::Custom(context.path.to_string()).into(),
+        script.content,
+    );
     let lexer = Lexer::new(
         Syntax::Typescript(TsSyntax {
             tsx: script.tsx,
@@ -85,22 +100,44 @@ fn check_script(
     let module = match parser.parse_module() {
         Ok(module) => module,
         Err(error) => {
-            push_parse_issue(issues, parse_rule, path, format!("{error:?}"));
+            push_parse_issue(
+                context.issues,
+                context.parse_rule,
+                context.path,
+                format!("{error:?}"),
+            );
             return;
         }
     };
 
     for error in parser.take_errors() {
-        push_parse_issue(issues, parse_rule, path, format!("{error:?}"));
+        push_parse_issue(
+            context.issues,
+            context.parse_rule,
+            context.path,
+            format!("{error:?}"),
+        );
+    }
+
+    if script.tsx {
+        check_tsx_rules(
+            context.config,
+            context.relative,
+            context.path,
+            &module,
+            &cm,
+            script.start_line,
+            context.issues,
+        );
     }
 
     let mut visitor = TsNameVisitor {
-        path,
-        issues,
+        path: context.path,
+        issues: context.issues,
         cm,
         line_offset: script.start_line,
-        rule: name_rule,
-        dispatch_rule,
+        rule: context.name_rule,
+        dispatch_rule: context.dispatch_rule,
     };
     module.visit_with(&mut visitor);
 }

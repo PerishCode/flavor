@@ -7,6 +7,8 @@ use std::{
 use serde::Deserialize;
 use serde_json::Value;
 
+mod preferences;
+
 use crate::{
     model::Severity,
     path_match::PathPattern,
@@ -18,6 +20,7 @@ pub(crate) struct GuardConfig {
     pub(crate) root: PathBuf,
     scan_include: Vec<PathPattern>,
     scan_exclude: Vec<PathPattern>,
+    preferences: Vec<RuleMatcher>,
     overrides: Vec<RuleMatcher>,
     allow_empty_scan: bool,
 }
@@ -37,6 +40,26 @@ pub(crate) struct RuleSettings {
 }
 
 impl RuleSettings {
+    #[allow(dead_code)]
+    pub(crate) fn bool(&self, key: &str) -> Option<bool> {
+        self.payload.get(key).and_then(Value::as_bool)
+    }
+
+    pub(crate) fn string(&self, key: &str) -> Option<&str> {
+        self.payload.get(key).and_then(Value::as_str)
+    }
+
+    pub(crate) fn string_list(&self, key: &str) -> Option<Vec<String>> {
+        match self.payload.get(key)? {
+            Value::String(value) => Some(vec![value.clone()]),
+            Value::Array(values) => values
+                .iter()
+                .map(|value| value.as_str().map(str::to_string))
+                .collect(),
+            _ => None,
+        }
+    }
+
     pub(crate) fn usize(&self, key: &str) -> Option<usize> {
         self.payload
             .get(key)
@@ -125,6 +148,7 @@ impl GuardConfig {
             root,
             scan_include: patterns(core_include_patterns()),
             scan_exclude: patterns(core_exclude_patterns()),
+            preferences: Vec::new(),
             overrides: Vec::new(),
             allow_empty_scan: false,
         }
@@ -150,6 +174,7 @@ impl GuardConfig {
 
     fn from_config_file(root: PathBuf, file: GuardConfigFile) -> Result<Self, String> {
         let scan = file.scan;
+        let preferences = preferences::expand(file.preferences)?;
         let mut overrides = Vec::with_capacity(file.overrides.len());
         for (order, item) in file.overrides.into_iter().enumerate() {
             validate_rules(item.kind.unwrap_or(MatchKind::Any), &item.rules)?;
@@ -177,6 +202,7 @@ impl GuardConfig {
             root,
             scan_include: required_patterns(scan.include, "scan.include")?,
             scan_exclude: patterns(scan.exclude.unwrap_or_default()),
+            preferences,
             overrides,
             allow_empty_scan: file.allow_empty_scan,
         })
@@ -204,7 +230,7 @@ impl GuardConfig {
         let descriptor = rules::descriptor(rule_id).expect("built-in rule descriptor must exist");
         let mut settings = RuleSettings {
             id: descriptor.id,
-            enabled: true,
+            enabled: descriptor.default_enabled,
             severity: descriptor.default_severity,
             payload: descriptor
                 .default_payload
@@ -213,7 +239,7 @@ impl GuardConfig {
                 .collect(),
         };
 
-        for matcher in &self.overrides {
+        for matcher in self.preferences.iter().chain(&self.overrides) {
             if !matcher.matches(relative, kind) {
                 continue;
             }
@@ -240,6 +266,8 @@ impl GuardConfig {
 #[derive(Debug, Deserialize)]
 struct GuardConfigFile {
     scan: ScanConfigFile,
+    #[serde(default)]
+    preferences: Vec<preferences::PreferenceConfigFile>,
     #[serde(default)]
     overrides: Vec<OverrideConfigFile>,
     #[serde(default, rename = "allowEmptyScan")]
@@ -269,13 +297,13 @@ struct OverrideConfigFile {
 /// surrounding `kind` / `priority` / `rules` block.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
-enum MatchPatterns {
+pub(crate) enum MatchPatterns {
     One(String),
     Many(Vec<String>),
 }
 
 impl MatchPatterns {
-    fn into_vec(self) -> Vec<String> {
+    pub(crate) fn into_vec(self) -> Vec<String> {
         match self {
             MatchPatterns::One(value) => vec![value],
             MatchPatterns::Many(values) => values,
@@ -285,7 +313,7 @@ impl MatchPatterns {
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-enum MatchKind {
+pub(crate) enum MatchKind {
     Any,
     File,
     Dir,
@@ -294,22 +322,42 @@ enum MatchKind {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct RuleOverride {
     #[serde(default)]
-    enabled: Option<bool>,
+    pub(crate) enabled: Option<bool>,
     #[serde(default)]
-    severity: Option<Severity>,
+    pub(crate) severity: Option<Severity>,
     #[serde(default)]
-    reason: Option<String>,
+    pub(crate) reason: Option<String>,
     #[serde(default)]
-    payload: Option<BTreeMap<String, Value>>,
+    pub(crate) payload: Option<BTreeMap<String, Value>>,
+}
+
+impl RuleOverride {
+    pub(crate) fn enabled_with_payload(payload: BTreeMap<String, Value>) -> Self {
+        Self {
+            enabled: Some(true),
+            severity: None,
+            reason: None,
+            payload: Some(payload),
+        }
+    }
+
+    pub(crate) fn disabled(reason: &'static str) -> Self {
+        Self {
+            enabled: Some(false),
+            severity: None,
+            reason: Some(reason.to_string()),
+            payload: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-struct RuleMatcher {
-    patterns: Vec<PathPattern>,
-    kind: MatchKind,
-    priority: i32,
-    order: usize,
-    rules: BTreeMap<String, RuleOverride>,
+pub(crate) struct RuleMatcher {
+    pub(crate) patterns: Vec<PathPattern>,
+    pub(crate) kind: MatchKind,
+    pub(crate) priority: i32,
+    pub(crate) order: usize,
+    pub(crate) rules: BTreeMap<String, RuleOverride>,
 }
 
 impl RuleMatcher {

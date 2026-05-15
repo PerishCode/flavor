@@ -107,6 +107,58 @@ fn allow_empty_default_off() {
 }
 
 #[test]
+fn rejects_unknown_preference() {
+    let root = test_root("unknown-preference");
+    fs::create_dir_all(&root).unwrap();
+    let config_path = root.join(DEFAULT_CONFIG_FILENAME);
+    fs::write(
+        &config_path,
+        r#"{
+            "scan": { "include": ["**/*.rs"] },
+            "preferences": [
+                { "name": "frontend/mystery", "match": "src" }
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    let error = resolve(root.clone(), Some(config_path)).unwrap_err();
+
+    assert!(
+        error.contains("unknown flavor preference set"),
+        "expected unknown-preference error, got: {error}"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn renderer_preference_requires_sources() {
+    let root = test_root("preference-sources");
+    fs::create_dir_all(&root).unwrap();
+    let config_path = root.join(DEFAULT_CONFIG_FILENAME);
+    fs::write(
+        &config_path,
+        r#"{
+            "scan": { "include": ["src/**"] },
+            "preferences": [
+                { "name": "frontend/renderer-boundary", "match": "src" }
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    let error = resolve(root.clone(), Some(config_path)).unwrap_err();
+
+    assert!(
+        error.contains("requires non-empty primitiveSources"),
+        "expected primitive source error, got: {error}"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn built_in_fallback() {
     let root = test_root("builtin");
     fs::create_dir_all(&root).unwrap();

@@ -50,7 +50,9 @@ Run `flavor help` for the product boundary and `flavor rules` for the full rule 
 
 ## Config
 
-A `flavor.json` has two top-level keys: `scan` (required) and `overrides` (optional).
+A `flavor.json` has one required top-level key, `scan`. Optional `preferences`
+expand named rule sets over consumer paths, and `overrides` remain the final
+rule adjustment layer.
 
 ```json
 {
@@ -58,6 +60,13 @@ A `flavor.json` has two top-level keys: `scan` (required) and `overrides` (optio
     "include": ["src/**", "tests/**"],
     "exclude": ["target/**", "node_modules/**"]
   },
+  "preferences": [
+    {
+      "name": "frontend/renderer-boundary",
+      "match": "apps/*/src",
+      "primitiveSources": ["@acme/components"]
+    }
+  ],
   "overrides": [
     {
       "match": ["src/generated/**", "vendor/**"],
@@ -84,6 +93,26 @@ A `flavor.json` has two top-level keys: `scan` (required) and `overrides` (optio
 |-----------|------------|----------|---------------------------------------------------------------------------------------------------|
 | `include` | `string[]` | yes      | Glob patterns, relative to `--root`, that scope which files the check covers.                     |
 | `exclude` | `string[]` | no       | Glob patterns subtracted from `include` (e.g. `**/target/**`, `**/node_modules/**`, `**/*.d.ts`). |
+
+### `preferences[*]`
+
+Named preference sets expand to ordinary rule overrides before explicit
+`overrides` are applied. This keeps built-in rules generic while allowing a
+consumer config to choose an opinionated boundary shape.
+
+| field                | type                   | required | meaning                                                                                                      |
+|----------------------|------------------------|----------|--------------------------------------------------------------------------------------------------------------|
+| `name`               | string                 | yes      | Preference set id. Currently `frontend/renderer-boundary`.                                                    |
+| `match`              | `string` or `string[]` | yes      | Renderer `src` root glob(s), relative to `--root`. Empty arrays error at load time.                           |
+| `priority`           | integer                | no       | Ordering among preference-generated rules. Explicit `overrides` still apply after preferences.                |
+| `primitiveSources`   | `string[]`             | yes      | Package specifiers that count as shared primitives for renderer component composition.                        |
+| `allowedIntrinsics`  | `string[]`             | no       | Lowercase JSX intrinsic names allowed despite the boundary, reserved for deliberate escape hatches.           |
+
+`frontend/renderer-boundary` expands to atomic rules that require
+`src/{lib,components,views,app.tsx,main.tsx}`, forbid local CSS extensions,
+forbid raw intrinsic JSX in TSX, require `components/**/*.tsx` to compose a
+configured primitive, require PascalCase component/view TSX files, and keep
+`lib` file basenames to one word.
 
 ### `overrides[*]`
 

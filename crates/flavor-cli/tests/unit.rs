@@ -2,7 +2,7 @@
 
 #[path = "../src/cli.rs"]
 mod cli;
-#[path = "../src/config.rs"]
+#[path = "../src/config/mod.rs"]
 mod config;
 #[path = "../src/model.rs"]
 mod model;
@@ -16,7 +16,7 @@ mod path_match;
 mod rules;
 #[path = "../src/rust_tests.rs"]
 mod rust_tests;
-#[path = "../src/scan.rs"]
+#[path = "../src/scan/mod.rs"]
 mod scan;
 
 #[path = "unit/cli.rs"]
@@ -31,5 +31,7 @@ mod naming_cases;
 mod output_cases;
 #[path = "unit/path_match.rs"]
 mod path_cases;
+#[path = "unit/renderer_boundary.rs"]
+mod renderer_boundary_cases;
 #[path = "unit/scan.rs"]
 mod scan_cases;

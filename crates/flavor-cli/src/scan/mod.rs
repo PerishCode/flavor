@@ -1,10 +1,12 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
 
 use walkdir::WalkDir;
+
+mod fs_rules;
 
 use crate::{
     config::{source_file_kind, GuardConfig, NodeKind, SourceKind},
@@ -19,6 +21,8 @@ use crate::{
     rust_tests::check_rust_test_home,
 };
 
+use fs_rules::{check_children_shape, check_file_path_rules, track_direct_child};
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ScanResult {
     pub(crate) issues: Vec<Issue>,
@@ -30,6 +34,7 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
     let mut issues = Vec::new();
     let mut stats = ScanStats::default();
     let mut child_counts = BTreeMap::<PathBuf, usize>::new();
+    let mut direct_children = BTreeMap::<PathBuf, BTreeSet<String>>::new();
 
     let mut walk = WalkDir::new(&root).into_iter();
     while let Some(entry) = walk.next() {
@@ -45,18 +50,25 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
             continue;
         }
 
+        let scanned_entry = config.is_scanned(&relative);
+        if scanned_entry {
+            track_direct_child(&mut direct_children, &relative);
+        }
+
         if entry.file_type().is_dir() {
-            if config.is_scanned(&relative) {
+            if scanned_entry {
+                direct_children.entry(relative.clone()).or_default();
                 check_source_depth(config, &relative, &mut issues);
                 add_child_count(&mut child_counts, &relative);
             }
             continue;
         }
 
-        if !config.is_scanned(&relative) {
+        if !scanned_entry {
             continue;
         }
         stats.matched_files += 1;
+        check_file_path_rules(config, &relative, &mut issues);
 
         let Some(kind) = source_file_kind(&relative) else {
             stats.unsupported_files += 1;
@@ -70,6 +82,10 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
         stats.scanned_files += 1;
         add_child_count(&mut child_counts, &relative);
         check_source_file(config, &relative, path, kind, &mut issues)?;
+    }
+
+    for (dir, children) in &direct_children {
+        check_children_shape(config, dir, children, &mut issues);
     }
 
     for (dir, count) in child_counts {

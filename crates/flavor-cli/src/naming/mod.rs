@@ -1,6 +1,7 @@
 mod rust;
 mod svelte;
 mod ts;
+mod tsx;
 
 use crate::{
     config::RuleSettings,

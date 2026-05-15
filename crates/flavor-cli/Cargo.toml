@@ -1,6 +1,6 @@
 [package]
 name = "flavor-cli"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT"
 description = "Personal check-only AST-backed code flavor lint CLI."

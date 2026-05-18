@@ -1,4 +1,4 @@
-use flavor_plugin_core::{RawSyntaxKind, SourceText};
+use flavor_core::{RawSyntaxKind, SourceText};
 use flavor_plugin_vue::{
     run,
     template::{parse_template, VueTemplateKind},
@@ -18,6 +18,31 @@ fn has_token(ast: &flavor_plugin_vue::TemplateAst, kind: VueTemplateKind) -> boo
         .any(|token| token.kind() == RawSyntaxKind::from(kind))
 }
 
+fn is_core_trivia(kind: RawSyntaxKind) -> bool {
+    matches!(kind.0, 1..=4)
+}
+
+fn assert_cst_matches_schema(ast: &flavor_plugin_vue::TemplateAst) {
+    for node in ast.syntax().descendants() {
+        assert!(
+            VueTemplateKind::raw_is_node(node.kind()),
+            "node kind {:?} is not declared as a G4 node",
+            node.kind()
+        );
+    }
+    for token in ast
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+    {
+        assert!(
+            VueTemplateKind::raw_is_token(token.kind()) || is_core_trivia(token.kind()),
+            "token kind {:?} is not declared as a G4 token",
+            token.kind()
+        );
+    }
+}
+
 #[test]
 fn parses_template_text() {
     let ast = parse_template("<div>{{ message }}</div>");
@@ -25,6 +50,14 @@ fn parses_template_text() {
     assert_eq!(ast.syntax().text().to_string(), "<div>{{ message }}</div>");
     assert!(has_node(&ast, VueTemplateKind::StartTag));
     assert!(has_node(&ast, VueTemplateKind::EndTag));
+}
+
+#[test]
+fn cst_matches_schema() {
+    let ast = parse_template(r#"<button v-if="ok" :class="klass">Save {{ label }}</button>"#);
+
+    assert_cst_matches_schema(&ast);
+    assert!(ast.diagnostics().is_empty());
 }
 
 #[test]

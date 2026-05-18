@@ -1,4 +1,5 @@
 mod filesystem;
+mod g4;
 mod language;
 mod product;
 mod source_structure;
@@ -294,6 +295,10 @@ static PLUGINS: &[FirstPartyPlugin] = &[
     FirstPartyPlugin {
         manifest: source_structure::MANIFEST,
         analyze: source_structure::analyze,
+    },
+    FirstPartyPlugin {
+        manifest: g4::MANIFEST,
+        analyze: g4::analyze,
     },
     FirstPartyPlugin {
         manifest: language::RUST_MANIFEST,

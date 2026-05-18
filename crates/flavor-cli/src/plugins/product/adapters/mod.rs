@@ -1,4 +1,4 @@
-use flavor_plugin_core::GrammarProduct;
+use flavor_core::GrammarProduct;
 
 use crate::{
     config::SourceKind,
@@ -12,6 +12,12 @@ pub(super) fn satisfy(manifest: PluginManifest, scope: Scope<'_>) -> Vec<Grammar
     };
 
     match source.kind {
+        SourceKind::G4 => flavor_plugin_g4::product::satisfy(
+            &|grammar_id| entrypoint(manifest, grammar_id),
+            source.path,
+            source.source,
+            &mut products,
+        ),
         SourceKind::Rust => flavor_plugin_rust::product::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,

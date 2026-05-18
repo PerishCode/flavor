@@ -1,13 +1,14 @@
 [workspace]
 members = [
     "crates/flavor-cli",
-    "crates/flavor-plugin-core",
+    "crates/flavor-core",
     "crates/flavor-plugin-filesystem",
+    "crates/flavor-plugin-g4",
     "crates/flavor-plugin-rust",
     "crates/flavor-plugin-svelte",
     "crates/flavor-plugin-source-structure",
     "crates/flavor-plugin-typescript",
     "crates/flavor-plugin-vue",
-    "crates/flavor-g4",
+    "crates/flavor-grammar",
 ]
 resolver = "2"

@@ -1,4 +1,4 @@
-use flavor_plugin_core::{Diagnostic, Span, SyntaxBuilder};
+use flavor_core::{Diagnostic, Span, SyntaxBuilder};
 
 use super::{
     cursor::find_mustache_end,
@@ -34,7 +34,7 @@ impl<'a> MarkupParser<'a> {
     }
 
     fn parse(mut self) -> SvelteMarkupAst {
-        self.builder.start_node(SvelteMarkupKind::Root);
+        self.builder.start_schema_node(SvelteMarkupKind::Root);
         self.parse_children(None);
         self.builder.finish_node();
         SvelteMarkupAst::new(self.builder.finish(), self.diagnostics)
@@ -111,11 +111,12 @@ impl<'a> MarkupParser<'a> {
             self.parse_error_char();
             return;
         };
-        self.builder.start_node(if is_component_tag(&tag_name) {
-            SvelteMarkupKind::Component
-        } else {
-            SvelteMarkupKind::Element
-        });
+        self.builder
+            .start_schema_node(if is_component_tag(&tag_name) {
+                SvelteMarkupKind::Component
+            } else {
+                SvelteMarkupKind::Element
+            });
         let Some(tag) = self.parse_start_tag() else {
             self.builder.finish_node();
             return;
@@ -130,7 +131,7 @@ impl<'a> MarkupParser<'a> {
     }
 
     fn parse_start_tag(&mut self) -> Option<ParsedTag> {
-        self.builder.start_node(SvelteMarkupKind::StartTag);
+        self.builder.start_schema_node(SvelteMarkupKind::StartTag);
         self.token_len(SvelteMarkupKind::LessThan, 1);
         let name_start = self.cursor;
         while self.peek().is_some_and(is_tag_name_char) {
@@ -143,7 +144,7 @@ impl<'a> MarkupParser<'a> {
             return None;
         }
         let name = self.source[name_start..self.cursor].to_string();
-        self.builder.token(
+        self.builder.schema_token(
             SvelteMarkupKind::TagName,
             &self.source[name_start..self.cursor],
         );
@@ -153,7 +154,7 @@ impl<'a> MarkupParser<'a> {
     }
 
     fn parse_end_tag(&mut self) {
-        self.builder.start_node(SvelteMarkupKind::EndTag);
+        self.builder.start_schema_node(SvelteMarkupKind::EndTag);
         self.token_len(SvelteMarkupKind::LessThan, 1);
         self.token_len(SvelteMarkupKind::Slash, 1);
         let name_start = self.cursor;
@@ -163,7 +164,7 @@ impl<'a> MarkupParser<'a> {
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(2), "expected closing tag name");
         } else {
-            self.builder.token(
+            self.builder.schema_token(
                 SvelteMarkupKind::TagName,
                 &self.source[name_start..self.cursor],
             );
@@ -195,7 +196,7 @@ impl<'a> MarkupParser<'a> {
 
     fn parse_block(&mut self) {
         let start = self.cursor;
-        self.builder.start_node(SvelteMarkupKind::Block);
+        self.builder.start_schema_node(SvelteMarkupKind::Block);
         let keyword = self.parse_block_tag(SvelteMarkupKind::BlockOpen, 2);
         if let Some(keyword) = keyword {
             if !self.parse_block_children(&keyword) {
@@ -206,7 +207,7 @@ impl<'a> MarkupParser<'a> {
     }
 
     fn parse_block_tag(&mut self, kind: SvelteMarkupKind, opener_len: usize) -> Option<String> {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         self.token_len(SvelteMarkupKind::MustacheOpen, opener_len);
         let keyword_start = self.cursor;
         while self.peek().is_some_and(|ch| ch.is_ascii_alphabetic()) {
@@ -214,7 +215,7 @@ impl<'a> MarkupParser<'a> {
         }
         let keyword = if self.cursor > keyword_start {
             let keyword = self.source[keyword_start..self.cursor].to_string();
-            self.builder.token(
+            self.builder.schema_token(
                 SvelteMarkupKind::BlockKeyword,
                 &self.source[keyword_start..self.cursor],
             );
@@ -232,14 +233,14 @@ impl<'a> MarkupParser<'a> {
     }
 
     fn parse_render_tag(&mut self) {
-        self.builder.start_node(SvelteMarkupKind::RenderTag);
+        self.builder.start_schema_node(SvelteMarkupKind::RenderTag);
         self.token_len(SvelteMarkupKind::MustacheOpen, 2);
         let keyword_start = self.cursor;
         while self.peek().is_some_and(|ch| ch.is_ascii_alphabetic()) {
             self.bump();
         }
         if self.cursor > keyword_start {
-            self.builder.token(
+            self.builder.schema_token(
                 SvelteMarkupKind::BlockKeyword,
                 &self.source[keyword_start..self.cursor],
             );
@@ -268,14 +269,14 @@ impl<'a> MarkupParser<'a> {
 
     pub(super) fn parse_mustache_like(&mut self, kind: SvelteMarkupKind) {
         let start = self.cursor;
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         self.token_len(SvelteMarkupKind::MustacheOpen, 1);
         let expr_start = self.cursor;
         let end = find_mustache_end(self.source, expr_start);
         match end {
             Some(end) => {
                 if end > expr_start {
-                    self.builder.token(
+                    self.builder.schema_token(
                         SvelteMarkupKind::ExpressionText,
                         &self.source[expr_start..end],
                     );
@@ -287,7 +288,7 @@ impl<'a> MarkupParser<'a> {
                 if self.cursor < self.source.len() {
                     self.cursor = self.source.len();
                     self.builder
-                        .token(SvelteMarkupKind::ExpressionText, &self.source[expr_start..]);
+                        .schema_token(SvelteMarkupKind::ExpressionText, &self.source[expr_start..]);
                 }
                 self.error_at(start, "missing mustache close delimiter");
             }
@@ -301,7 +302,7 @@ impl<'a> MarkupParser<'a> {
         match end {
             Some(end) => {
                 if end > expr_start {
-                    self.builder.token(
+                    self.builder.schema_token(
                         SvelteMarkupKind::ExpressionText,
                         &self.source[expr_start..end],
                     );
@@ -313,7 +314,7 @@ impl<'a> MarkupParser<'a> {
                 if self.cursor < self.source.len() {
                     self.cursor = self.source.len();
                     self.builder
-                        .token(SvelteMarkupKind::ExpressionText, &self.source[expr_start..]);
+                        .schema_token(SvelteMarkupKind::ExpressionText, &self.source[expr_start..]);
                 }
                 self.error_at(expr_start, "missing block close delimiter");
             }
@@ -322,7 +323,7 @@ impl<'a> MarkupParser<'a> {
 
     fn parse_comment(&mut self) {
         let start = self.cursor;
-        self.builder.start_node(SvelteMarkupKind::Comment);
+        self.builder.start_schema_node(SvelteMarkupKind::Comment);
         while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with("-->") {
             self.bump();
         }
@@ -331,8 +332,10 @@ impl<'a> MarkupParser<'a> {
         } else {
             self.error_at(start, "missing HTML comment close delimiter");
         }
-        self.builder
-            .token(SvelteMarkupKind::Comment, &self.source[start..self.cursor]);
+        self.builder.schema_token(
+            SvelteMarkupKind::CommentText,
+            &self.source[start..self.cursor],
+        );
         self.builder.finish_node();
     }
 
@@ -346,7 +349,7 @@ impl<'a> MarkupParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .token(SvelteMarkupKind::Text, &self.source[start..self.cursor]);
+                .schema_token(SvelteMarkupKind::Text, &self.source[start..self.cursor]);
         }
     }
 
@@ -355,7 +358,7 @@ impl<'a> MarkupParser<'a> {
         while self.peek().is_some_and(is_whitespace) {
             self.bump();
         }
-        self.builder.token(
+        self.builder.schema_token(
             SvelteMarkupKind::Whitespace,
             &self.source[start..self.cursor],
         );
@@ -368,7 +371,7 @@ impl<'a> MarkupParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .token(SvelteMarkupKind::Error, &self.source[start..self.cursor]);
+                .schema_token(SvelteMarkupKind::Error, &self.source[start..self.cursor]);
         }
         if self.source[self.cursor..].starts_with('>') {
             self.token_len(SvelteMarkupKind::GreaterThan, 1);
@@ -379,7 +382,7 @@ impl<'a> MarkupParser<'a> {
         let start = self.cursor;
         self.bump();
         self.builder
-            .token(SvelteMarkupKind::Error, &self.source[start..self.cursor]);
+            .schema_token(SvelteMarkupKind::Error, &self.source[start..self.cursor]);
         self.error_at(start, "unexpected character");
     }
 
@@ -427,7 +430,8 @@ impl<'a> MarkupParser<'a> {
     pub(super) fn token_len(&mut self, kind: SvelteMarkupKind, len: usize) {
         let start = self.cursor;
         self.cursor += len;
-        self.builder.token(kind, &self.source[start..self.cursor]);
+        self.builder
+            .schema_token(kind, &self.source[start..self.cursor]);
     }
 
     pub(super) fn peek(&self) -> Option<char> {

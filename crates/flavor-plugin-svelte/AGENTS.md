@@ -1,7 +1,7 @@
 # AGENTS
 
 `crates/flavor-plugin-svelte/` owns Svelte descriptor, markup, and syntax facts
-on top of `flavor-plugin-core`, with embedded expression validation delegated to
+on top of `flavor-core`, with embedded expression validation delegated to
 `flavor-plugin-typescript`.
 
 ## Directory Rules
@@ -10,6 +10,8 @@ on top of `flavor-plugin-core`, with embedded expression validation delegated to
   script, style, and markup regions.
 - `src/markup/` owns markup AST, parser, attributes, names, cursor behavior, and
   embedded expression validation.
+- `src/markup/kind.rs` includes the build-generated `SvelteMarkupKind` binding
+  derived from `grammars/svelte/SvelteMarkup*.g4`.
 - `src/facts.rs` owns derived Svelte facts.
 - `src/state/` owns `SveltePluginConfig` and `SveltePluginState`.
 - `tests/` covers descriptor and markup parser behavior.
@@ -29,6 +31,9 @@ cargo test --locked -p flavor-plugin-svelte
   mapping.
 - Markup parser changes should cover node shape, attribute behavior, recovery,
   and embedded expression validation where applicable.
+- Keep the descriptor/markup parsers as staged parser backends for this
+  refactor; markup raw CST node/token kinds must continue to come from the
+  Svelte markup G4 raw AST schema and schema-aware builder paths.
 - Keep TypeScript/JavaScript expression parsing in `flavor-plugin-typescript` and map
   diagnostics back to Svelte source offsets.
 

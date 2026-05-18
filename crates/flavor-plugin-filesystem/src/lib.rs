@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, path::Path};
 
-use flavor_plugin_core::PendingIssue;
+use flavor_core::PendingIssue;
 
 pub const PLUGIN_ID: &str = "flavor-plugin-filesystem";
 

@@ -15,7 +15,7 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(kind) = kind {
-            self.builder.start_node(kind);
+            self.builder.start_schema_node(kind);
         }
         loop {
             let mut segment_stops = stops.to_vec();
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_reference(&mut self) {
-        self.builder.start_node(TsSyntaxKind::TypeReference);
+        self.builder.start_schema_node(TsSyntaxKind::TypeReference);
         self.bump();
         if self.at(TsSyntaxKind::LessThan) {
             self.parse_balanced_node(
@@ -76,14 +76,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_operator(&mut self, stops: &[TsSyntaxKind]) {
-        self.builder.start_node(TsSyntaxKind::TypeOperator);
+        self.builder.start_schema_node(TsSyntaxKind::TypeOperator);
         self.bump();
         self.parse_type_segment_until(stops);
         self.builder.finish_node();
     }
 
     fn parse_indexed_type(&mut self) {
-        self.builder.start_node(TsSyntaxKind::IndexedAccessType);
+        self.builder
+            .start_schema_node(TsSyntaxKind::IndexedAccessType);
         self.parse_type_reference();
         while self.at(TsSyntaxKind::OpenBracket) && !self.next_is(TsSyntaxKind::CloseBracket) {
             self.bump();
@@ -97,7 +98,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_array_type(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ArrayType);
+        self.builder.start_schema_node(TsSyntaxKind::ArrayType);
         self.parse_type_reference();
         while self.at(TsSyntaxKind::OpenBracket)
             && self.token_kind_at(1) == TsSyntaxKind::CloseBracket
@@ -151,7 +152,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mapped_type(&mut self) {
-        self.builder.start_node(TsSyntaxKind::MappedType);
+        self.builder.start_schema_node(TsSyntaxKind::MappedType);
         if self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start mapped type") {
             while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
                 self.parse_type_member();
@@ -165,7 +166,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_object_type(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ObjectType);
+        self.builder.start_schema_node(TsSyntaxKind::ObjectType);
         if self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start object type") {
             while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
                 self.parse_type_member();
@@ -179,7 +180,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_member(&mut self) {
-        self.builder.start_node(TsSyntaxKind::TypeMember);
+        self.builder.start_schema_node(TsSyntaxKind::TypeMember);
         self.parse_modifier_list();
         if self.at(TsSyntaxKind::OpenParen) {
             self.parse_parameter_list();

@@ -6,8 +6,9 @@ license = "MIT"
 description = "Personal check-only AST-backed code flavor lint CLI."
 
 [dependencies]
-flavor-plugin-core = { path = "../flavor-plugin-core" }
+flavor-core = { path = "../flavor-core" }
 flavor-plugin-filesystem = { path = "../flavor-plugin-filesystem" }
+flavor-plugin-g4 = { path = "../flavor-plugin-g4" }
 flavor-plugin-rust = { path = "../flavor-plugin-rust" }
 flavor-plugin-svelte = { path = "../flavor-plugin-svelte" }
 flavor-plugin-source-structure = { path = "../flavor-plugin-source-structure" }
@@ -18,7 +19,7 @@ serde_json = "1"
 walkdir = "2"
 
 [dev-dependencies]
-flavor-g4 = { path = "../flavor-g4" }
+flavor-grammar = { path = "../flavor-grammar" }
 
 [[bin]]
 name = "flavor"

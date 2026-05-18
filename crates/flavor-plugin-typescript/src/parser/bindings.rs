@@ -28,14 +28,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_rest_element(&mut self, message: &str) {
-        self.builder.start_node(TsSyntaxKind::RestElement);
+        self.builder.start_schema_node(TsSyntaxKind::RestElement);
         self.bump();
         self.parse_binding_name(message);
         self.builder.finish_node();
     }
 
     fn parse_object_binding_pattern(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ObjectBindingPattern);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ObjectBindingPattern);
         if self.expect(
             TsSyntaxKind::OpenBrace,
             "expected '{' to start binding pattern",
@@ -58,7 +59,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_array_binding_pattern(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ArrayBindingPattern);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ArrayBindingPattern);
         if self.expect(
             TsSyntaxKind::OpenBracket,
             "expected '[' to start binding pattern",
@@ -85,7 +87,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binding_element(&mut self, close: TsSyntaxKind) {
-        self.builder.start_node(TsSyntaxKind::BindingElement);
+        self.builder.start_schema_node(TsSyntaxKind::BindingElement);
         if self.at(TsSyntaxKind::DotDotDot) {
             self.parse_rest_element("expected rest binding target");
         } else if self.at(TsSyntaxKind::OpenBrace) || self.at(TsSyntaxKind::OpenBracket) {

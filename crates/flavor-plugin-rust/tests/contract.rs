@@ -1,11 +1,11 @@
-use flavor_g4::{
+use flavor_core::SourceText;
+use flavor_grammar::{
     parse_contract, parse_contract_values, GrammarContractExpectation,
     GrammarEntryValueExpectation, GrammarSectionExpectation,
 };
-use flavor_plugin_core::SourceText;
 use flavor_plugin_rust::{run, RustNameKind, RustPluginConfig};
 
-const RUST_GRAMMAR: &str = include_str!("../../../grammars/rust/flavor.g4.json");
+const RUST_METADATA: &str = include_str!("../../../grammars/rust/metadata.json");
 const RUST_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpectation {
     name: "rust",
     directives: &[
@@ -114,12 +114,12 @@ const RUST_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
 
 #[test]
 fn rust_contract_sections() {
-    parse_contract_values(RUST_GRAMMAR, &RUST_CONTRACT, RUST_VALUES).unwrap();
+    parse_contract_values(RUST_METADATA, &RUST_CONTRACT, RUST_VALUES).unwrap();
 }
 
 #[test]
 fn rust_contract_facts() {
-    parse_contract(RUST_GRAMMAR, &RUST_CONTRACT).unwrap();
+    parse_contract(RUST_METADATA, &RUST_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "contract.rs",
@@ -197,7 +197,7 @@ fn rust_contract_facts() {
 
 #[test]
 fn rust_contract_diagnostics() {
-    parse_contract(RUST_GRAMMAR, &RUST_CONTRACT).unwrap();
+    parse_contract(RUST_METADATA, &RUST_CONTRACT).unwrap();
     let output = run(
         SourceText::new("broken.rs", "fn broken("),
         RustPluginConfig::default(),

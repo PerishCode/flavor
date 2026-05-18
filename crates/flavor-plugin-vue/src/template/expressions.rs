@@ -1,4 +1,4 @@
-use flavor_plugin_core::{Diagnostic, RawSyntaxKind, SourceText, Span, SyntaxToken};
+use flavor_core::{Diagnostic, RawSyntaxKind, SourceText, Span, SyntaxToken};
 use flavor_plugin_typescript::{run as run_ts, TsPluginConfig};
 
 use super::{TemplateAst, VueTemplateKind};

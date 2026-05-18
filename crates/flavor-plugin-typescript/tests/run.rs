@@ -1,4 +1,4 @@
-use flavor_plugin_core::SourceText;
+use flavor_core::SourceText;
 use flavor_plugin_typescript::{run, SourceMode, TsPluginConfig};
 
 #[test]

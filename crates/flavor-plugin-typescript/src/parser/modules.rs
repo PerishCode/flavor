@@ -4,7 +4,8 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_import_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ImportDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ImportDeclaration);
         self.bump();
         if self.at(TsSyntaxKind::StringLiteral) {
             self.bump();
@@ -19,7 +20,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_export_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExportDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ExportDeclaration);
         self.bump();
         if self.at(TsSyntaxKind::KeywordDefault) {
             self.bump();
@@ -56,7 +58,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_enum_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::EnumDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::EnumDeclaration);
         self.parse_modifier_list();
         self.bump();
         if self.at(TsSyntaxKind::Identifier) {
@@ -69,11 +72,12 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_namespace_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::NamespaceDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::NamespaceDeclaration);
         self.parse_modifier_list();
         self.bump();
         self.parse_namespace_name();
-        self.builder.start_node(TsSyntaxKind::NamespaceBody);
+        self.builder.start_schema_node(TsSyntaxKind::NamespaceBody);
         if self.expect(
             TsSyntaxKind::OpenBrace,
             "expected '{' to start namespace body",
@@ -99,7 +103,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_equals(&mut self) {
         self.builder
-            .start_node(TsSyntaxKind::ImportEqualsDeclaration);
+            .start_schema_node(TsSyntaxKind::ImportEqualsDeclaration);
         if self.at(TsSyntaxKind::KeywordType) {
             self.bump();
         }
@@ -120,7 +124,7 @@ impl<'a> Parser<'a> {
 
     fn parse_external_reference(&mut self) {
         self.builder
-            .start_node(TsSyntaxKind::ExternalModuleReference);
+            .start_schema_node(TsSyntaxKind::ExternalModuleReference);
         self.bump();
         self.parse_balanced_node(
             TsSyntaxKind::ParenthesizedExpression,
@@ -132,7 +136,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ImportClause);
+        self.builder.start_schema_node(TsSyntaxKind::ImportClause);
         if self.at(TsSyntaxKind::KeywordType) {
             self.bump();
         }
@@ -156,7 +160,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_namespace_import(&mut self) {
-        self.builder.start_node(TsSyntaxKind::NamespaceImport);
+        self.builder
+            .start_schema_node(TsSyntaxKind::NamespaceImport);
         self.bump();
         if self.at(TsSyntaxKind::KeywordAs) {
             self.bump();
@@ -172,7 +177,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_named_imports(&mut self) {
-        self.builder.start_node(TsSyntaxKind::NamedImports);
+        self.builder.start_schema_node(TsSyntaxKind::NamedImports);
         if self.expect(
             TsSyntaxKind::OpenBrace,
             "expected '{' to start named imports",
@@ -195,13 +200,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_specifier(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ImportSpecifier);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ImportSpecifier);
         self.parse_binding_specifier("expected import specifier");
         self.builder.finish_node();
     }
 
     fn parse_export_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExportClause);
+        self.builder.start_schema_node(TsSyntaxKind::ExportClause);
         self.parse_named_exports();
         self.parse_from_clause("expected module source after export clause");
         self.parse_optional_semicolon();
@@ -209,7 +215,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_export_star_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExportClause);
+        self.builder.start_schema_node(TsSyntaxKind::ExportClause);
         self.bump();
         if self.at(TsSyntaxKind::KeywordAs) {
             self.bump();
@@ -225,7 +231,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_export_assignment(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExportAssignment);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ExportAssignment);
         self.bump();
         self.parse_expression(&[
             TsSyntaxKind::Semicolon,
@@ -238,7 +245,7 @@ impl<'a> Parser<'a> {
 
     fn parse_namespace_export(&mut self) {
         self.builder
-            .start_node(TsSyntaxKind::NamespaceExportDeclaration);
+            .start_schema_node(TsSyntaxKind::NamespaceExportDeclaration);
         self.bump();
         self.bump();
         if self.at(TsSyntaxKind::Identifier) {
@@ -251,7 +258,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_named_exports(&mut self) {
-        self.builder.start_node(TsSyntaxKind::NamedExports);
+        self.builder.start_schema_node(TsSyntaxKind::NamedExports);
         if self.expect(
             TsSyntaxKind::OpenBrace,
             "expected '{' to start named exports",
@@ -274,7 +281,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_export_specifier(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExportSpecifier);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ExportSpecifier);
         self.parse_binding_specifier("expected export specifier");
         self.builder.finish_node();
     }
@@ -361,7 +369,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_body(&mut self) {
-        self.builder.start_node(TsSyntaxKind::EnumBody);
+        self.builder.start_schema_node(TsSyntaxKind::EnumBody);
         if self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start enum body") {
             while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
                 self.parse_enum_member();
@@ -378,7 +386,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_member(&mut self) {
-        self.builder.start_node(TsSyntaxKind::EnumMember);
+        self.builder.start_schema_node(TsSyntaxKind::EnumMember);
         if self.at(TsSyntaxKind::Identifier) || self.at(TsSyntaxKind::StringLiteral) {
             self.bump();
         } else {

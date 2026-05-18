@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use flavor_plugin_core::PendingIssue;
+use flavor_core::PendingIssue;
 use flavor_plugin_source_structure::{
     self as plugin_source, DirectoryChildrenInput, DirectoryChildrenRule, SourceDirectoryInput,
     SourceDirectoryRule, SourceFileInput, SourceFileRule, FS_TOO_MANY_CHILDREN, PLUGIN_ID, RULES,

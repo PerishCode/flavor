@@ -26,12 +26,12 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_if_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::IfStatement);
+        self.builder.start_schema_node(TsSyntaxKind::IfStatement);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start if condition");
         self.parse_statement_or_block();
         if self.at(TsSyntaxKind::KeywordElse) {
-            self.builder.start_node(TsSyntaxKind::ElseClause);
+            self.builder.start_schema_node(TsSyntaxKind::ElseClause);
             self.bump();
             self.parse_statement_or_block();
             self.builder.finish_node();
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_for_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ForStatement);
+        self.builder.start_schema_node(TsSyntaxKind::ForStatement);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start for header");
         self.parse_statement_or_block();
@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_while_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::WhileStatement);
+        self.builder.start_schema_node(TsSyntaxKind::WhileStatement);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start while condition");
         self.parse_statement_or_block();
@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_do_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::DoStatement);
+        self.builder.start_schema_node(TsSyntaxKind::DoStatement);
         self.bump();
         self.parse_statement_or_block();
         if self.at(TsSyntaxKind::KeywordWhile) {
@@ -70,7 +70,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_switch_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::SwitchStatement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::SwitchStatement);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start switch condition");
         self.parse_switch_body();
@@ -78,7 +79,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_try_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::TryStatement);
+        self.builder.start_schema_node(TsSyntaxKind::TryStatement);
         self.bump();
         self.parse_block(TsSyntaxKind::Block);
         let mut has_handler = false;
@@ -97,7 +98,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_tail_statement(&mut self, kind: TsSyntaxKind, keyword: TsSyntaxKind) {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         debug_assert!(self.at(keyword));
         self.bump();
         if !self.at_any(&[
@@ -116,7 +117,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_label_tail_statement(&mut self, kind: TsSyntaxKind) {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         self.bump();
         self.parse_balanced_tokens_until(&[
             TsSyntaxKind::Semicolon,
@@ -147,7 +148,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_switch_body(&mut self) {
-        self.builder.start_node(TsSyntaxKind::SwitchBody);
+        self.builder.start_schema_node(TsSyntaxKind::SwitchBody);
         if self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start switch body") {
             while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
                 self.parse_switch_case();
@@ -161,7 +162,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_switch_case(&mut self) {
-        self.builder.start_node(TsSyntaxKind::SwitchCase);
+        self.builder.start_schema_node(TsSyntaxKind::SwitchCase);
         if self.at(TsSyntaxKind::KeywordCase) {
             self.bump();
             self.parse_expression(&[
@@ -190,7 +191,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_catch_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::CatchClause);
+        self.builder.start_schema_node(TsSyntaxKind::CatchClause);
         self.bump();
         if self.at(TsSyntaxKind::OpenParen) {
             self.parse_catch_binding();
@@ -200,7 +201,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_catch_binding(&mut self) {
-        self.builder.start_node(TsSyntaxKind::CatchBinding);
+        self.builder.start_schema_node(TsSyntaxKind::CatchBinding);
         self.bump();
         if !self.at_any(&[TsSyntaxKind::CloseParen, TsSyntaxKind::EndOfFile]) {
             self.parse_binding_name("expected catch binding");
@@ -219,7 +220,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_finally_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::FinallyClause);
+        self.builder.start_schema_node(TsSyntaxKind::FinallyClause);
         self.bump();
         self.parse_block(TsSyntaxKind::Block);
         self.builder.finish_node();

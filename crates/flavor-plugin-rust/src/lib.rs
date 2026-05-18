@@ -1,8 +1,10 @@
 pub mod facts;
 pub mod product;
+mod raw_ast;
 pub mod state;
+pub mod syntax_kind;
 
-use flavor_plugin_core::{Diagnostic, SourceText, Span};
+use flavor_core::{Diagnostic, SourceText, Span, SyntaxNode};
 use tree_sitter::Parser;
 
 pub use facts::{RustFacts, RustMatchArmFact, RustNameFact, RustNameKind, RustTestAttributeFact};
@@ -11,6 +13,7 @@ pub use state::{RustPluginConfig, RustPluginState};
 #[derive(Debug, Clone)]
 pub struct RustAnalysisOutput {
     pub source: SourceText,
+    pub syntax: SyntaxNode,
     pub facts: RustFacts,
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -35,6 +38,7 @@ impl RustPluginAnalyzer {
             .expect("tree-sitter Rust grammar must load");
         let Some(tree) = parser.parse(source.as_str(), None) else {
             return RustAnalysisOutput {
+                syntax: raw_ast::build_error(&source),
                 source,
                 facts: RustFacts::default(),
                 diagnostics: vec![Diagnostic::error_code(
@@ -45,6 +49,7 @@ impl RustPluginAnalyzer {
             };
         };
         let root = tree.root_node();
+        let syntax = raw_ast::build(root, &source);
         let facts = facts::collect(root, source.as_str().as_bytes());
         let diagnostics = if root.has_error() {
             vec![Diagnostic::error_code(
@@ -57,6 +62,7 @@ impl RustPluginAnalyzer {
         };
         RustAnalysisOutput {
             source,
+            syntax,
             facts,
             diagnostics,
         }

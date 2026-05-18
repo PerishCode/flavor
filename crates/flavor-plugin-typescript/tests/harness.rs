@@ -1,4 +1,4 @@
-use flavor_plugin_core::{RawSyntaxKind, SourceText};
+use flavor_core::{RawSyntaxKind, SourceText};
 use flavor_plugin_typescript::{run, syntax_kind::TsSyntaxKind, SourceMode, TsPluginConfig};
 
 struct Case {

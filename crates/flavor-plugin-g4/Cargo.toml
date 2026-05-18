@@ -1,0 +1,10 @@
+[package]
+name = "flavor-plugin-g4"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "First-party G4 source analysis plugin for flavor."
+
+[dependencies]
+flavor-core = { path = "../flavor-core" }
+flavor-grammar = { path = "../flavor-grammar" }

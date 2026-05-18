@@ -1,4 +1,4 @@
-use flavor_plugin_core::{SourceText, SyntaxNode, Token};
+use flavor_core::{SourceText, SyntaxNode, Token};
 
 use crate::syntax_kind::TsSyntaxKind;
 

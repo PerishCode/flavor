@@ -1,12 +1,12 @@
-use flavor_g4::{
+use flavor_core::SourceText;
+use flavor_grammar::{
     parse_contract, parse_contract_values, GrammarContractExpectation,
     GrammarEntryValueExpectation, GrammarSectionExpectation,
 };
-use flavor_plugin_core::SourceText;
 use flavor_plugin_typescript::{run, SourceMode, TsImportSpecifier, TsNameKind, TsPluginConfig};
 
-const TYPESCRIPT_GRAMMAR: &str = include_str!("../../../grammars/typescript/flavor.g4.json");
-const TSX_GRAMMAR: &str = include_str!("../../../grammars/typescript/flavor.g4.json");
+const TYPESCRIPT_METADATA: &str = include_str!("../../../grammars/typescript/metadata.json");
+const TSX_METADATA: &str = include_str!("../../../grammars/typescript/metadata.json");
 const TYPESCRIPT_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpectation {
     name: "typescript",
     directives: &[
@@ -173,12 +173,12 @@ const TSX_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
 
 #[test]
 fn typescript_contract_sections() {
-    parse_contract_values(TYPESCRIPT_GRAMMAR, &TYPESCRIPT_CONTRACT, TYPESCRIPT_VALUES).unwrap();
+    parse_contract_values(TYPESCRIPT_METADATA, &TYPESCRIPT_CONTRACT, TYPESCRIPT_VALUES).unwrap();
 }
 
 #[test]
 fn typescript_contract_facts() {
-    parse_contract(TYPESCRIPT_GRAMMAR, &TYPESCRIPT_CONTRACT).unwrap();
+    parse_contract(TYPESCRIPT_METADATA, &TYPESCRIPT_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "contract.ts",
@@ -253,7 +253,7 @@ fn typescript_contract_facts() {
 
 #[test]
 fn typescript_contract_diagnostics() {
-    parse_contract(TYPESCRIPT_GRAMMAR, &TYPESCRIPT_CONTRACT).unwrap();
+    parse_contract(TYPESCRIPT_METADATA, &TYPESCRIPT_CONTRACT).unwrap();
 
     let output = run(
         SourceText::new("broken.ts", "class Broken"),
@@ -272,12 +272,12 @@ fn typescript_contract_diagnostics() {
 
 #[test]
 fn tsx_contract_sections() {
-    parse_contract_values(TSX_GRAMMAR, &TSX_CONTRACT, TSX_VALUES).unwrap();
+    parse_contract_values(TSX_METADATA, &TSX_CONTRACT, TSX_VALUES).unwrap();
 }
 
 #[test]
 fn tsx_contract_facts() {
-    parse_contract(TSX_GRAMMAR, &TSX_CONTRACT).unwrap();
+    parse_contract(TSX_METADATA, &TSX_CONTRACT).unwrap();
     let config = TsPluginConfig {
         source_mode: SourceMode::Tsx,
         ..Default::default()

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use flavor_plugin_core::PendingIssue;
+use flavor_core::PendingIssue;
 use flavor_plugin_filesystem::{
     self as plugin_fs, DirectoryChildrenInput, DirectoryChildrenRule, FilePathInput,
     ForbiddenExtensionRule, NameShapeRule, FS_CHILDREN_SHAPE, FS_FORBIDDEN_EXTENSION,

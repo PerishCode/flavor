@@ -4,7 +4,8 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_type_alias_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::TypeAliasDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::TypeAliasDeclaration);
         self.parse_modifier_list();
         self.bump();
         if self.at(TsSyntaxKind::Identifier) {
@@ -30,7 +31,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_interface_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::InterfaceDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::InterfaceDeclaration);
         self.parse_modifier_list();
         self.bump();
         if self.at(TsSyntaxKind::Identifier) {
@@ -54,10 +56,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_variable_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::VariableStatement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::VariableStatement);
         self.parse_modifier_list();
         self.builder
-            .start_node(TsSyntaxKind::VariableDeclarationList);
+            .start_schema_node(TsSyntaxKind::VariableDeclarationList);
         self.bump();
 
         loop {
@@ -84,7 +87,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_variable_declaration(&mut self) {
-        self.builder.start_node(TsSyntaxKind::VariableDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::VariableDeclaration);
         self.parse_binding_name("expected variable name");
         if self.at(TsSyntaxKind::Question) || self.at(TsSyntaxKind::Bang) {
             self.bump();
@@ -112,7 +116,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_function_declaration(&mut self, has_decorators: bool) {
-        self.builder.start_node(TsSyntaxKind::FunctionDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::FunctionDeclaration);
         if has_decorators {
             self.parse_decorator_list();
         }
@@ -153,7 +158,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_parameter_list(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ParameterList);
+        self.builder.start_schema_node(TsSyntaxKind::ParameterList);
         if !self.expect(
             TsSyntaxKind::OpenParen,
             "expected '(' to start parameter list",
@@ -178,7 +183,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_parameter(&mut self) {
-        self.builder.start_node(TsSyntaxKind::Parameter);
+        self.builder.start_schema_node(TsSyntaxKind::Parameter);
         if self.at(TsSyntaxKind::DotDotDot) {
             self.parse_rest_element("expected parameter name");
         } else {
@@ -204,7 +209,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_class_declaration(&mut self, has_decorators: bool) {
-        self.builder.start_node(TsSyntaxKind::ClassDeclaration);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ClassDeclaration);
         if has_decorators {
             self.parse_decorator_list();
         }
@@ -235,9 +241,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_decorator_list(&mut self) {
-        self.builder.start_node(TsSyntaxKind::DecoratorList);
+        self.builder.start_schema_node(TsSyntaxKind::DecoratorList);
         while self.at(TsSyntaxKind::At) {
-            self.builder.start_node(TsSyntaxKind::Decorator);
+            self.builder.start_schema_node(TsSyntaxKind::Decorator);
             self.bump();
             if self.at(TsSyntaxKind::Identifier) {
                 self.bump();
@@ -267,7 +273,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_heritage_clause(&mut self) {
-        self.builder.start_node(TsSyntaxKind::HeritageClause);
+        self.builder.start_schema_node(TsSyntaxKind::HeritageClause);
         while !self.at_any(&[TsSyntaxKind::OpenBrace, TsSyntaxKind::EndOfFile]) {
             self.bump();
         }

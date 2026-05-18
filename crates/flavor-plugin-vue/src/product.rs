@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
+use flavor_core::{diagnostics, product, GrammarProduct, PendingFact, SourceText};
 use flavor_plugin_typescript::product as typescript_product;
+use flavor_shared::product as shared_product;
 
 use crate::{run as run_vue, sfc::VueSfcBlock, VuePluginConfig};
 
@@ -30,16 +31,12 @@ where
 }
 
 fn push_block_fact(key: &'static str, block: &VueSfcBlock, facts: &mut Vec<PendingFact>) {
-    facts.push(
-        PendingFact::new(
-            key,
-            FactPayload::new()
-                .text("content", block.content.clone())
-                .usize("start_offset", block.start_offset)
-                .usize("start_line", block.start_line),
-        )
-        .line(block.start_line),
-    );
+    facts.push(shared_product::descriptor_block_fact(
+        key,
+        block.content.clone(),
+        block.start_offset,
+        block.start_line,
+    ));
 }
 
 fn push_embedded_script<F>(
@@ -57,21 +54,14 @@ fn push_embedded_script<F>(
     let Some(tsx) = script_tsx(&block.attrs) else {
         return;
     };
-    facts.push(
-        PendingFact::new(
-            "script.embedded",
-            FactPayload::new()
-                .text("content", block.content.clone())
-                .text(
-                    "lang",
-                    script_lang(&block.attrs).unwrap_or_else(|| "js".to_string()),
-                )
-                .bool("tsx", tsx)
-                .usize("start_offset", block.start_offset)
-                .usize("start_line", block.start_line),
-        )
-        .line(block.start_line),
-    );
+    facts.push(shared_product::embedded_script_fact(
+        "script.embedded",
+        block.content.clone(),
+        script_lang(&block.attrs).unwrap_or_else(|| "js".to_string()),
+        tsx,
+        block.start_offset,
+        block.start_line,
+    ));
     typescript_product::satisfy_script(
         entrypoint,
         path,

@@ -1,5 +1,6 @@
 mod filesystem;
 mod g4;
+pub(crate) mod helper;
 mod language;
 mod product;
 mod source_structure;
@@ -344,7 +345,7 @@ impl PluginHost {
                 let context = AnalysisContext {
                     config,
                     scope,
-                    products: ProductSet::new(plugin.manifest, scope),
+                    products: ProductSet::new(config, plugin.manifest, scope),
                 };
                 let output = (plugin.analyze)(&context);
                 issues.extend(output.issues);

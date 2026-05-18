@@ -2,6 +2,7 @@
 members = [
     "crates/flavor-cli",
     "crates/flavor-core",
+    "crates/flavor-shared",
     "crates/flavor-plugin-filesystem",
     "crates/flavor-plugin-g4",
     "crates/flavor-plugin-rust",

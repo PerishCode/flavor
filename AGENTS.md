@@ -34,6 +34,8 @@ management.
 - `crates/flavor-core/AGENTS.md`: shared source text, spans, syntax tree glue,
   diagnostics, recovery, snapshots, product primitives, and typed state/config
   injection.
+- `crates/flavor-shared/AGENTS.md`: first-party plugin implementation helpers
+  that should not become public ABI.
 - `crates/flavor-plugin-filesystem/AGENTS.md`: filesystem/path-shape bundled
   plugin identity and behavior.
 - `crates/flavor-plugin-g4/AGENTS.md`: `.g4` source analysis plugin identity

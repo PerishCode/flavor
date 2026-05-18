@@ -6,17 +6,29 @@ pub(crate) enum OutputFormat {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum LogLevel {
+    Off,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct CliOptions {
     pub(crate) root: PathBuf,
     pub(crate) config: Option<PathBuf>,
     pub(crate) format: OutputFormat,
     pub(crate) strict_warnings: bool,
+    pub(crate) log_level: LogLevel,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct RulesOptions {
     pub(crate) format: OutputFormat,
+    pub(crate) log_level: LogLevel,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -25,6 +37,16 @@ pub(crate) enum CliCommand {
     Rules(RulesOptions),
     Help,
     Version,
+}
+
+impl CliCommand {
+    pub(crate) fn log_level(&self) -> LogLevel {
+        match self {
+            CliCommand::Check(options) => options.log_level,
+            CliCommand::Rules(options) => options.log_level,
+            CliCommand::Help | CliCommand::Version => LogLevel::Off,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -38,6 +60,7 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
     let mut config = None;
     let mut format = OutputFormat::Text;
     let mut strict_warnings = false;
+    let mut log_level = LogLevel::Off;
     let mut command_seen = false;
     let mut mode = CommandMode::Check;
     let mut args = args.into_iter();
@@ -76,6 +99,12 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
                     .ok_or_else(|| "--format requires text or json".to_string())?;
                 format = parse_format(&value)?;
             }
+            "--log-level" => {
+                let value = args.next().ok_or_else(|| {
+                    "--log-level requires off, error, warn, info, debug, or trace".to_string()
+                })?;
+                log_level = parse_log_level(&value)?;
+            }
             "--strict-warnings" => {
                 strict_warnings = true;
             }
@@ -87,6 +116,9 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
             }
             other if other.starts_with("--format=") => {
                 format = parse_format(&other["--format=".len()..])?;
+            }
+            other if other.starts_with("--log-level=") => {
+                log_level = parse_log_level(&other["--log-level=".len()..])?;
             }
             other => {
                 return Err(format!(
@@ -103,8 +135,9 @@ pub(crate) fn parse_args(args: Vec<String>) -> Result<CliCommand, String> {
             config,
             format,
             strict_warnings,
+            log_level,
         }),
-        CommandMode::Rules => CliCommand::Rules(RulesOptions { format }),
+        CommandMode::Rules => CliCommand::Rules(RulesOptions { format, log_level }),
     })
 }
 
@@ -115,8 +148,9 @@ Check-only codestyle attributes for the personal flavor boundary.
 It does not format, rewrite, run services, or manage runtime state.
 
 Commands:
-  check [--root <path>] [--config <path>] [--format text|json] [--strict-warnings]
-  rules [--format text|json]
+  check [--root <path>] [--config <path>] [--format text|json]
+        [--strict-warnings] [--log-level off|error|warn|info|debug|trace]
+  rules [--format text|json] [--log-level off|error|warn|info|debug|trace]
   help
   version
 
@@ -146,6 +180,10 @@ Reports:
   check reports include rule-level bad-flavor notes and action hints when
   issues exist. The hints are review pressure, not automatic fix instructions.
 
+Diagnostics:
+  --log-level=debug prints traditional verbose execution details to stderr
+  without changing text or JSON reports.
+
 Exit codes:
   0  scan matched at least one file and produced no deny issues (and no
      warnings when --strict-warnings is set), or scan.include matched 0
@@ -167,5 +205,17 @@ fn parse_format(value: &str) -> Result<OutputFormat, String> {
         "text" => Ok(OutputFormat::Text),
         "json" => Ok(OutputFormat::Json),
         other => Err(format!("unsupported output format: {other}")),
+    }
+}
+
+fn parse_log_level(value: &str) -> Result<LogLevel, String> {
+    match value {
+        "off" => Ok(LogLevel::Off),
+        "error" => Ok(LogLevel::Error),
+        "warn" | "warning" => Ok(LogLevel::Warn),
+        "info" => Ok(LogLevel::Info),
+        "debug" => Ok(LogLevel::Debug),
+        "trace" => Ok(LogLevel::Trace),
+        other => Err(format!("unsupported log level: {other}")),
     }
 }

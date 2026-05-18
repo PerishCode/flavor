@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use tracing::debug;
 use walkdir::WalkDir;
 
 use crate::{
@@ -21,6 +22,7 @@ pub(crate) struct ScanResult {
 
 pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
     let root = canonical_root(&config.root)?;
+    debug!(root = %root.display(), "starting scan");
     let host = PluginHost::bundled();
     debug_assert!(!host.manifests().is_empty());
     let mut issues = Vec::new();
@@ -36,6 +38,7 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
 
         if config.is_excluded(&relative) {
             stats.excluded_entries += 1;
+            debug!(path = %relative.display(), "excluded path");
             if entry.file_type().is_dir() {
                 walk.skip_current_dir();
             }
@@ -64,14 +67,17 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
 
         let Some(kind) = source_file_kind(&relative) else {
             stats.unsupported_files += 1;
+            debug!(path = %relative.display(), "unsupported matched file");
             continue;
         };
         if is_generated_source(path)? {
             stats.generated_files += 1;
+            debug!(path = %relative.display(), "skipped generated source");
             continue;
         }
 
         stats.scanned_files += 1;
+        debug!(path = %relative.display(), kind = ?kind, "scanning source file");
         add_child_count(&mut child_counts, &relative);
         check_source_file(config, &host, &relative, path, kind, &mut issues)?;
     }
@@ -92,6 +98,15 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
             right.rule,
         ))
     });
+    debug!(
+        matched_files = stats.matched_files,
+        scanned_files = stats.scanned_files,
+        generated_files = stats.generated_files,
+        unsupported_files = stats.unsupported_files,
+        excluded_entries = stats.excluded_entries,
+        issue_count = issues.len(),
+        "finished scan",
+    );
     Ok(ScanResult { issues, stats })
 }
 

@@ -1,6 +1,7 @@
 pub mod facts;
 pub mod product;
 mod raw_ast;
+mod shape;
 pub mod state;
 pub mod syntax_kind;
 
@@ -8,7 +9,8 @@ use flavor_core::{Diagnostic, SourceText, Span, SyntaxNode};
 use tree_sitter::Parser;
 
 pub use facts::{RustFacts, RustMatchArmFact, RustNameFact, RustNameKind, RustTestAttributeFact};
-pub use state::{RustPluginConfig, RustPluginState};
+pub use shape::RustRepeatedTokenPatternFact;
+pub use state::{RustPluginConfig, RustPluginState, RustRepeatedTokenPatternConfig};
 
 #[derive(Debug, Clone)]
 pub struct RustAnalysisOutput {
@@ -31,7 +33,7 @@ impl RustPluginAnalyzer {
     }
 
     pub fn run(&mut self, source: SourceText) -> RustAnalysisOutput {
-        let _config = self.state.config();
+        let config = self.state.config();
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_rust::LANGUAGE.into())
@@ -50,7 +52,12 @@ impl RustPluginAnalyzer {
         };
         let root = tree.root_node();
         let syntax = raw_ast::build(root, &source);
-        let facts = facts::collect(root, source.as_str().as_bytes());
+        let mut facts = facts::collect(root, source.as_str().as_bytes());
+        facts.repeated_token_patterns = shape::collect_repeated_token_patterns(
+            &syntax,
+            &source,
+            &config.repeated_token_patterns,
+        );
         let diagnostics = if root.has_error() {
             vec![Diagnostic::error_code(
                 first_error_span(root),

@@ -3,11 +3,14 @@ use std::collections::BTreeSet;
 use flavor_core::Span;
 use tree_sitter::Node;
 
+use crate::shape::RustRepeatedTokenPatternFact;
+
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct RustFacts {
     pub names: Vec<RustNameFact>,
     pub match_arms: Vec<RustMatchArmFact>,
     pub test_attributes: Vec<RustTestAttributeFact>,
+    pub repeated_token_patterns: Vec<RustRepeatedTokenPatternFact>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

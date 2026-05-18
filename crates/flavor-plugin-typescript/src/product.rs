@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
+use flavor_shared::product as shared_product;
 
 use crate::{run as run_ts, SourceMode, TsImportSpecifier, TsNameKind, TsPluginConfig};
 
@@ -35,25 +36,22 @@ pub fn satisfy_script<F>(
         let mut facts = Vec::new();
         for fact in &output.facts.names {
             let (key, kind) = ts_name_shape(fact.kind);
-            facts.push(
-                PendingFact::new(
-                    key,
-                    FactPayload::new()
-                        .text("name", fact.name.clone())
-                        .text("kind", kind)
-                        .text("issue_kind", kind),
-                )
-                .span(fact.span)
-                .line(fact.line + line_offset),
-            );
+            facts.push(shared_product::name_fact(
+                key,
+                fact.name.clone(),
+                kind,
+                kind,
+                fact.span,
+                fact.line + line_offset,
+            ));
         }
         facts.extend(output.facts.dispatch_branches.iter().map(|fact| {
-            PendingFact::new(
+            shared_product::line_count_fact(
                 "dispatch.branch",
-                FactPayload::new().usize("lines", fact.lines),
+                fact.lines,
+                fact.span,
+                fact.line + line_offset,
             )
-            .span(fact.span)
-            .line(fact.line + line_offset)
         }));
         facts.extend(output.facts.imports.iter().map(|fact| {
             let imports = import_lists(&fact.specifiers);

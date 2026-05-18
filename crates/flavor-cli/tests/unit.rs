@@ -37,3 +37,5 @@ mod plugin_cases;
 mod renderer_boundary_cases;
 #[path = "unit/scan.rs"]
 mod scan_cases;
+#[path = "unit/shape.rs"]
+mod shape_cases;

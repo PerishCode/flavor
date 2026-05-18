@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::{help_text, parse_args, CliCommand, OutputFormat, RulesOptions};
+use crate::cli::{help_text, parse_args, CliCommand, LogLevel, OutputFormat, RulesOptions};
 
 #[test]
 fn parses_check_options() {
@@ -10,6 +10,7 @@ fn parses_check_options() {
         "workspace".into(),
         "--format=json".into(),
         "--strict-warnings".into(),
+        "--log-level=debug".into(),
     ])
     .unwrap() else {
         panic!("expected check command");
@@ -18,6 +19,7 @@ fn parses_check_options() {
     assert_eq!(options.root, PathBuf::from("workspace"));
     assert_eq!(options.format, OutputFormat::Json);
     assert!(options.strict_warnings);
+    assert_eq!(options.log_level, LogLevel::Debug);
 }
 
 #[test]
@@ -29,6 +31,7 @@ fn command_can_be_omitted() {
     assert_eq!(options.root, PathBuf::from("."));
     assert_eq!(options.format, OutputFormat::Text);
     assert!(!options.strict_warnings);
+    assert_eq!(options.log_level, LogLevel::Off);
 }
 
 #[test]
@@ -42,6 +45,7 @@ fn rules_defaults_to_text() {
         parse_args(vec!["rules".into()]).unwrap(),
         CliCommand::Rules(RulesOptions {
             format: OutputFormat::Text,
+            log_level: LogLevel::Off,
         })
     );
 }
@@ -52,6 +56,24 @@ fn rules_honours_format_flag() {
         parse_args(vec!["rules".into(), "--format=json".into()]).unwrap(),
         CliCommand::Rules(RulesOptions {
             format: OutputFormat::Json,
+            log_level: LogLevel::Off,
+        })
+    );
+}
+
+#[test]
+fn rules_log_level_flag() {
+    assert_eq!(
+        parse_args(vec![
+            "rules".into(),
+            "--format=json".into(),
+            "--log-level".into(),
+            "trace".into(),
+        ])
+        .unwrap(),
+        CliCommand::Rules(RulesOptions {
+            format: OutputFormat::Json,
+            log_level: LogLevel::Trace,
         })
     );
 }
@@ -70,6 +92,7 @@ fn help_stays_operational() {
 
     assert!(help.contains("check [--root <path>]"));
     assert!(help.contains("rules [--format text|json]"));
+    assert!(help.contains("--log-level=debug"));
     assert!(help.contains("rule-level bad-flavor notes"));
     assert!(help.contains("Rust, TypeScript, TSX, Vue, and Svelte"));
     assert!(help.contains("Source:  https://github.com/PerishCode/flavor"));

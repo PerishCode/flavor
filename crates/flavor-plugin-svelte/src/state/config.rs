@@ -1,3 +1,5 @@
+use flavor_shared::PluginState;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SveltePluginConfig {
     pub descriptor: bool,
@@ -15,17 +17,4 @@ impl Default for SveltePluginConfig {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SveltePluginState {
-    config: SveltePluginConfig,
-}
-
-impl SveltePluginState {
-    pub fn new(config: SveltePluginConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn config(&self) -> &SveltePluginConfig {
-        &self.config
-    }
-}
+pub type SveltePluginState = PluginState<SveltePluginConfig>;

@@ -127,13 +127,11 @@ impl Collector<'_> {
                     });
                 }
             }
-            "attribute_item" | "inner_attribute_item" => {
-                if is_test_attribute(node, self.source) {
-                    self.facts.test_attributes.push(RustTestAttributeFact {
-                        span: span_for(node),
-                        line: line_for(node),
-                    });
-                }
+            "attribute_item" | "inner_attribute_item" if is_test_attribute(node, self.source) => {
+                self.facts.test_attributes.push(RustTestAttributeFact {
+                    span: span_for(node),
+                    line: line_for(node),
+                });
             }
             _ => {}
         }

@@ -1,6 +1,6 @@
 mod adapters;
 
-use flavor_plugin_core::{Fact, GrammarProduct, ProductDiagnostic};
+use flavor_core::{Fact, GrammarProduct, ProductDiagnostic};
 
 use super::{PluginManifest, Scope};
 

@@ -1,12 +1,12 @@
-use flavor_g4::{
+use flavor_core::SourceText;
+use flavor_grammar::{
     parse_contract, parse_contract_values, GrammarContractExpectation,
     GrammarEntryValueExpectation, GrammarSectionExpectation,
 };
-use flavor_plugin_core::SourceText;
 use flavor_plugin_vue::{run, VuePluginConfig};
 
-const VUE_SFC_GRAMMAR: &str = include_str!("../../../grammars/vue/flavor.g4.json");
-const VUE_TEMPLATE_GRAMMAR: &str = include_str!("../../../grammars/vue/flavor.g4.json");
+const VUE_SFC_METADATA: &str = include_str!("../../../grammars/vue/metadata.json");
+const VUE_TEMPLATE_METADATA: &str = include_str!("../../../grammars/vue/metadata.json");
 const VUE_SFC_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpectation {
     name: "vue-sfc",
     directives: &[
@@ -152,12 +152,12 @@ const VUE_TEMPLATE_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
 
 #[test]
 fn vue_sfc_sections() {
-    parse_contract_values(VUE_SFC_GRAMMAR, &VUE_SFC_CONTRACT, VUE_SFC_VALUES).unwrap();
+    parse_contract_values(VUE_SFC_METADATA, &VUE_SFC_CONTRACT, VUE_SFC_VALUES).unwrap();
 }
 
 #[test]
 fn vue_sfc_facts() {
-    parse_contract(VUE_SFC_GRAMMAR, &VUE_SFC_CONTRACT).unwrap();
+    parse_contract(VUE_SFC_METADATA, &VUE_SFC_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "Contract.vue",
@@ -196,7 +196,7 @@ fn vue_sfc_facts() {
 
 #[test]
 fn vue_sfc_diagnostics() {
-    parse_contract(VUE_SFC_GRAMMAR, &VUE_SFC_CONTRACT).unwrap();
+    parse_contract(VUE_SFC_METADATA, &VUE_SFC_CONTRACT).unwrap();
 
     let duplicate = run(
         SourceText::new(
@@ -223,7 +223,7 @@ fn vue_sfc_diagnostics() {
 #[test]
 fn vue_template_sections() {
     parse_contract_values(
-        VUE_TEMPLATE_GRAMMAR,
+        VUE_TEMPLATE_METADATA,
         &VUE_TEMPLATE_CONTRACT,
         VUE_TEMPLATE_VALUES,
     )
@@ -232,7 +232,7 @@ fn vue_template_sections() {
 
 #[test]
 fn vue_template_facts() {
-    parse_contract(VUE_TEMPLATE_GRAMMAR, &VUE_TEMPLATE_CONTRACT).unwrap();
+    parse_contract(VUE_TEMPLATE_METADATA, &VUE_TEMPLATE_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "Template.vue",
@@ -285,7 +285,7 @@ fn vue_template_facts() {
 
 #[test]
 fn vue_template_diagnostics() {
-    parse_contract(VUE_TEMPLATE_GRAMMAR, &VUE_TEMPLATE_CONTRACT).unwrap();
+    parse_contract(VUE_TEMPLATE_METADATA, &VUE_TEMPLATE_CONTRACT).unwrap();
 
     let missing_end = run(
         SourceText::new("MissingEnd.vue", "<template><div><span></div></template>"),
@@ -317,7 +317,7 @@ fn vue_template_diagnostics() {
 
 #[test]
 fn vue_recovery_maps_spans() {
-    parse_contract(VUE_TEMPLATE_GRAMMAR, &VUE_TEMPLATE_CONTRACT).unwrap();
+    parse_contract(VUE_TEMPLATE_METADATA, &VUE_TEMPLATE_CONTRACT).unwrap();
     let source = r#"<template><main><span></main><button :class="user." /></template>"#;
     let output = run(
         SourceText::new("Recover.vue", source),
@@ -348,16 +348,16 @@ fn vue_recovery_maps_spans() {
 }
 
 fn find_diagnostic<'a>(
-    diagnostics: &'a [flavor_plugin_core::Diagnostic],
+    diagnostics: &'a [flavor_core::Diagnostic],
     message: &str,
-) -> &'a flavor_plugin_core::Diagnostic {
+) -> &'a flavor_core::Diagnostic {
     diagnostics
         .iter()
         .find(|diagnostic| diagnostic.message.contains(message))
         .unwrap_or_else(|| panic!("missing diagnostic containing `{message}`: {diagnostics:?}"))
 }
 
-fn assert_has_diagnostic(diagnostics: &[flavor_plugin_core::Diagnostic], message: &str) {
+fn assert_has_diagnostic(diagnostics: &[flavor_core::Diagnostic], message: &str) {
     let diagnostic = find_diagnostic(diagnostics, message);
     assert_eq!(diagnostic.code.as_deref(), Some("vue/parse/error"));
     assert!(diagnostic.span.is_some(), "missing span for {diagnostic:?}");

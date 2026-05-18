@@ -1,15 +1,21 @@
 lexer grammar SvelteMarkupLexer;
 
-// Generated from flavor.g4.json metadata; parser runtime is transitional.
-TEXT: ~[\r\n]*; // scanner:text
-TAG_OPEN: '<';
-TAG_CLOSE: '>';
-END_TAG_OPEN: '</';
-MUSTACHE_OPEN: '{';
+// Hand-written G4 lexer surface; flavor contracts live in metadata.json.
+COMMENT_TEXT: '<!--' .*? '-->';
+MUSTACHE_OPEN: '{#' | '{:' | '{@' | '{/' | '{';
 MUSTACHE_CLOSE: '}';
-BLOCK_OPEN: '{#';
-BLOCK_BRANCH: '{:';
-BLOCK_CLOSE: '{/';
-DIRECTIVE_NAME: [a-zA-Z_] [a-zA-Z0-9_]*; // scanner:directive_name
-ATTRIBUTE_VALUE: ~[\r\n]*; // scanner:attribute_value
-WS: [ \t\r\n]+ -> channel(HIDDEN);
+LESS_THAN: '<';
+GREATER_THAN: '>';
+SLASH: '/';
+EQUALS: '=';
+DIRECTIVE_BASE: [a-zA-Z_] [a-zA-Z0-9_]*; // scanner:directive_base
+DIRECTIVE_ARGUMENT: ':' [a-zA-Z0-9_.$[\]-]+; // scanner:directive_argument
+DIRECTIVE_MODIFIER: '.' [a-zA-Z0-9_.$[\]-]+; // scanner:directive_modifier
+TAG_NAME: [a-zA-Z_] [a-zA-Z0-9_]*; // scanner:tag_name
+ATTRIBUTE_NAME: [a-zA-Z_] [a-zA-Z0-9_:-]*; // scanner:attribute_name
+BLOCK_KEYWORD: [a-zA-Z_] [a-zA-Z0-9_]*; // scanner:block_keyword
+EXPRESSION_TEXT: ~[<>{}\r\n]+; // scanner:expression_text
+ATTRIBUTE_VALUE: ~[<>{}\r\n]+; // scanner:attribute_value
+TEXT: ~[<{\r\n]+; // scanner:text
+WHITESPACE: [ \t\r\n]+ -> channel(HIDDEN);
+ERROR: .;

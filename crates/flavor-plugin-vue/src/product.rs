@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use flavor_plugin_core::{
-    diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText,
-};
+use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
 use flavor_plugin_typescript::product as typescript_product;
 
 use crate::{run as run_vue, sfc::VueSfcBlock, VuePluginConfig};

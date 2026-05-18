@@ -1,7 +1,7 @@
 # AGENTS
 
 `crates/flavor-plugin-vue/` owns Vue SFC and template facts on top of
-`flavor-plugin-core`, with embedded expression validation delegated to
+`flavor-core`, with embedded expression validation delegated to
 `flavor-plugin-typescript`.
 
 ## Directory Rules
@@ -9,6 +9,8 @@
 - `src/sfc/` owns Vue SFC descriptor parsing and block validation.
 - `src/template/` owns template AST, template parsing, names, and embedded
   expression validation.
+- `src/template/kind.rs` includes the build-generated `VueTemplateKind` binding
+  derived from `grammars/vue/VueTemplate*.g4`.
 - `src/style/` owns style-facing substrate.
 - `src/facts/` and `src/visit/` own derived Vue facts and traversal hooks.
 - `src/state/` owns `VuePluginConfig`, `TemplateConfig`, and
@@ -31,6 +33,9 @@ cargo test --locked -p flavor-plugin-vue
 - Descriptor changes should test duplicate block handling, line/span mapping,
   and top-level block constraints.
 - Template parser changes should include parser tests or a harness fixture.
+- Keep the descriptor/template parsers as staged parser backends for this
+  refactor; template raw CST node/token kinds must continue to come from the
+  Vue template G4 raw AST schema and schema-aware builder paths.
 - When validating embedded expressions, keep TypeScript-specific parsing in
   `flavor-plugin-typescript` and map diagnostics back to Vue source offsets.
 

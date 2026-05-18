@@ -1,4 +1,4 @@
-use flavor_plugin_core::{Span, Token};
+use flavor_core::{Span, Token};
 use tree_sitter::{Node, Parser};
 
 use crate::{

@@ -6,7 +6,7 @@ pub mod style;
 pub mod template;
 pub mod visit;
 
-use flavor_plugin_core::{Diagnostic, SourceText, Span};
+use flavor_core::{Diagnostic, SourceText, Span};
 
 pub use facts::VueFacts;
 pub use sfc::VueSfcDescriptor;

@@ -1,0 +1,100 @@
+{
+  "bundle": "svelte",
+  "grammars": [
+    {
+      "directives": {
+        "entry": "markup_document",
+        "owner": "crates/flavor-plugin-svelte"
+      },
+      "id": "svelte-markup",
+      "sections": {
+        "diagnostics": {
+          "expression.error": "TypeScript expression diagnostic -> svelte/parse/error",
+          "missing.block_close": "block without close -> svelte/parse/error",
+          "missing.tag_close": "element without close -> svelte/parse/error"
+        },
+        "facts": {
+          "embedded.expression": "expression_text -> TypeScript expression validation",
+          "markup.block": "block -> SvelteFacts.markup_block_count + SvelteFacts.markup_blocks: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.branch": "block_branch -> SvelteFacts.markup_branch_count + SvelteFacts.markup_branches: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.component": "start_tag uppercase -> SvelteFacts.markup_component_count + SvelteFacts.markup_components: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.directive": "directive -> SvelteFacts.markup_directive_count + SvelteFacts.markup_directives: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.element": "start_tag lowercase -> SvelteFacts.markup_element_count + SvelteFacts.markup_elements: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.render": "render_tag -> SvelteFacts.markup_render_count + SvelteFacts.markup_renders: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)",
+          "markup.special": "special_tag -> SvelteFacts.markup_special_count + SvelteFacts.markup_specials: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)"
+        },
+        "nodes": {
+          "block": "SvelteMarkupKind::Block",
+          "block_branch": "SvelteMarkupKind::BlockBranch",
+          "component": "SvelteMarkupKind::Component",
+          "directive": "SvelteMarkupKind::Directive",
+          "element": "SvelteMarkupKind::Element",
+          "markup_document": "SvelteMarkupAst.root",
+          "mustache": "SvelteMarkupKind::Mustache",
+          "render_tag": "SvelteMarkupKind::RenderTag",
+          "special_tag": "SvelteMarkupKind::SpecialTag",
+          "start_tag": "SvelteMarkupKind::StartTag"
+        },
+        "recovery": {
+          "each.binding": "validate only each source expression before as",
+          "missing.block_close": "close at eof or parent block boundary",
+          "snippet.signature": "skip expression validation"
+        },
+        "spans": {
+          "diagnostic.range": "host mapped range",
+          "host.range": "descriptor markup mapping + node range",
+          "line": "host line index position",
+          "node.range": "markup byte range"
+        }
+      },
+      "sources": {
+        "lexer": "SvelteMarkupLexer.g4",
+        "parser": "SvelteMarkupParser.g4"
+      }
+    },
+    {
+      "directives": {
+        "entry": "svelte_document",
+        "owner": "crates/flavor-plugin-svelte"
+      },
+      "id": "svelte",
+      "sections": {
+        "diagnostics": {
+          "duplicate.module_script": "more than one module script -> svelte/parse/error",
+          "duplicate.script": "more than one instance script -> svelte/parse/error",
+          "missing.close": "top block missing end_tag -> svelte/parse/error"
+        },
+        "facts": {
+          "descriptor.markup": "source outside top blocks -> SvelteMarkup + SvelteFacts.markup_lines + SvelteFacts.markup_block_count + SvelteFacts.markup_branch_count + SvelteFacts.markup_render_count -> Fact(payload.line_count, payload.script_count, payload.script_lines, payload.style_count, payload.style_lines, payload.markup_lines, payload.markup_block_count, payload.markup_branch_count, payload.markup_render_count)",
+          "descriptor.module_script": "script context module -> SvelteDescriptor.module_script: SvelteBlock(content, start_offset, start_line) + SvelteFacts.script_count + SvelteFacts.script_lines -> Fact(payload.content, payload.start_offset, payload.start_line)",
+          "descriptor.script": "script without module -> SvelteDescriptor.script: SvelteBlock(content, start_offset, start_line) + SvelteFacts.script_count + SvelteFacts.script_lines -> Fact(payload.content, payload.start_offset, payload.start_line)",
+          "descriptor.styles": "style* -> SvelteDescriptor.styles + SvelteFacts.style_count + SvelteFacts.style_lines -> Fact(payload.style_count, payload.style_lines)",
+          "script.embedded": "script content with lang js ts jsx tsx -> TypeScript script block -> Fact(payload.content, payload.lang, payload.tsx, payload.start_offset, payload.start_line)"
+        },
+        "nodes": {
+          "attribute": "descriptor:attribute",
+          "markup": "descriptor:markup",
+          "module_script": "descriptor:module_script",
+          "script": "descriptor:script",
+          "style": "descriptor:style",
+          "svelte_document": "SvelteDescriptor"
+        },
+        "recovery": {
+          "descriptor.blocks": "preserve well-formed top blocks around malformed blocks",
+          "embedded.skip": "skip script languages outside js ts jsx tsx",
+          "missing.close": "consume until eof for current top block"
+        },
+        "spans": {
+          "block.content": "byte range inside block tags",
+          "block.line": "start tag line",
+          "embedded.offset": "block content start line and byte offset",
+          "markup.range": "source ranges outside top blocks"
+        }
+      },
+      "sources": {
+        "lexer": "SvelteLexer.g4",
+        "parser": "SvelteParser.g4"
+      }
+    }
+  ]
+}

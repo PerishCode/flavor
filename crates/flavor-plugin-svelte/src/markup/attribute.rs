@@ -27,7 +27,7 @@ impl MarkupParser<'_> {
 
         let name = &self.source[name_start..self.cursor];
         let is_directive = is_directive_name(name);
-        self.builder.start_node(if is_directive {
+        self.builder.start_schema_node(if is_directive {
             SvelteMarkupKind::Directive
         } else {
             SvelteMarkupKind::Attribute
@@ -35,7 +35,8 @@ impl MarkupParser<'_> {
         if is_directive {
             self.parse_directive_name(name);
         } else {
-            self.builder.token(SvelteMarkupKind::AttributeName, name);
+            self.builder
+                .schema_token(SvelteMarkupKind::AttributeName, name);
         }
         while self.peek().is_some_and(is_whitespace) {
             self.parse_whitespace();
@@ -47,7 +48,7 @@ impl MarkupParser<'_> {
             }
             if is_directive {
                 self.builder
-                    .start_node(SvelteMarkupKind::DirectiveExpression);
+                    .start_schema_node(SvelteMarkupKind::DirectiveExpression);
                 self.parse_attribute_value();
                 self.builder.finish_node();
             } else {
@@ -58,16 +59,17 @@ impl MarkupParser<'_> {
     }
 
     fn parse_directive_name(&mut self, name: &str) {
-        self.builder.start_node(SvelteMarkupKind::DirectiveName);
+        self.builder
+            .start_schema_node(SvelteMarkupKind::DirectiveName);
         let mut offset = directive_base_len(name);
         self.builder
-            .token(SvelteMarkupKind::DirectiveBase, &name[..offset]);
+            .schema_token(SvelteMarkupKind::DirectiveBase, &name[..offset]);
         if offset < name.len() && name.as_bytes()[offset] == b':' {
             let start = offset;
             offset += 1;
             offset = scan_arg(name, offset);
             self.builder
-                .token(SvelteMarkupKind::DirectiveArgument, &name[start..offset]);
+                .schema_token(SvelteMarkupKind::DirectiveArgument, &name[start..offset]);
         }
         while offset < name.len() && name.as_bytes()[offset] == b'.' {
             let start = offset;
@@ -76,7 +78,7 @@ impl MarkupParser<'_> {
                 offset += 1;
             }
             self.builder
-                .token(SvelteMarkupKind::DirectiveModifier, &name[start..offset]);
+                .schema_token(SvelteMarkupKind::DirectiveModifier, &name[start..offset]);
         }
         self.builder.finish_node();
     }
@@ -102,7 +104,7 @@ impl MarkupParser<'_> {
                 self.cursor = self.source.len();
                 self.error_at(start, "missing attribute expression close delimiter");
                 if self.cursor > start {
-                    self.builder.token(
+                    self.builder.schema_token(
                         SvelteMarkupKind::AttributeValue,
                         &self.source[start..self.cursor],
                     );
@@ -120,7 +122,7 @@ impl MarkupParser<'_> {
             }
         }
         if self.cursor > start {
-            self.builder.token(
+            self.builder.schema_token(
                 SvelteMarkupKind::AttributeValue,
                 &self.source[start..self.cursor],
             );
@@ -128,18 +130,19 @@ impl MarkupParser<'_> {
     }
 
     fn parse_spread_attribute(&mut self) {
-        self.builder.start_node(SvelteMarkupKind::SpreadAttribute);
+        self.builder
+            .start_schema_node(SvelteMarkupKind::SpreadAttribute);
         let start = self.cursor;
         let Some(end) = find_mustache_end(self.source, self.cursor + 1) else {
             self.cursor = self.source.len();
             self.builder
-                .token(SvelteMarkupKind::ExpressionText, &self.source[start..]);
+                .schema_token(SvelteMarkupKind::ExpressionText, &self.source[start..]);
             self.error_at(start, "missing spread attribute close delimiter");
             self.builder.finish_node();
             return;
         };
         self.cursor = end + 1;
-        self.builder.token(
+        self.builder.schema_token(
             SvelteMarkupKind::ExpressionText,
             &self.source[start..self.cursor],
         );
@@ -148,7 +151,7 @@ impl MarkupParser<'_> {
 
     fn parse_shorthand_attribute(&mut self) {
         self.builder
-            .start_node(SvelteMarkupKind::ShorthandAttribute);
+            .start_schema_node(SvelteMarkupKind::ShorthandAttribute);
         self.parse_mustache_like(SvelteMarkupKind::Mustache);
         self.builder.finish_node();
     }

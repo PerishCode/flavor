@@ -4,7 +4,7 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_class_member(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ClassMember);
+        self.builder.start_schema_node(TsSyntaxKind::ClassMember);
         if self.at(TsSyntaxKind::At) {
             self.parse_decorator_list();
         }
@@ -14,7 +14,7 @@ impl<'a> Parser<'a> {
         } else {
             TsSyntaxKind::PropertyDeclaration
         };
-        self.builder.start_node(member_kind);
+        self.builder.start_schema_node(member_kind);
         self.parse_member_name("expected class member name");
         if member_kind == TsSyntaxKind::MethodDeclaration {
             self.parse_member_type_params();
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_interface_body(&mut self) {
-        self.builder.start_node(TsSyntaxKind::InterfaceBody);
+        self.builder.start_schema_node(TsSyntaxKind::InterfaceBody);
         if !self.expect(TsSyntaxKind::OpenBrace, "expected interface body") {
             self.builder.finish_node();
             return;
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
         } else {
             TsSyntaxKind::PropertySignature
         };
-        self.builder.start_node(member_kind);
+        self.builder.start_schema_node(member_kind);
         if !self.parse_member_name("expected interface member name") {
             self.recover_member();
             self.builder.finish_node();

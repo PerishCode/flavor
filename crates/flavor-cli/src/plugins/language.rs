@@ -17,7 +17,7 @@ use crate::{
         TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
     },
 };
-use flavor_plugin_core::{Fact, ProductDiagnostic};
+use flavor_core::{Fact, ProductDiagnostic};
 
 pub(crate) fn analyze_rust_source<'a>(context: &AnalysisContext<'a>) -> PluginOutput<'a> {
     let Some(scope) = context.scope.source_file_data() else {

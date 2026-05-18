@@ -7,7 +7,7 @@ pub mod state;
 pub mod syntax_kind;
 pub mod visit;
 
-use flavor_plugin_core::{Diagnostic, SourceText};
+use flavor_core::{Diagnostic, SourceText};
 
 pub use ast::TsSourceFile;
 pub use facts::{

@@ -1,4 +1,4 @@
-use flavor_plugin_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt, SyntaxToken};
+use flavor_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt, SyntaxToken};
 
 use crate::{
     sfc::{VueSfcBlock, VueSfcDescriptor},

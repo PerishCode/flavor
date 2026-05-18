@@ -439,6 +439,7 @@ fn core_include_patterns() -> Vec<String> {
         "apps/tauri/src-tauri/tests/**",
         "crates/*/src/**",
         "crates/*/tests/**",
+        "grammars/**",
         "tools/*/src/**",
         "tools/*/tests/**",
     ]
@@ -466,6 +467,7 @@ fn core_exclude_patterns() -> Vec<String> {
 pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
     match path.extension().and_then(|extension| extension.to_str()) {
         Some("rs") => Some(SourceKind::Rust),
+        Some("g4") => Some(SourceKind::G4),
         Some("svelte") => Some(SourceKind::Svelte),
         Some("ts" | "tsx") => Some(SourceKind::TypeScript),
         Some("vue") => Some(SourceKind::Vue),
@@ -475,6 +477,7 @@ pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum SourceKind {
+    G4,
     Rust,
     Svelte,
     TypeScript,

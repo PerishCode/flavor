@@ -1,4 +1,4 @@
-use flavor_plugin_core::{RawSyntaxKind, SourceText};
+use flavor_core::{RawSyntaxKind, SourceText};
 use flavor_plugin_svelte::{
     markup::{parse_markup, SvelteMarkupKind},
     run, SveltePluginConfig,
@@ -18,6 +18,31 @@ fn token_count(ast: &flavor_plugin_svelte::SvelteMarkupAst, kind: SvelteMarkupKi
         .count()
 }
 
+fn is_core_trivia(kind: RawSyntaxKind) -> bool {
+    matches!(kind.0, 1..=4)
+}
+
+fn assert_cst_matches_schema(ast: &flavor_plugin_svelte::SvelteMarkupAst) {
+    for node in ast.syntax().descendants() {
+        assert!(
+            SvelteMarkupKind::raw_is_node(node.kind()),
+            "node kind {:?} is not declared as a G4 node",
+            node.kind()
+        );
+    }
+    for token in ast
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+    {
+        assert!(
+            SvelteMarkupKind::raw_is_token(token.kind()) || is_core_trivia(token.kind()),
+            "token kind {:?} is not declared as a G4 token",
+            token.kind()
+        );
+    }
+}
+
 #[test]
 fn parses_elements_and_components() {
     let source = "<main><Panel title=\"Hi\">{message}</Panel><img /></main>";
@@ -27,6 +52,15 @@ fn parses_elements_and_components() {
     assert!(has_node(&ast, SvelteMarkupKind::Element));
     assert!(has_node(&ast, SvelteMarkupKind::Component));
     assert!(has_node(&ast, SvelteMarkupKind::Mustache));
+    assert!(ast.diagnostics().is_empty());
+}
+
+#[test]
+fn cst_matches_schema() {
+    let ast =
+        parse_markup(r#"<button bind:value={name} {...props}>{#if ready}{message}{/if}</button>"#);
+
+    assert_cst_matches_schema(&ast);
     assert!(ast.diagnostics().is_empty());
 }
 

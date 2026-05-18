@@ -1,6 +1,6 @@
 mod parser;
 
-use flavor_plugin_core::SourceText;
+use flavor_core::SourceText;
 
 pub use parser::{parse_sfc, VueSfcBlock, VueSfcDescriptor, VueSfcError};
 

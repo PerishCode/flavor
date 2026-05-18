@@ -6,4 +6,4 @@ license = "MIT"
 description = "First-party filesystem shape plugin for flavor."
 
 [dependencies]
-flavor-plugin-core = { path = "../flavor-plugin-core" }
+flavor-core = { path = "../flavor-core" }

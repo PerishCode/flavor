@@ -9,7 +9,7 @@ use crate::{
     plugins::{PluginHost, ProductSet, Scope, ScopeDecl, ScopeKind, SourceScope},
     rules,
 };
-use flavor_g4::{parse_sidecar_validated, GrammarDocument};
+use flavor_grammar::{parse_metadata_validated, GrammarMetadata};
 
 #[test]
 fn bundled_manifests_are_explicit() {
@@ -21,6 +21,7 @@ fn bundled_manifests_are_explicit() {
 
     assert!(ids.contains("flavor-plugin-filesystem"));
     assert!(ids.contains("flavor-plugin-source-structure"));
+    assert!(ids.contains("flavor-plugin-g4"));
     assert!(ids.contains("flavor-plugin-rust"));
     assert!(ids.contains("flavor-plugin-typescript"));
     assert!(ids.contains("flavor-plugin-vue"));
@@ -61,6 +62,10 @@ fn host_selects_manifest_scopes() {
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::FilePath, None),
         vec!["flavor-plugin-filesystem"]
+    );
+    assert_eq!(
+        selected_plugin_ids(&manifests, ScopeKind::SourceFile, Some(SourceKind::G4)),
+        vec!["flavor-plugin-source-structure", "flavor-plugin-g4"]
     );
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::SourceFile, Some(SourceKind::Rust)),
@@ -326,6 +331,10 @@ fn language_uses_product_queries() {
 #[test]
 fn source_kind_routes_vue() {
     assert_eq!(
+        source_file_kind(std::path::Path::new("Grammar.g4")),
+        Some(SourceKind::G4)
+    );
+    assert_eq!(
         source_file_kind(std::path::Path::new("App.vue")),
         Some(SourceKind::Vue)
     );
@@ -362,14 +371,14 @@ fn collect_rust_sources(path: &Path, paths: &mut Vec<PathBuf>) {
     }
 }
 
-fn grammar_documents() -> BTreeMap<String, GrammarDocument> {
+fn grammar_documents() -> BTreeMap<String, GrammarMetadata> {
     let mut documents = BTreeMap::new();
     for path in grammar_files(&grammar_root()) {
-        if path.file_name().and_then(|name| name.to_str()) != Some("flavor.g4.json") {
+        if path.file_name().and_then(|name| name.to_str()) != Some("metadata.json") {
             continue;
         }
         let source = fs::read_to_string(&path).unwrap();
-        let parsed = parse_sidecar_validated(&source).unwrap_or_else(|errors| {
+        let parsed = parse_metadata_validated(&source).unwrap_or_else(|errors| {
             panic!("{} parse errors: {errors:?}", path.display());
         });
         for document in parsed {
@@ -430,7 +439,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn old_boundary_names() -> Vec<String> {
-    let mut names = ["core", "rust", "ts", "vue", "svelte"]
+    ["core", "rust", "ts", "vue", "svelte"]
         .into_iter()
         .flat_map(|name| {
             [
@@ -438,10 +447,7 @@ fn old_boundary_names() -> Vec<String> {
                 format!("flavor_{}_{}", concat!("comp", "iler"), name),
             ]
         })
-        .collect::<Vec<_>>();
-    names.push(format!("flavor-{}", "grammar"));
-    names.push(format!("flavor_{}", "grammar"));
-    names
+        .collect()
 }
 
 fn repo_text_files(root: &Path) -> Vec<PathBuf> {

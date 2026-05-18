@@ -1,0 +1,40 @@
+{
+  "bundle": "g4",
+  "grammars": [
+    {
+      "id": "g4",
+      "sources": {
+        "lexer": "G4Lexer.g4",
+        "parser": "G4Parser.g4"
+      },
+      "directives": {
+        "entry": "grammar_file",
+        "owner": "crates/flavor-plugin-g4"
+      },
+      "sections": {
+        "nodes": {
+          "grammar_file": "flavor-grammar:G4Source",
+          "grammar_declaration": "flavor-grammar:G4Source.name",
+          "parser_rule": "flavor-grammar:G4Rule.parser",
+          "lexer_token": "flavor-grammar:G4Rule.lexer",
+          "rule_atom": "flavor-grammar:G4Reference"
+        },
+        "facts": {
+          "grammar.declaration": "grammar_file -> G4GrammarDeclarationFact(payload.name, payload.kind, line)",
+          "grammar.parser_rule": "parser_rule -> G4ParserRuleFact(payload.name, payload.references, line)",
+          "grammar.lexer_token": "lexer_token -> G4LexerTokenFact(payload.name, line)",
+          "grammar.reference": "rule_atom -> G4ReferenceFact(payload.name, line)"
+        },
+        "diagnostics": {
+          "parse.error": "ERROR -> g4/parse/error"
+        },
+        "spans": {
+          "rule": "line"
+        },
+        "recovery": {
+          "error": "report"
+        }
+      }
+    }
+  ]
+}

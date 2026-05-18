@@ -1,12 +1,12 @@
-use flavor_g4::{
+use flavor_core::SourceText;
+use flavor_grammar::{
     parse_contract, parse_contract_values, GrammarContractExpectation,
     GrammarEntryValueExpectation, GrammarSectionExpectation,
 };
-use flavor_plugin_core::SourceText;
 use flavor_plugin_svelte::{run, SveltePluginConfig};
 
-const SVELTE_GRAMMAR: &str = include_str!("../../../grammars/svelte/flavor.g4.json");
-const SVELTE_MARKUP_GRAMMAR: &str = include_str!("../../../grammars/svelte/flavor.g4.json");
+const SVELTE_METADATA: &str = include_str!("../../../grammars/svelte/metadata.json");
+const SVELTE_MARKUP_METADATA: &str = include_str!("../../../grammars/svelte/metadata.json");
 const SVELTE_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpectation {
     name: "svelte",
     directives: &[
@@ -221,12 +221,12 @@ const SVELTE_MARKUP_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
 
 #[test]
 fn svelte_descriptor_sections() {
-    parse_contract_values(SVELTE_GRAMMAR, &SVELTE_CONTRACT, SVELTE_VALUES).unwrap();
+    parse_contract_values(SVELTE_METADATA, &SVELTE_CONTRACT, SVELTE_VALUES).unwrap();
 }
 
 #[test]
 fn svelte_descriptor_facts() {
-    parse_contract(SVELTE_GRAMMAR, &SVELTE_CONTRACT).unwrap();
+    parse_contract(SVELTE_METADATA, &SVELTE_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "Contract.svelte",
@@ -269,7 +269,7 @@ fn svelte_descriptor_facts() {
 
 #[test]
 fn svelte_descriptor_diagnostics() {
-    parse_contract(SVELTE_GRAMMAR, &SVELTE_CONTRACT).unwrap();
+    parse_contract(SVELTE_METADATA, &SVELTE_CONTRACT).unwrap();
 
     let duplicate_module = run(
         SourceText::new(
@@ -306,7 +306,7 @@ fn svelte_descriptor_diagnostics() {
 #[test]
 fn svelte_markup_sections() {
     parse_contract_values(
-        SVELTE_MARKUP_GRAMMAR,
+        SVELTE_MARKUP_METADATA,
         &SVELTE_MARKUP_CONTRACT,
         SVELTE_MARKUP_VALUES,
     )
@@ -315,7 +315,7 @@ fn svelte_markup_sections() {
 
 #[test]
 fn svelte_markup_facts() {
-    parse_contract(SVELTE_MARKUP_GRAMMAR, &SVELTE_MARKUP_CONTRACT).unwrap();
+    parse_contract(SVELTE_MARKUP_METADATA, &SVELTE_MARKUP_CONTRACT).unwrap();
     let output = run(
         SourceText::new(
             "Markup.svelte",
@@ -406,7 +406,7 @@ fn svelte_markup_facts() {
 
 #[test]
 fn svelte_markup_diagnostics() {
-    parse_contract(SVELTE_MARKUP_GRAMMAR, &SVELTE_MARKUP_CONTRACT).unwrap();
+    parse_contract(SVELTE_MARKUP_METADATA, &SVELTE_MARKUP_CONTRACT).unwrap();
 
     let missing_block = run(
         SourceText::new("MissingBlock.svelte", "{#if ready}<p>ok</p>"),
@@ -435,7 +435,7 @@ fn svelte_markup_diagnostics() {
 
 #[test]
 fn svelte_recovery_maps_spans() {
-    parse_contract(SVELTE_MARKUP_GRAMMAR, &SVELTE_MARKUP_CONTRACT).unwrap();
+    parse_contract(SVELTE_MARKUP_METADATA, &SVELTE_MARKUP_CONTRACT).unwrap();
     let source = "<script>let value = 1;</script><main><span></main><button>{broken(}</button>";
     let output = run(
         SourceText::new("Recover.svelte", source),
@@ -472,16 +472,16 @@ fn svelte_recovery_maps_spans() {
 }
 
 fn find_diagnostic<'a>(
-    diagnostics: &'a [flavor_plugin_core::Diagnostic],
+    diagnostics: &'a [flavor_core::Diagnostic],
     message: &str,
-) -> &'a flavor_plugin_core::Diagnostic {
+) -> &'a flavor_core::Diagnostic {
     diagnostics
         .iter()
         .find(|diagnostic| diagnostic.message.contains(message))
         .unwrap_or_else(|| panic!("missing diagnostic containing `{message}`: {diagnostics:?}"))
 }
 
-fn assert_has_diagnostic(diagnostics: &[flavor_plugin_core::Diagnostic], message: &str) {
+fn assert_has_diagnostic(diagnostics: &[flavor_core::Diagnostic], message: &str) {
     let diagnostic = find_diagnostic(diagnostics, message);
     assert_eq!(diagnostic.code.as_deref(), Some("svelte/parse/error"));
     assert!(diagnostic.span.is_some(), "missing span for {diagnostic:?}");

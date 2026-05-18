@@ -1,6 +1,4 @@
-use flavor_plugin_core::{
-    diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText,
-};
+use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
 
 use crate::{run as run_rust, RustNameKind, RustPluginConfig};
 

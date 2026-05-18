@@ -13,6 +13,7 @@ pub(crate) const FS_NAME_SHAPE: &str = "core/fs/name-shape";
 pub(crate) const FS_TOO_MANY_CHILDREN: &str = "core/fs/too-many-children";
 pub(crate) const SOURCE_TOO_LONG: &str = "core/source/too-long";
 pub(crate) const SOURCE_TOO_DEEP: &str = "core/source/too-deep";
+pub(crate) const G4_PARSE_ERROR: &str = "g4/parse/error";
 pub(crate) const RUST_TESTS_IN_SOURCE: &str = "rust/tests/in-source";
 pub(crate) const RUST_PARSE_ERROR: &str = "rust/parse/error";
 pub(crate) const SVELTE_COMPONENT_TOO_LONG: &str = "svelte/component/too-long";
@@ -132,6 +133,15 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             bad_flavor: "Path depth may be explaining ownership that belongs at module or package level.",
             action_hint: "Use this as boundary-review pressure; module/package changes should wait until ownership is stable.",
         }),
+        G4_PARSE_ERROR => Some(RuleDescriptor {
+            id: G4_PARSE_ERROR,
+            target: RuleTarget::File,
+            default_enabled: true,
+            default_severity: Severity::Deny,
+            default_payload: BTreeMap::new(),
+            bad_flavor: "The grammar source could not be parsed, so raw AST schema checks cannot be trusted.",
+            action_hint: "Check the `.g4` rule shape and references before treating generated schema or adapter output as meaningful.",
+        }),
         RUST_TESTS_IN_SOURCE => Some(RuleDescriptor {
             id: RUST_TESTS_IN_SOURCE,
             target: RuleTarget::File,
@@ -245,6 +255,7 @@ pub(crate) fn known_rule_ids() -> Vec<&'static str> {
         FS_TOO_MANY_CHILDREN,
         SOURCE_TOO_LONG,
         SOURCE_TOO_DEEP,
+        G4_PARSE_ERROR,
         RUST_TESTS_IN_SOURCE,
         RUST_PARSE_ERROR,
         SVELTE_COMPONENT_TOO_LONG,

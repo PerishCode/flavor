@@ -4,7 +4,7 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_jsx_element(&mut self) {
-        self.builder.start_node(TsSyntaxKind::JsxElement);
+        self.builder.start_schema_node(TsSyntaxKind::JsxElement);
         let Some(name) = self.parse_jsx_opening() else {
             self.builder.finish_node();
             return;
@@ -44,7 +44,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_opening(&mut self) -> Option<String> {
-        self.builder.start_node(TsSyntaxKind::JsxOpeningElement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::JsxOpeningElement);
         self.bump();
         let Some(name) = self.parse_jsx_name("expected JSX tag name") else {
             self.builder.finish_node();
@@ -69,7 +70,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_closing(&mut self) {
-        self.builder.start_node(TsSyntaxKind::JsxClosingElement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::JsxClosingElement);
         self.bump();
         self.bump();
         self.parse_jsx_name("expected JSX closing tag name");
@@ -83,7 +85,8 @@ impl<'a> Parser<'a> {
 
     fn parse_jsx_attribute(&mut self) {
         if self.at(TsSyntaxKind::OpenBrace) {
-            self.builder.start_node(TsSyntaxKind::JsxSpreadAttribute);
+            self.builder
+                .start_schema_node(TsSyntaxKind::JsxSpreadAttribute);
             self.parse_balanced_node(
                 TsSyntaxKind::JsxExpression,
                 TsSyntaxKind::OpenBrace,
@@ -94,7 +97,7 @@ impl<'a> Parser<'a> {
             return;
         }
         if is_jsx_name_start(self.current()) {
-            self.builder.start_node(TsSyntaxKind::JsxAttribute);
+            self.builder.start_schema_node(TsSyntaxKind::JsxAttribute);
             self.parse_jsx_name("expected JSX attribute name");
             if self.at(TsSyntaxKind::Equals) {
                 self.bump();
@@ -116,7 +119,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_text(&mut self) {
-        self.builder.start_node(TsSyntaxKind::JsxText);
+        self.builder.start_schema_node(TsSyntaxKind::JsxText);
         while !self.at(TsSyntaxKind::EndOfFile)
             && !self.at(TsSyntaxKind::OpenBrace)
             && !self.starts_jsx_open()
@@ -145,7 +148,7 @@ impl<'a> Parser<'a> {
             .map_or(start, |token| token.span.end);
         Some(
             self.source
-                .slice(flavor_plugin_core::Span::new(start, span_end))
+                .slice(flavor_core::Span::new(start, span_end))
                 .to_string(),
         )
     }

@@ -146,12 +146,22 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 
 ## Workspace
 
-The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-plugin-core` owns shared plugin substrate primitives, `flavor-g4` owns grammar bundle contracts, `flavor-plugin-filesystem` and `flavor-plugin-source-structure` own file/tree shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
+The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-core` owns shared source text, span, diagnostic, product, and syntax tree primitives, `flavor-grammar` owns grammar contract metadata, `.g4` source indexes, raw AST schema derivation, and adapter rendering, `flavor-plugin-g4` brings `.g4` files into the normal plugin/product pipeline, `flavor-plugin-filesystem` and `flavor-plugin-source-structure` own file/tree shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
 
-Frontend contracts are anchored in `grammars/<language>/*.g4` plus
-`grammars/<language>/flavor.g4.json`. The `.g4` files are the repo-visible
-grammar source of truth; the sidecars hold flavor-specific entrypoints, fact
-payload contracts, diagnostics, spans, and recovery expectations.
+Frontend contracts are anchored in `grammars/<bundle>/*.g4` plus
+`grammars/<bundle>/metadata.json`. The `.g4` files are the repo-visible
+grammar source of truth and drive the raw AST schema symbols. Rust,
+TypeScript, Vue template, and Svelte markup syntax-kind bindings are generated
+from those schemas; metadata holds flavor-specific entrypoints, fact payload
+contracts, raw AST node
+bindings, diagnostics, spans, and recovery expectations.
+Generated syntax-kind bindings also expose node/token categories used by the
+schema-aware CST builder paths in the first-party syntax plugins.
+Runtime parser backends remain staged adapters for this refactor: Rust still
+uses tree-sitter, TypeScript keeps its plugin lexer/parser, and Vue/Svelte keep
+their descriptor/template/markup parsers. Those adapters emit rowan CSTs
+through G4-derived syntax kinds and schema-aware builders, so the raw AST output
+shape is governed by `.g4` schemas even while parser execution stays unchanged.
 
 ## Development
 
@@ -161,6 +171,7 @@ cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+python3 scripts/dev/antlr.py check         # optional Dockerized G4 validation
 ```
 
 ## Scope

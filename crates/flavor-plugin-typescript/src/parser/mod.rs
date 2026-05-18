@@ -8,7 +8,7 @@ mod modules;
 mod statements;
 mod types;
 
-use flavor_plugin_core::{Diagnostic, SourceText, Span, SyntaxBuilder, SyntaxNode, Token};
+use flavor_core::{Diagnostic, SourceText, Span, SyntaxBuilder, SyntaxNode, Token};
 
 use crate::{
     ast::TsSourceFile,
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse(mut self) -> (SyntaxNode, Vec<Diagnostic>) {
-        self.builder.start_node(TsSyntaxKind::SourceFile);
+        self.builder.start_schema_node(TsSyntaxKind::SourceFile);
         while !self.at(TsSyntaxKind::EndOfFile) {
             self.parse_statement();
         }
@@ -160,7 +160,7 @@ impl<'a> Parser<'a> {
         if !is_modifier_kind(self.current()) {
             return;
         }
-        self.builder.start_node(TsSyntaxKind::ModifierList);
+        self.builder.start_schema_node(TsSyntaxKind::ModifierList);
         while is_modifier_kind(self.current()) {
             self.bump();
         }
@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
                 .token(trivia.kind, self.source.slice(trivia.span));
         }
         self.builder
-            .token(token.kind, self.source.slice(token.span));
+            .schema_token(token.kind, self.source.slice(token.span));
         self.cursor += 1;
     }
 

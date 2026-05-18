@@ -1,4 +1,4 @@
-use flavor_plugin_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt};
+use flavor_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt};
 
 use crate::{
     descriptor::{SvelteBlock, SvelteDescriptor},

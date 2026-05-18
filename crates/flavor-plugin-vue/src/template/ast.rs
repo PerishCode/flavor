@@ -1,4 +1,4 @@
-use flavor_plugin_core::{Diagnostic, SyntaxNode};
+use flavor_core::{Diagnostic, SyntaxNode};
 
 #[derive(Debug, Clone)]
 pub struct TemplateAst {

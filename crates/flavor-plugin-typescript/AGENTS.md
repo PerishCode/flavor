@@ -1,7 +1,7 @@
 # AGENTS
 
 `crates/flavor-plugin-typescript/` owns TypeScript, JavaScript, and TSX syntax and
-facts on top of `flavor-plugin-core`.
+facts on top of `flavor-core`.
 
 ## Directory Rules
 
@@ -10,7 +10,8 @@ facts on top of `flavor-plugin-core`.
 - `src/ast/`, `src/facts/`, and `src/visit/` own typed AST access, derived facts,
   and traversal hooks.
 - `src/state/` owns `TsPluginConfig` and `TsPluginState`.
-- `src/syntax_kind.rs` owns frontend syntax kind definitions.
+- `build.rs` derives `TsSyntaxKind` from the TypeScript G4 raw AST schema.
+- `src/syntax_kind.rs` includes generated frontend syntax kind definitions.
 - `harness/cases/` contains representative parser fixtures.
 - `tests/` covers scanner, parser, run output, and harness behavior.
 
@@ -28,7 +29,11 @@ cargo test --locked -p flavor-plugin-typescript
 - Parser changes should include direct parser tests or a harness fixture when
   the syntax shape is meaningful.
 - Keep recovery deterministic and diagnostics source-backed.
-- If syntax kinds move, update parser, AST/fact consumers, and tests together.
+- Keep the plugin lexer/parser as the staged parser backend for this refactor;
+  raw CST node/token kinds must continue to come from the TypeScript G4 raw AST
+  schema and schema-aware builder paths.
+- If syntax kinds move, update the TypeScript G4 surface, parser, AST/fact
+  consumers, and tests together.
 - Embedded expression users, such as Vue and Svelte frontends, depend on this
   crate staying language-frontend oriented rather than CLI-oriented.
 

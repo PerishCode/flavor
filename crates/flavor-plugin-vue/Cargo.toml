@@ -6,8 +6,11 @@ license = "MIT"
 description = "Vue SFC AST frontend for flavor."
 
 [dependencies]
-flavor-plugin-core = { path = "../flavor-plugin-core" }
+flavor-core = { path = "../flavor-core" }
 flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
 
+[build-dependencies]
+flavor-grammar = { path = "../flavor-grammar" }
+
 [dev-dependencies]
-flavor-g4 = { path = "../flavor-g4" }
+flavor-grammar = { path = "../flavor-grammar" }

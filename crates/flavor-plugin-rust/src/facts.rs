@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use flavor_plugin_core::Span;
+use flavor_core::Span;
 use tree_sitter::Node;
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]

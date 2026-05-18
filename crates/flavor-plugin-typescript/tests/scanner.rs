@@ -1,4 +1,4 @@
-use flavor_plugin_core::{SourceText, TriviaKind};
+use flavor_core::{SourceText, TriviaKind};
 use flavor_plugin_typescript::{lexer::scan, syntax_kind::TsSyntaxKind, TsPluginConfig};
 
 fn kinds(source: &str) -> Vec<TsSyntaxKind> {

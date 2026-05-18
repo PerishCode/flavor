@@ -4,7 +4,7 @@ pub mod markup;
 pub mod product;
 pub mod state;
 
-use flavor_plugin_core::{Diagnostic, LineIndex, SourceText, Span};
+use flavor_core::{Diagnostic, LineIndex, SourceText, Span};
 
 pub use descriptor::{SvelteBlock, SvelteDescriptor, SvelteMarkup};
 pub use facts::SvelteFacts;

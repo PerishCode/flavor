@@ -4,7 +4,7 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_block(&mut self, kind: TsSyntaxKind) {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         if !self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start block") {
             self.builder.finish_node();
             return;
@@ -17,7 +17,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_class_body(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ClassBody);
+        self.builder.start_schema_node(TsSyntaxKind::ClassBody);
         if !self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start class body") {
             self.builder.finish_node();
             return;
@@ -30,14 +30,14 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_type_annotation(&mut self, kind: TsSyntaxKind, stops: &[TsSyntaxKind]) {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         self.bump();
         self.parse_type(stops);
         self.builder.finish_node();
     }
 
     pub(super) fn parse_initializer(&mut self, stops: &[TsSyntaxKind]) {
-        self.builder.start_node(TsSyntaxKind::Initializer);
+        self.builder.start_schema_node(TsSyntaxKind::Initializer);
         self.bump();
         self.parse_expression(stops);
         self.builder.finish_node();
@@ -50,7 +50,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_expression_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::ExpressionStatement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::ExpressionStatement);
         let start = self.cursor;
         self.parse_expression(&[
             TsSyntaxKind::Semicolon,
@@ -68,7 +69,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_unknown_statement(&mut self) {
-        self.builder.start_node(TsSyntaxKind::UnknownStatement);
+        self.builder
+            .start_schema_node(TsSyntaxKind::UnknownStatement);
         if self.at(TsSyntaxKind::At) {
             self.parse_decorator_list();
         }
@@ -90,7 +92,7 @@ impl<'a> Parser<'a> {
         close: TsSyntaxKind,
         message: &str,
     ) {
-        self.builder.start_node(kind);
+        self.builder.start_schema_node(kind);
         if self.expect(open, message) {
             let mut depth = 1usize;
             while depth > 0 && !self.at(TsSyntaxKind::EndOfFile) {

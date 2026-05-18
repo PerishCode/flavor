@@ -1,0 +1,9 @@
+[package]
+name = "flavor-grammar"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Grammar contract and raw AST schema layer for flavor."
+
+[dependencies]
+serde_json = "1"

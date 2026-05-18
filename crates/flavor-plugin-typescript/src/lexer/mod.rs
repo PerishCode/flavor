@@ -1,6 +1,6 @@
 mod kinds;
 
-use flavor_plugin_core::{SourceText, Span, Token, Trivia, TriviaKind};
+use flavor_core::{SourceText, Span, Token, Trivia, TriviaKind};
 
 use crate::{state::TsPluginConfig, syntax_kind::TsSyntaxKind};
 

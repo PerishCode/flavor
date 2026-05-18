@@ -4,10 +4,10 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_expression(&mut self, stops: &[TsSyntaxKind]) {
-        self.builder.start_node(TsSyntaxKind::Expression);
+        self.builder.start_schema_node(TsSyntaxKind::Expression);
         let shape = self.expression_shape(stops);
         if let Some(shape) = shape {
-            self.builder.start_node(shape);
+            self.builder.start_schema_node(shape);
             self.parse_expression_tokens_until(stops);
             self.builder.finish_node();
         } else {
@@ -68,7 +68,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call_expression(&mut self) {
-        self.builder.start_node(TsSyntaxKind::CallExpression);
+        self.builder.start_schema_node(TsSyntaxKind::CallExpression);
         self.bump();
         if self.at(TsSyntaxKind::LessThan) {
             self.parse_balanced_node(
@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_new_expression(&mut self) {
-        self.builder.start_node(TsSyntaxKind::NewExpression);
+        self.builder.start_schema_node(TsSyntaxKind::NewExpression);
         self.bump();
         if self.at(TsSyntaxKind::Identifier) && self.next_is(TsSyntaxKind::Dot) {
             self.parse_member_expression();
@@ -125,14 +125,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unary_expression(&mut self) {
-        self.builder.start_node(TsSyntaxKind::UnaryExpression);
+        self.builder
+            .start_schema_node(TsSyntaxKind::UnaryExpression);
         self.bump();
         self.parse_expression_operand();
         self.builder.finish_node();
     }
 
     fn parse_await_expression(&mut self) {
-        self.builder.start_node(TsSyntaxKind::AwaitExpression);
+        self.builder
+            .start_schema_node(TsSyntaxKind::AwaitExpression);
         self.bump();
         self.parse_expression_operand();
         self.builder.finish_node();
@@ -169,7 +171,7 @@ impl<'a> Parser<'a> {
 
     fn parse_parenthesized_expression(&mut self) {
         self.builder
-            .start_node(TsSyntaxKind::ParenthesizedExpression);
+            .start_schema_node(TsSyntaxKind::ParenthesizedExpression);
         if self.expect(TsSyntaxKind::OpenParen, "expected '(' to start expression") {
             self.parse_expression_tokens_until(&[
                 TsSyntaxKind::CloseParen,
@@ -181,7 +183,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_member_expression(&mut self) {
-        self.builder.start_node(TsSyntaxKind::MemberExpression);
+        self.builder
+            .start_schema_node(TsSyntaxKind::MemberExpression);
         self.bump();
         while self.at(TsSyntaxKind::Dot) || self.at(TsSyntaxKind::QuestionDot) {
             self.bump();
@@ -212,7 +215,7 @@ impl<'a> Parser<'a> {
     fn parse_member_chain(&mut self) {
         let has_call = self.has_member_call();
         if has_call {
-            self.builder.start_node(TsSyntaxKind::CallExpression);
+            self.builder.start_schema_node(TsSyntaxKind::CallExpression);
         }
         self.parse_member_expression();
         if self.at(TsSyntaxKind::OpenParen) {

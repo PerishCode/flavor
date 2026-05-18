@@ -37,6 +37,7 @@ REQUIRED_PATHS = (
     ".github/scripts/release/r2/publish.sh",
     ".github/scripts/release/smoke/smoke.sh",
     ".github/scripts/release/smoke/smoke.ps1",
+    "scripts/dev/antlr.py",
     "scripts/init.py",
 )
 
@@ -60,8 +61,9 @@ sh -n install.sh
 bash -n .github/scripts/release/r2/publish.sh
 sh -n .github/scripts/release/smoke/smoke.sh
 
-echo "==> scripts/init.py syntax"
+echo "==> python syntax"
 python3 -m py_compile scripts/init.py
+python3 -m py_compile scripts/dev/antlr.py
 
 if command -v pwsh >/dev/null 2>&1; then
   echo "==> PowerShell syntax"

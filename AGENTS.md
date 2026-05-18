@@ -17,8 +17,8 @@ management.
 - `.github/scripts/` contains workflow-only helper scripts. Keep workflow-only
   scripts there.
 - `grammars/` contains the repo-visible `.g4` grammar source of truth plus
-  `flavor.g4.json` sidecars. Parser backends, facts, diagnostics, and harnesses
-  should align to these files.
+  `metadata.json` contract metadata. Parser backends, facts, diagnostics, and
+  harnesses should align to these files.
 - `scripts/init.py` is the idempotent post-clone initializer. It quick-fails on
   missing required tools or repository entrypoints, installs local hooks, and
   exits cleanly only when the checkout is ready for development.
@@ -31,11 +31,13 @@ management.
 
 - `crates/flavor-cli/AGENTS.md`: installable `flavor` binary, scan config,
   rule execution, reports, and CLI-facing behavior.
-- `crates/flavor-plugin-core/AGENTS.md`: plugin substrate primitives, source
-  text, spans, syntax tree glue, diagnostics, recovery, snapshots, and typed
-  state/config injection.
+- `crates/flavor-core/AGENTS.md`: shared source text, spans, syntax tree glue,
+  diagnostics, recovery, snapshots, product primitives, and typed state/config
+  injection.
 - `crates/flavor-plugin-filesystem/AGENTS.md`: filesystem/path-shape bundled
   plugin identity and behavior.
+- `crates/flavor-plugin-g4/AGENTS.md`: `.g4` source analysis plugin identity
+  and behavior.
 - `crates/flavor-plugin-source-structure/AGENTS.md`: source file/tree-shape
   bundled plugin identity and behavior.
 - `crates/flavor-plugin-rust/AGENTS.md`: Rust syntax/facts frontend and
@@ -46,8 +48,8 @@ management.
   facts, template parsing, and embedded expression validation.
 - `crates/flavor-plugin-svelte/AGENTS.md`: Svelte descriptor, markup parsing,
   facts, and embedded expression validation.
-- `crates/flavor-g4/AGENTS.md`: `.g4` bundle sidecar parser and validation
-  harness.
+- `crates/flavor-grammar/AGENTS.md`: grammar contract metadata, `.g4` source
+  indexing, raw AST schema derivation, and validation harnesses.
 
 When adding or removing a core subtree, update this index in the same change.
 Child `AGENTS.md` files should stay local: ownership, directory shape, commands,
@@ -72,11 +74,15 @@ cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+python3 scripts/dev/antlr.py check
 ```
 
 `python3 scripts/init.py` is the default post-clone command. Use `--force` only
 when intentionally replacing existing non-init hooks; the script backs them up
 first.
+`python3 scripts/dev/antlr.py check` is an optional Dockerized ANTLR validation
+helper. It lazily builds its Docker image when needed, checks `.g4` files under
+`grammars/` in ANTLR dependency mode, and does not generate Java artifacts.
 
 ## Standard Workflow
 

@@ -1,17 +1,8 @@
-mod rust;
-mod svelte;
-mod ts;
-mod tsx;
-
 use crate::{
     config::RuleSettings,
     model::{issue, Issue},
     rules::PAYLOAD_MAX_WORDS,
 };
-
-pub(crate) use rust::check_rust_names;
-pub(crate) use svelte::check_svelte_names;
-pub(crate) use ts::check_ts_names;
 
 pub(crate) fn check_name(
     issues: &mut Vec<Issue>,

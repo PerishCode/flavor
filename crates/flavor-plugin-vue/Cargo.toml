@@ -1,0 +1,13 @@
+[package]
+name = "flavor-plugin-vue"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Vue SFC AST frontend for flavor."
+
+[dependencies]
+flavor-plugin-core = { path = "../flavor-plugin-core" }
+flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
+
+[dev-dependencies]
+flavor-g4 = { path = "../flavor-g4" }

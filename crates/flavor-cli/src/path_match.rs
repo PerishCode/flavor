@@ -41,6 +41,10 @@ pub(crate) fn relative_path(root: &Path, path: &Path) -> Result<PathBuf, String>
         .map_err(|error| format!("failed to strip root from {}: {error}", path.display()))
 }
 
+pub(crate) fn path_string(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 fn path_segments(path: &Path) -> Vec<String> {
     path.components()
         .filter_map(|component| component.as_os_str().to_str())

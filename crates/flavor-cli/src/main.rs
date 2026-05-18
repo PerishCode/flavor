@@ -6,8 +6,8 @@ mod model;
 mod naming;
 mod output;
 mod path_match;
+mod plugins;
 mod rules;
-mod rust_tests;
 mod scan;
 
 use cli::{help_text, parse_args, CliCommand};

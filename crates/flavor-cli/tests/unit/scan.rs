@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     config::GuardConfig,
+    model::Report,
     rules::{
         FS_TOO_MANY_CHILDREN, NAMING_TOO_MANY_WORDS, RUST_TESTS_IN_SOURCE, SOURCE_TOO_DEEP,
         SOURCE_TOO_LONG, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
@@ -274,6 +275,52 @@ fn reports_scan_coverage() {
         .issues
         .iter()
         .any(|issue| issue.rule == NAMING_TOO_MANY_WORDS));
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn mixed_language_parity() {
+    let root = test_root("mixed-parity");
+    let source_dir = root.join("tools/demo/src");
+    fs::create_dir_all(&source_dir).unwrap();
+    fs::write(
+        source_dir.join("lib.rs"),
+        "#[cfg(test)] mod tests { #[test] fn guard_sample_over_limit_name() {} }\n",
+    )
+    .unwrap();
+    fs::write(
+        source_dir.join("client.ts"),
+        "function rendererOperationEventHandlerName(inputValue: string) { return inputValue; }\n",
+    )
+    .unwrap();
+    fs::write(
+        source_dir.join("App.vue"),
+        "<script setup lang=\"ts\">\nconst controllerRuntimeResultValueText = 1;\n</script>",
+    )
+    .unwrap();
+    fs::write(
+        source_dir.join("Panel.svelte"),
+        "<script lang=\"ts\">\nconst panelRendererOperationEventHandlerName = 1;\n</script>",
+    )
+    .unwrap();
+
+    let config = test_config(&root, "tools/*/src/**");
+    let result = run_scan(&config).unwrap();
+    let report = Report::with_scan(config.root.clone(), result.stats, result.issues.clone());
+
+    assert_eq!(result.stats.scanned_files, 4);
+    assert_eq!(report.exit_code(false), 1);
+    assert!(result
+        .issues
+        .iter()
+        .any(|issue| issue.rule == RUST_TESTS_IN_SOURCE && issue.path.ends_with("lib.rs")));
+    for path in ["client.ts", "App.vue", "Panel.svelte"] {
+        assert!(result
+            .issues
+            .iter()
+            .any(|issue| { issue.rule == NAMING_TOO_MANY_WORDS && issue.path.ends_with(path) }));
+    }
 
     let _ = fs::remove_dir_all(root);
 }

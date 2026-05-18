@@ -1,0 +1,9 @@
+[package]
+name = "flavor-g4"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Parser and validator for flavor G4 bundle sidecars."
+
+[dependencies]
+serde_json = "1"

@@ -6,18 +6,19 @@ license = "MIT"
 description = "Personal check-only AST-backed code flavor lint CLI."
 
 [dependencies]
-flavor-compiler-core = { path = "../flavor-compiler-core" }
-flavor-compiler-svelte = { path = "../flavor-compiler-svelte" }
-flavor-compiler-vue = { path = "../flavor-compiler-vue" }
-proc-macro2 = { version = "1", features = ["span-locations"] }
+flavor-plugin-core = { path = "../flavor-plugin-core" }
+flavor-plugin-filesystem = { path = "../flavor-plugin-filesystem" }
+flavor-plugin-rust = { path = "../flavor-plugin-rust" }
+flavor-plugin-svelte = { path = "../flavor-plugin-svelte" }
+flavor-plugin-source-structure = { path = "../flavor-plugin-source-structure" }
+flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
+flavor-plugin-vue = { path = "../flavor-plugin-vue" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-swc_common = "21.0.1"
-swc_ecma_ast = "23.0.0"
-swc_ecma_parser = "39.0.2"
-swc_ecma_visit = "23.0.0"
-syn = { version = "2", features = ["full", "visit"] }
 walkdir = "2"
+
+[dev-dependencies]
+flavor-g4 = { path = "../flavor-g4" }
 
 [[bin]]
 name = "flavor"

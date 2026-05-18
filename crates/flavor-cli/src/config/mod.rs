@@ -467,7 +467,8 @@ pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
     match path.extension().and_then(|extension| extension.to_str()) {
         Some("rs") => Some(SourceKind::Rust),
         Some("svelte") => Some(SourceKind::Svelte),
-        Some("ts" | "tsx" | "vue") => Some(SourceKind::TypeScript),
+        Some("ts" | "tsx") => Some(SourceKind::TypeScript),
+        Some("vue") => Some(SourceKind::Vue),
         _ => None,
     }
 }
@@ -477,6 +478,7 @@ pub(crate) enum SourceKind {
     Rust,
     Svelte,
     TypeScript,
+    Vue,
 }
 
 #[allow(dead_code)]

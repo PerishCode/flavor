@@ -10,10 +10,14 @@ reports, and CLI-facing scan configuration.
 - `src/cli.rs` owns command parsing and help text. Keep CLI behavior stable and
   update tests when output or accepted arguments move.
 - `src/config.rs`, `src/scan.rs`, and `src/path_match.rs` own config discovery,
-  scan setup, and include/exclude matching. Compiler crates do not own these
+  scan traversal, and include/exclude matching. Plugin crates do not own these
   concerns.
+- `src/plugins/` owns the first-party bundled plugin boundary for filesystem,
+  source-structure, language, naming, and framework checks. Keep it internal to
+  the CLI until the external plugin model exists.
 - `src/rules.rs`, `src/model.rs`, `src/output.rs`, and `src/naming/` own rule
-  definitions, issue/report modeling, text/JSON output, and naming checks.
+  definitions, issue/report modeling, text/JSON output, and naming helpers used
+  by bundled plugins.
 - `src/rust_tests.rs` owns Rust test-shape inspection.
 - `tests/unit/` contains CLI unit coverage. Register each new unit test module
   in `tests/unit.rs`.
@@ -50,6 +54,6 @@ attributes. Product-specific scope belongs in consumer config.
 
 ### Where Should Scan Discovery Logic Live?
 
-Here, in `flavor-cli`. Compiler crates should receive typed config/state and
+Here, in `flavor-cli`. Plugin crates should receive typed config/state and
 return syntax/facts/diagnostics without knowing config filenames or discovery
 rules.

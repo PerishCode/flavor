@@ -16,6 +16,9 @@ management.
 - `.github/workflows/` contains CI and release workflows.
 - `.github/scripts/` contains workflow-only helper scripts. Keep workflow-only
   scripts there.
+- `grammars/` contains the repo-visible `.g4` grammar source of truth plus
+  `flavor.g4.json` sidecars. Parser backends, facts, diagnostics, and harnesses
+  should align to these files.
 - `scripts/init.py` is the idempotent post-clone initializer. It quick-fails on
   missing required tools or repository entrypoints, installs local hooks, and
   exits cleanly only when the checkout is ready for development.
@@ -28,15 +31,23 @@ management.
 
 - `crates/flavor-cli/AGENTS.md`: installable `flavor` binary, scan config,
   rule execution, reports, and CLI-facing behavior.
-- `crates/flavor-compiler-core/AGENTS.md`: compiler substrate primitives,
-  source text, spans, syntax tree glue, diagnostics, recovery, snapshots, and
-  typed state/config injection.
-- `crates/flavor-compiler-ts/AGENTS.md`: TypeScript, JavaScript, and TSX lexer,
+- `crates/flavor-plugin-core/AGENTS.md`: plugin substrate primitives, source
+  text, spans, syntax tree glue, diagnostics, recovery, snapshots, and typed
+  state/config injection.
+- `crates/flavor-plugin-filesystem/AGENTS.md`: filesystem/path-shape bundled
+  plugin identity and behavior.
+- `crates/flavor-plugin-source-structure/AGENTS.md`: source file/tree-shape
+  bundled plugin identity and behavior.
+- `crates/flavor-plugin-rust/AGENTS.md`: Rust syntax/facts frontend and
+  embedded Rust lint facts.
+- `crates/flavor-plugin-typescript/AGENTS.md`: TypeScript, JavaScript, and TSX lexer,
   parser, AST, facts, visitor, and frontend state.
-- `crates/flavor-compiler-vue/AGENTS.md`: Vue SFC descriptor, template/style
+- `crates/flavor-plugin-vue/AGENTS.md`: Vue SFC descriptor, template/style
   facts, template parsing, and embedded expression validation.
-- `crates/flavor-compiler-svelte/AGENTS.md`: Svelte descriptor, markup parsing,
+- `crates/flavor-plugin-svelte/AGENTS.md`: Svelte descriptor, markup parsing,
   facts, and embedded expression validation.
+- `crates/flavor-g4/AGENTS.md`: `.g4` bundle sidecar parser and validation
+  harness.
 
 When adding or removing a core subtree, update this index in the same change.
 Child `AGENTS.md` files should stay local: ownership, directory shape, commands,
@@ -49,8 +60,9 @@ workflow notes, and FAQ for that subtree.
 - Do not encode product-specific business concepts in built-in rules.
 - Prefer reports that explain the bad flavor and suggest a direction of thought.
 - Keep consumer-specific scope in consumer config files.
-- Compiler crates expose typed config injection through state. They do not define
-  config file names, discovery rules, or historical ecosystem compatibility.
+- Plugin crates may expose typed config injection through state. They do not
+  define config file names, discovery rules, report rendering, or historical
+  ecosystem compatibility.
 
 ## Common Commands
 
@@ -190,7 +202,8 @@ shape, and abstract style attributes.
 ### Which Crate Owns Config Discovery?
 
 `flavor-cli` owns config file names, discovery, scan setup, report output, and
-exit behavior. Compiler crates only expose typed config/state injection.
+exit behavior. Plugin crates only expose plugin-facing inputs, facts,
+diagnostics, and typed state/config injection where needed.
 
 ### Where Do Installer Changes Go?
 

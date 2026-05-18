@@ -146,7 +146,12 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 
 ## Workspace
 
-The installable binary lives in `crates/flavor-cli`. Compiler frontends grow as sibling crates: `flavor-compiler-core` owns compiler substrate primitives, `flavor-compiler-ts` owns TS/JS syntax facts, `flavor-compiler-vue` owns Vue SFC/template/style facts, and `flavor-compiler-svelte` owns Svelte descriptor/markup facts. Compiler crates accept typed config through state and do not define config file names.
+The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-plugin-core` owns shared plugin substrate primitives, `flavor-g4` owns grammar bundle contracts, `flavor-plugin-filesystem` and `flavor-plugin-source-structure` own file/tree shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
+
+Frontend contracts are anchored in `grammars/<language>/*.g4` plus
+`grammars/<language>/flavor.g4.json`. The `.g4` files are the repo-visible
+grammar source of truth; the sidecars hold flavor-specific entrypoints, fact
+payload contracts, diagnostics, spans, and recovery expectations.
 
 ## Development
 

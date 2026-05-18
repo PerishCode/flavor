@@ -1,0 +1,143 @@
+{
+  "bundle": "typescript",
+  "grammars": [
+    {
+      "directives": {
+        "entry": "program",
+        "owner": "crates/flavor-plugin-typescript"
+      },
+      "id": "tsx",
+      "sections": {
+        "diagnostics": {
+          "parse.error": "ERROR node -> ts/parse/error",
+          "parse.missing": "MISSING node -> ts/parse/error"
+        },
+        "facts": {
+          "jsx.element": "jsx_opening_element.name -> TsxElementFact(name, root, intrinsic, self_closing, span, line) -> Fact(payload.name, payload.root, payload.intrinsic, payload.self_closing, span, line)",
+          "jsx.intrinsic": "lowercase jsx identifier or namespace -> intrinsic name",
+          "jsx.root": "member_expression root identifier -> primitive namespace root",
+          "jsx.self_closing": "jsx_self_closing_element.name -> TsxElementFact(name, root, intrinsic, self_closing, span, line) -> Fact(payload.name, payload.root, payload.intrinsic, payload.self_closing, span, line)",
+          "primitive.imports": "typescript import facts from configured sources -> PrimitiveImports",
+          "primitive.usage": "jsx element name or root matches primitive imports -> primitive usage flag"
+        },
+        "nodes": {
+          "import_statement": "tree-sitter:import_statement",
+          "jsx_attribute": "tree-sitter:jsx_attribute",
+          "jsx_element": "tree-sitter:jsx_element",
+          "jsx_expression": "tree-sitter:jsx_expression",
+          "jsx_opening_element": "tree-sitter:jsx_opening_element",
+          "jsx_self_closing_element": "tree-sitter:jsx_self_closing_element",
+          "member_expression": "tree-sitter:member_expression",
+          "program": "tree-sitter:program"
+        },
+        "productions": {
+          "jsx_child": "jsx_text | jsx_expression | jsx_element | jsx_self_closing_element",
+          "jsx_element": "jsx_opening_element jsx_child* jsx_closing_element",
+          "jsx_name": "identifier | member_expression | jsx_namespace_name",
+          "jsx_opening_element": "jsx_open jsx_name jsx_attribute* jsx_close",
+          "jsx_self_closing_element": "jsx_open jsx_name jsx_attribute* jsx_self_close",
+          "program": "typescript.statement* eof"
+        },
+        "recovery": {
+          "rule.continuation": "JSX facts may emit outside broken subtrees",
+          "tree_sitter.errors": "collect ERROR nodes",
+          "tree_sitter.missing": "collect MISSING nodes"
+        },
+        "spans": {
+          "element.line": "opening node start_position.row + 1",
+          "element.range": "opening node start_byte..end_byte",
+          "script.offset": "host block start_line added to element line"
+        },
+        "tokens": {
+          "eof": "synthetic:EOF",
+          "jsx_close": "literal:>",
+          "jsx_identifier": "tree-sitter:identifier",
+          "jsx_namespace": "tree-sitter:jsx_namespace_name",
+          "jsx_open": "literal:<",
+          "jsx_self_close": "literal:/>",
+          "jsx_text": "tree-sitter:jsx_text"
+        }
+      },
+      "sources": {
+        "lexer": "TypeScriptLexer.g4",
+        "parser": "TsxParser.g4"
+      }
+    },
+    {
+      "directives": {
+        "entry": "program",
+        "owner": "crates/flavor-plugin-typescript"
+      },
+      "id": "typescript",
+      "sections": {
+        "diagnostics": {
+          "embedded.expression": "expression grammar diagnostic -> host diagnostic with offset",
+          "parse.error": "ERROR node -> ts/parse/error",
+          "parse.missing": "MISSING node -> ts/parse/error"
+        },
+        "facts": {
+          "dispatch.branch": "switch_case full range -> TsDispatchBranchFact(span, line, lines) -> Fact(payload.lines, span, line)",
+          "module.counts": "import and export tokens -> TsFacts counts",
+          "module.import": "import_statement.source and import_clause -> TsImportFact(source, specifiers, span, line) -> Fact(payload.source, payload.type_only, payload.default_imports, payload.named_imports, payload.namespace_imports, span, line)",
+          "name.binding": "variable_declarator.name identifiers -> TsNameFact(kind:binding, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.function": "function_declaration.name | function_expression.name -> TsNameFact(kind:function, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.method": "method_definition.name | method_signature.name -> TsNameFact(kind:method, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.parameter": "parameter pattern identifiers -> TsNameFact(kind:parameter, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)"
+        },
+        "nodes": {
+          "function_declaration": "tree-sitter:function_declaration",
+          "function_expression": "tree-sitter:function_expression",
+          "import_clause": "tree-sitter:import_clause",
+          "import_specifier": "tree-sitter:import_specifier",
+          "import_statement": "tree-sitter:import_statement",
+          "method_definition": "tree-sitter:method_definition",
+          "method_signature": "tree-sitter:method_signature",
+          "namespace_import": "tree-sitter:namespace_import",
+          "optional_parameter": "tree-sitter:optional_parameter",
+          "program": "tree-sitter:program",
+          "required_parameter": "tree-sitter:required_parameter",
+          "switch_case": "tree-sitter:switch_case",
+          "variable_declarator": "tree-sitter:variable_declarator"
+        },
+        "productions": {
+          "function_declaration": "keyword_function identifier formal_parameters body",
+          "import_clause": "type_marker? default_import? namespace_import? named_imports?",
+          "import_statement": "keyword_import import_clause? from_clause?",
+          "method_definition": "property_name formal_parameters body",
+          "parameter": "required_parameter | optional_parameter",
+          "program": "statement* eof",
+          "statement": "import_statement | export_statement | declaration | expression_statement",
+          "switch_case": "keyword_case expression statements",
+          "variable_declarator": "binding_pattern type? value?"
+        },
+        "recovery": {
+          "legacy.cst": "existing harness remains until grammar-backed CST is complete",
+          "tree_sitter.errors": "collect ERROR nodes",
+          "tree_sitter.missing": "collect MISSING nodes"
+        },
+        "spans": {
+          "diagnostic.range": "parser range mapped through host offset",
+          "node.line": "start_position.row + 1",
+          "node.range": "start_byte..end_byte",
+          "script.offset": "host block start_line added to fact line"
+        },
+        "tokens": {
+          "eof": "synthetic:EOF",
+          "identifier": "tree-sitter:identifier",
+          "keyword_case": "literal:case",
+          "keyword_const": "literal:const",
+          "keyword_export": "literal:export",
+          "keyword_function": "literal:function",
+          "keyword_import": "literal:import",
+          "keyword_let": "literal:let",
+          "keyword_switch": "literal:switch",
+          "string": "tree-sitter:string"
+        }
+      },
+      "sources": {
+        "lexer": "TypeScriptLexer.g4",
+        "parser": "TypeScriptParser.g4"
+      }
+    }
+  ]
+}

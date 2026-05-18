@@ -4,9 +4,12 @@ use std::{
 };
 
 use crate::{
-    config::{GuardConfig, NodeKind, RuleSettings},
-    naming::{check_rust_names, check_ts_names, count_name_words},
-    rules::{DISPATCH_BRANCH_TOO_LONG, RUST_PARSE_ERROR, TS_PARSE_ERROR, VUE_PARSE_ERROR},
+    config::{source_file_kind, GuardConfig},
+    model::Issue,
+    naming::count_name_words,
+    path_match::path_string,
+    plugins::{PluginHost, Scope},
+    rules::{DISPATCH_BRANCH_TOO_LONG, VUE_PARSE_ERROR},
 };
 
 static CONFIG: LazyLock<GuardConfig> = LazyLock::new(|| GuardConfig::core(PathBuf::from(".")));
@@ -21,16 +24,10 @@ fn counts_name_words() {
 
 #[test]
 fn rust_detects_long_names() {
-    let mut issues = Vec::new();
     let relative = Path::new("sample.rs");
-    let parse_rule = rule(relative, RUST_PARSE_ERROR);
-    check_rust_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "sample.rs",
         "fn guard_sample_over_limit_name() { let guard_sample_value_over_limit = 1; }",
-        &mut issues,
-        &parse_rule,
     );
 
     assert_eq!(issues.len(), 2);
@@ -40,13 +37,9 @@ fn rust_detects_long_names() {
 
 #[test]
 fn groups_trait_impl_names() {
-    let mut issues = Vec::new();
     let relative = Path::new("sample.rs");
-    let parse_rule = rule(relative, RUST_PARSE_ERROR);
-    check_rust_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "sample.rs",
         r#"
 trait Repo {
     fn find_primary_by_account_id(&self);
@@ -60,8 +53,6 @@ impl SeaOrmRepo {
     fn find_secondary_by_account_id(&self) {}
 }
 "#,
-        &mut issues,
-        &parse_rule,
     );
 
     assert_eq!(issues.len(), 2);
@@ -71,16 +62,10 @@ impl SeaOrmRepo {
 
 #[test]
 fn ts_detects_long_names() {
-    let mut issues = Vec::new();
     let relative = Path::new("sample.ts");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
-    check_ts_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "sample.ts",
         "function rendererOperationEventHandlerName(inputValue: string) { const controllerRuntimeResultValueText = inputValue; }",
-        &mut issues,
-        &parse_rule,
     );
 
     assert_eq!(issues.len(), 2);
@@ -94,16 +79,10 @@ fn ts_detects_long_names() {
 
 #[test]
 fn vue_offsets_lines() {
-    let mut issues = Vec::new();
     let relative = Path::new("Sample.vue");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
-    check_ts_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "Sample.vue",
         "<template></template>\n<script setup lang=\"ts\">\nconst controllerRuntimeResultValueText = 1;\n</script>",
-        &mut issues,
-        &parse_rule,
     );
 
     assert_eq!(issues[0].line, Some(3));
@@ -111,16 +90,10 @@ fn vue_offsets_lines() {
 
 #[test]
 fn vue_reports_sfc_errors() {
-    let mut issues = Vec::new();
     let relative = Path::new("Sample.vue");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
-    check_ts_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "Sample.vue",
         "<script setup>const first = 1;</script>\n<script setup>const second = 2;</script>",
-        &mut issues,
-        &parse_rule,
     );
 
     assert!(issues.iter().any(|issue| {
@@ -132,16 +105,10 @@ fn vue_reports_sfc_errors() {
 
 #[test]
 fn vue_reports_template_exprs() {
-    let mut issues = Vec::new();
     let relative = Path::new("Sample.vue");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
-    check_ts_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "Sample.vue",
         r#"<template><div :class="user.">{{ call( }}</div></template>"#,
-        &mut issues,
-        &parse_rule,
     );
 
     assert!(issues.iter().any(|issue| {
@@ -157,16 +124,10 @@ fn vue_reports_template_exprs() {
 
 #[test]
 fn vue_checks_script_blocks() {
-    let mut issues = Vec::new();
     let relative = Path::new("Sample.vue");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
-    check_ts_names(
-        &CONFIG,
+    let issues = source_issues(
         relative,
-        "Sample.vue",
         "<script lang=\"ts\">\nconst rendererOperationEventHandlerName = 1;\n</script>\n<script setup lang=\"ts\">\nconst controllerRuntimeResultValueText = 1;\n</script>",
-        &mut issues,
-        &parse_rule,
     );
 
     assert!(issues
@@ -179,21 +140,12 @@ fn vue_checks_script_blocks() {
 
 #[test]
 fn flags_match_arm() {
-    let mut issues = Vec::new();
     let relative = Path::new("sample.rs");
-    let parse_rule = rule(relative, RUST_PARSE_ERROR);
     let repeated_body = "let a = 1;\n".repeat(25);
     let source =
         format!("fn route(x: i32) {{\nmatch x {{\n1 => {{\n{repeated_body}}}\n_ => {{}}\n}}\n}}");
 
-    check_rust_names(
-        &CONFIG,
-        relative,
-        "sample.rs",
-        &source,
-        &mut issues,
-        &parse_rule,
-    );
+    let issues = source_issues(relative, &source);
 
     assert!(issues
         .iter()
@@ -202,28 +154,28 @@ fn flags_match_arm() {
 
 #[test]
 fn flags_switch_case() {
-    let mut issues = Vec::new();
     let relative = Path::new("sample.ts");
-    let parse_rule = rule(relative, TS_PARSE_ERROR);
     let repeated_body = "x += 1;\n".repeat(25);
     let source = format!(
         "function route(x: number) {{\nswitch (x) {{\ncase 1:\n{repeated_body}break;\ndefault:\nbreak;\n}}\n}}"
     );
 
-    check_ts_names(
-        &CONFIG,
-        relative,
-        "sample.ts",
-        &source,
-        &mut issues,
-        &parse_rule,
-    );
+    let issues = source_issues(relative, &source);
 
     assert!(issues
         .iter()
         .any(|issue| issue.rule == DISPATCH_BRANCH_TOO_LONG));
 }
 
-fn rule(relative: &Path, rule_id: &'static str) -> RuleSettings {
-    CONFIG.rule(relative, NodeKind::File, rule_id)
+fn source_issues(relative: &Path, source: &str) -> Vec<Issue> {
+    let host = PluginHost::bundled();
+    let path = path_string(relative);
+    let kind = source_file_kind(relative).expect("test source should have supported extension");
+    let mut issues = Vec::new();
+    host.run_scope(
+        &CONFIG,
+        Scope::source_file(relative, &path, source, kind),
+        &mut issues,
+    );
+    issues
 }

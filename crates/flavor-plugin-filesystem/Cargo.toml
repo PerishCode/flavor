@@ -1,0 +1,9 @@
+[package]
+name = "flavor-plugin-filesystem"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "First-party filesystem shape plugin for flavor."
+
+[dependencies]
+flavor-plugin-core = { path = "../flavor-plugin-core" }

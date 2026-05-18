@@ -1,0 +1,14 @@
+[package]
+name = "flavor-shared"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "First-party implementation helpers for flavor plugins."
+
+[features]
+default = []
+grammar-build = ["dep:flavor-grammar"]
+
+[dependencies]
+flavor-core = { path = "../flavor-core" }
+flavor-grammar = { path = "../flavor-grammar", optional = true }

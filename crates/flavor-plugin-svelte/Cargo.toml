@@ -8,9 +8,10 @@ description = "First-party Svelte syntax plugin for flavor."
 [dependencies]
 flavor-core = { path = "../flavor-core" }
 flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
+flavor-shared = { path = "../flavor-shared" }
 
 [build-dependencies]
-flavor-grammar = { path = "../flavor-grammar" }
+flavor-shared = { path = "../flavor-shared", features = ["grammar-build"] }
 
 [dev-dependencies]
 flavor-grammar = { path = "../flavor-grammar" }

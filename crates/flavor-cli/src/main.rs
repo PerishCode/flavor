@@ -10,11 +10,13 @@ mod plugins;
 mod rules;
 mod scan;
 
-use cli::{help_text, parse_args, CliCommand};
+use cli::{help_text, parse_args, CliCommand, LogLevel};
 use config::ConfigSource;
 use model::Report;
 use output::{print_report, print_rules};
 use scan::run_scan;
+use tracing::debug;
+use tracing_subscriber::filter::LevelFilter;
 
 fn main() {
     match run() {
@@ -28,6 +30,7 @@ fn main() {
 
 fn run() -> Result<i32, String> {
     let options = parse_args(env::args().skip(1).collect())?;
+    init_tracing(options.log_level())?;
     let options = match options {
         CliCommand::Check(options) => options,
         CliCommand::Rules(rules_options) => {
@@ -44,6 +47,7 @@ fn run() -> Result<i32, String> {
         }
     };
     let (config, source) = config::resolve(options.root, options.config)?;
+    debug!(root = %config.root.display(), source = ?source, "resolved config");
     if let ConfigSource::Discovered(path) = &source {
         eprintln!("flavor: using config {}", path.display());
     }
@@ -68,4 +72,25 @@ fn run() -> Result<i32, String> {
 
 fn build_version() -> &'static str {
     option_env!("FLAVOR_BUILD_VERSION").unwrap_or(concat!("v", env!("CARGO_PKG_VERSION")))
+}
+
+fn init_tracing(level: LogLevel) -> Result<(), String> {
+    let filter = match level {
+        LogLevel::Off => LevelFilter::OFF,
+        LogLevel::Error => LevelFilter::ERROR,
+        LogLevel::Warn => LevelFilter::WARN,
+        LogLevel::Info => LevelFilter::INFO,
+        LogLevel::Debug => LevelFilter::DEBUG,
+        LogLevel::Trace => LevelFilter::TRACE,
+    };
+    if filter == LevelFilter::OFF {
+        return Ok(());
+    }
+    tracing_subscriber::fmt()
+        .with_max_level(filter)
+        .with_target(false)
+        .without_time()
+        .with_writer(std::io::stderr)
+        .try_init()
+        .map_err(|error| format!("failed to initialize logging: {error}"))
 }

@@ -14,6 +14,7 @@ pub(crate) const FS_TOO_MANY_CHILDREN: &str = "core/fs/too-many-children";
 pub(crate) const SOURCE_TOO_LONG: &str = "core/source/too-long";
 pub(crate) const SOURCE_TOO_DEEP: &str = "core/source/too-deep";
 pub(crate) const G4_PARSE_ERROR: &str = "g4/parse/error";
+pub(crate) const SHAPE_REPEATED_TOKEN_PATTERN: &str = "shape/repeated-token-pattern";
 pub(crate) const RUST_TESTS_IN_SOURCE: &str = "rust/tests/in-source";
 pub(crate) const RUST_PARSE_ERROR: &str = "rust/parse/error";
 pub(crate) const SVELTE_COMPONENT_TOO_LONG: &str = "svelte/component/too-long";
@@ -31,14 +32,22 @@ pub(crate) const PAYLOAD_ALLOWED_INTRINSICS: &str = "allowed_intrinsics";
 pub(crate) const PAYLOAD_CASE: &str = "case";
 pub(crate) const PAYLOAD_EXTENSIONS: &str = "extensions";
 pub(crate) const PAYLOAD_FORBIDDEN: &str = "forbidden";
+pub(crate) const PAYLOAD_MAX_REPORTS: &str = "max_reports";
 pub(crate) const PAYLOAD_MAX_WORDS: &str = "max_words";
 pub(crate) const PAYLOAD_MAX_BRANCH_LINES: &str = "max_branch_lines";
 pub(crate) const PAYLOAD_MAX_BLOCKS: &str = "max_blocks";
 pub(crate) const PAYLOAD_MAX_CHILDREN: &str = "max_children";
 pub(crate) const PAYLOAD_MAX_LINES: &str = "max_lines";
 pub(crate) const PAYLOAD_MAX_DEPTH: &str = "max_depth";
+pub(crate) const PAYLOAD_MAX_TOKENS: &str = "max_tokens";
+pub(crate) const PAYLOAD_MIN_LINES: &str = "min_lines";
+pub(crate) const PAYLOAD_MIN_NODES: &str = "min_nodes";
+pub(crate) const PAYLOAD_MIN_OCCURRENCES: &str = "min_occurrences";
+pub(crate) const PAYLOAD_MIN_TOKENS: &str = "min_tokens";
+pub(crate) const PAYLOAD_MIN_TOTAL_LINES: &str = "min_total_lines";
 pub(crate) const PAYLOAD_PRIMITIVE_SOURCES: &str = "primitive_sources";
 pub(crate) const PAYLOAD_REQUIRED: &str = "required";
+pub(crate) const PAYLOAD_TOKEN_BUCKET_SIZE: &str = "token_bucket_size";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -142,6 +151,28 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             bad_flavor: "The grammar source could not be parsed, so raw AST schema checks cannot be trusted.",
             action_hint: "Check the `.g4` rule shape and references before treating generated schema or adapter output as meaningful.",
         }),
+        SHAPE_REPEATED_TOKEN_PATTERN => {
+            let defaults = flavor_plugin_rust::RustRepeatedTokenPatternConfig::default();
+            Some(RuleDescriptor {
+                id: SHAPE_REPEATED_TOKEN_PATTERN,
+                target: RuleTarget::File,
+                default_enabled: true,
+                default_severity: Severity::Warning,
+                default_payload: payload([
+                    (PAYLOAD_MIN_OCCURRENCES, defaults.min_occurrences),
+                    (PAYLOAD_MIN_TOTAL_LINES, defaults.min_total_lines),
+                    (PAYLOAD_MIN_LINES, defaults.min_lines),
+                    (PAYLOAD_MAX_LINES, defaults.max_lines),
+                    (PAYLOAD_MIN_TOKENS, defaults.min_tokens),
+                    (PAYLOAD_MAX_TOKENS, defaults.max_tokens),
+                    (PAYLOAD_MIN_NODES, defaults.min_nodes),
+                    (PAYLOAD_TOKEN_BUCKET_SIZE, defaults.token_bucket_size),
+                    (PAYLOAD_MAX_REPORTS, defaults.max_reports),
+                ]),
+                bad_flavor: "A repeated syntax shape may be spending too much local structure budget without a named boundary.",
+                action_hint: "Review whether the repeated shape is an intentional local rhythm or a candidate for a small helper, macro, or generated declaration.",
+            })
+        }
         RUST_TESTS_IN_SOURCE => Some(RuleDescriptor {
             id: RUST_TESTS_IN_SOURCE,
             target: RuleTarget::File,
@@ -256,6 +287,7 @@ pub(crate) fn known_rule_ids() -> Vec<&'static str> {
         SOURCE_TOO_LONG,
         SOURCE_TOO_DEEP,
         G4_PARSE_ERROR,
+        SHAPE_REPEATED_TOKEN_PATTERN,
         RUST_TESTS_IN_SOURCE,
         RUST_PARSE_ERROR,
         SVELTE_COMPONENT_TOO_LONG,

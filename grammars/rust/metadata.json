@@ -19,6 +19,7 @@
           "name.method": "function_item.name inside impl_item -> RustNameFact(kind:method, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
           "name.parameter": "parameter.pattern identifiers -> RustNameFact(kind:parameter, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
           "name.trait_signature": "function_signature_item.name inside trait_item -> RustNameFact(kind:method, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "shape.repeated_token_pattern": "raw CST normalized token subtree hash exceeds repeated structure budget -> RustRepeatedTokenPatternFact(span, line, occurrences, total_lines, token_count, node_kind, depth) -> Fact(payload.occurrences, payload.total_lines, payload.token_count, payload.node_kind, payload.depth, span, line)",
           "test.attribute": "attribute_item text contains test -> RustTestAttributeFact(span, line) -> Fact(span, line)"
         },
         "nodes": {

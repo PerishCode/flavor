@@ -3,9 +3,9 @@ use crate::{
     plugins::{FactUse, GrammarUse, PluginManifest, ScopeDecl, ScopeKind},
     rules::{
         DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
-        SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
-        SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX, TSX_NO_INTRINSICS,
-        TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
+        SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
+        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
+        TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
     },
 };
 
@@ -37,6 +37,7 @@ const RUST_RULES: &[&str] = &[
     NAMING_TOO_MANY_WORDS,
     RUST_PARSE_ERROR,
     RUST_TESTS_IN_SOURCE,
+    SHAPE_REPEATED_TOKEN_PATTERN,
 ];
 const RUST_FACTS: &[FactUse] = &[
     fact(
@@ -63,6 +64,19 @@ const RUST_FACTS: &[FactUse] = &[
         "rust",
         "dispatch.branch",
         &["payload.lines", "span", "line"],
+    ),
+    fact(
+        "rust",
+        "shape.repeated_token_pattern",
+        &[
+            "payload.occurrences",
+            "payload.total_lines",
+            "payload.token_count",
+            "payload.node_kind",
+            "payload.depth",
+            "span",
+            "line",
+        ],
     ),
     fact("rust", "test.attribute", &["span", "line"]),
 ];

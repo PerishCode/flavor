@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{
     model::{issue, Report, ScanStats, Severity},
     output::{text_report, text_rules},
-    rules::{self, FS_TOO_MANY_CHILDREN, NAMING_TOO_MANY_WORDS},
+    rules::{self, FS_TOO_MANY_CHILDREN, NAMING_TOO_MANY_WORDS, SHAPE_REPEATED_TOKEN_PATTERN},
 };
 
 #[test]
@@ -70,4 +70,8 @@ fn text_rules_full_catalog() {
     assert!(text.contains(&format!(
         "{FS_TOO_MANY_CHILDREN} (dir, deny, max_children=10)"
     )));
+    assert!(text.contains(&format!("{SHAPE_REPEATED_TOKEN_PATTERN} (file, warning")));
+    assert!(text.contains("min_occurrences=10"));
+    assert!(text.contains("min_total_lines=200"));
+    assert!(text.contains("max_reports=8"));
 }

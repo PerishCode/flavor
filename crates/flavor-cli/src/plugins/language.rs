@@ -1,8 +1,11 @@
 mod manifest;
+mod shape;
 
 pub(crate) use manifest::{RUST_MANIFEST, SVELTE_MANIFEST, TYPESCRIPT_MANIFEST, VUE_MANIFEST};
 
 use std::{collections::BTreeSet, path::Path};
+
+use shape::check_repeated_token_patterns;
 
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
@@ -12,9 +15,10 @@ use crate::{
     rules::{
         DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_ALLOWED_INTRINSICS,
         PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_BRANCH_LINES, PAYLOAD_MAX_LINES, PAYLOAD_PRIMITIVE_SOURCES,
-        RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
-        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
-        TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
+        RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE, SHAPE_REPEATED_TOKEN_PATTERN,
+        SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
+        SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX, TSX_NO_INTRINSICS,
+        TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
     },
 };
 use flavor_core::{Fact, ProductDiagnostic};
@@ -73,6 +77,19 @@ pub(crate) fn analyze_rust_source<'a>(context: &AnalysisContext<'a>) -> PluginOu
         context.products.facts("rust", "test.attribute"),
         &test_rule,
         &mut issues,
+    );
+
+    let shape_rule =
+        context
+            .config
+            .rule(scope.relative, NodeKind::File, SHAPE_REPEATED_TOKEN_PATTERN);
+    check_repeated_token_patterns(
+        &mut issues,
+        &shape_rule,
+        scope.path,
+        context
+            .products
+            .facts("rust", "shape.repeated_token_pattern"),
     );
 
     PluginOutput::issues(issues)

@@ -7,11 +7,12 @@ description = "TypeScript and JavaScript AST frontend for flavor."
 
 [dependencies]
 flavor-core = { path = "../flavor-core" }
+flavor-shared = { path = "../flavor-shared" }
 tree-sitter = "0.26.8"
 tree-sitter-typescript = "0.23.2"
 
 [build-dependencies]
-flavor-grammar = { path = "../flavor-grammar" }
+flavor-shared = { path = "../flavor-shared", features = ["grammar-build"] }
 
 [dev-dependencies]
 flavor-grammar = { path = "../flavor-grammar" }

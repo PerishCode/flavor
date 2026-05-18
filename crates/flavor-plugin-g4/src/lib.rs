@@ -2,6 +2,7 @@ pub mod product;
 
 use flavor_core::SourceText;
 use flavor_grammar::{parse_g4_source_validated, G4Source, GrammarError};
+use flavor_shared::PluginState;
 
 pub const PLUGIN_ID: &str = "flavor-plugin-g4";
 pub const G4_PARSE_ERROR: &str = "g4/parse/error";
@@ -10,20 +11,7 @@ pub const RULES: &[&str] = &[G4_PARSE_ERROR];
 #[derive(Debug, Clone, Default)]
 pub struct G4PluginConfig;
 
-#[derive(Debug, Clone)]
-pub struct G4PluginState {
-    config: G4PluginConfig,
-}
-
-impl G4PluginState {
-    pub fn new(config: G4PluginConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn config(&self) -> &G4PluginConfig {
-        &self.config
-    }
-}
+pub type G4PluginState = PluginState<G4PluginConfig>;
 
 #[derive(Debug, Clone)]
 pub struct G4AnalysisOutput {

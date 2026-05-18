@@ -3,6 +3,7 @@ mod adapters;
 use flavor_core::{Fact, GrammarProduct, ProductDiagnostic};
 
 use super::{PluginManifest, Scope};
+use crate::config::GuardConfig;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ProductSet {
@@ -10,9 +11,9 @@ pub(crate) struct ProductSet {
 }
 
 impl ProductSet {
-    pub(crate) fn new(manifest: PluginManifest, scope: Scope<'_>) -> Self {
+    pub(crate) fn new(config: &GuardConfig, manifest: PluginManifest, scope: Scope<'_>) -> Self {
         Self {
-            products: adapters::satisfy(manifest, scope),
+            products: adapters::satisfy(config, manifest, scope),
         }
     }
 

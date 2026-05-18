@@ -8,3 +8,4 @@ description = "First-party G4 source analysis plugin for flavor."
 [dependencies]
 flavor-core = { path = "../flavor-core" }
 flavor-grammar = { path = "../flavor-grammar" }
+flavor-shared = { path = "../flavor-shared" }

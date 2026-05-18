@@ -1,28 +1,15 @@
-use std::{env, fs, path::PathBuf};
-
-use flavor_grammar::{parse_g4_source_validated, RawAstSchema};
+use flavor_shared::grammar_build::{write_workspace_syntax_enum, SyntaxEnumOptions};
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let grammar_dir = manifest_dir.join("../../grammars/typescript");
-    let lexer = grammar_dir.join("TypeScriptLexer.g4");
-    let parser = grammar_dir.join("TypeScriptParser.g4");
-    println!("cargo:rerun-if-changed={}", lexer.display());
-    println!("cargo:rerun-if-changed={}", parser.display());
-
-    let parser_source = fs::read_to_string(&parser).unwrap();
-    let lexer_source = fs::read_to_string(&lexer).unwrap();
-    let parser = parse_g4_source_validated(&parser_source).unwrap();
-    let lexer = parse_g4_source_validated(&lexer_source).unwrap();
-    let schema = RawAstSchema::from_g4_sources("typescript", 100, &[parser, lexer]).unwrap();
-    let generated = schema
-        .render_rust_enum_fallback(
-            "TsSyntaxKind",
-            "flavor_core::RawSyntaxKind",
-            Some("Unknown"),
-        )
-        .unwrap();
-
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    fs::write(out_dir.join("ts_syntax_kind.rs"), generated).unwrap();
+    write_workspace_syntax_enum(SyntaxEnumOptions {
+        grammar_dir: "typescript",
+        lexer: "TypeScriptLexer.g4",
+        parser: "TypeScriptParser.g4",
+        grammar_id: "typescript",
+        raw_kind_start: 100,
+        enum_name: "TsSyntaxKind",
+        raw_kind_path: "flavor_core::RawSyntaxKind",
+        fallback_kind: "Unknown",
+        output_file: "ts_syntax_kind.rs",
+    });
 }

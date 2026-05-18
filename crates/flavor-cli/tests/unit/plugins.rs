@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    config::{source_file_kind, SourceKind},
+    config::{source_file_kind, GuardConfig, SourceKind},
     plugins::{PluginHost, ProductSet, Scope, ScopeDecl, ScopeKind, SourceScope},
     rules,
 };
@@ -153,7 +153,9 @@ fn fact_uses_have_contracts() {
 fn product_queries_rust_facts() {
     let manifest = manifest("flavor-plugin-rust");
     let source = "#[cfg(test)] mod tests { #[test] fn sample(input_value: i32) { match input_value { 1 => { let local_value = input_value; local_value } _ => 0 } } }";
+    let config = core_config();
     let products = ProductSet::new(
+        &config,
         manifest,
         Scope::source_file(
             Path::new("src/lib.rs"),
@@ -191,7 +193,9 @@ export function Panel() {
   }
 }
 "#;
+    let config = core_config();
     let products = ProductSet::new(
+        &config,
         manifest,
         Scope::source_file(
             Path::new("src/Panel.tsx"),
@@ -221,7 +225,9 @@ export function Panel() {
 
 #[test]
 fn product_queries_embedded_facts() {
+    let config = core_config();
     let vue = ProductSet::new(
+        &config,
         manifest("flavor-plugin-vue"),
         Scope::source_file(
             Path::new("src/App.vue"),
@@ -243,6 +249,7 @@ fn product_queries_embedded_facts() {
             && fact.text("name") == Some("rendererOperationEventHandlerName")));
 
     let svelte = ProductSet::new(
+        &config,
         manifest("flavor-plugin-svelte"),
         Scope::source_file(
             Path::new("src/Panel.svelte"),
@@ -265,6 +272,10 @@ fn product_queries_embedded_facts() {
         .facts("typescript", "name.binding")
         .any(|fact| fact.line == Some(2)
             && fact.text("name") == Some("rendererOperationEventHandlerName")));
+}
+
+fn core_config() -> GuardConfig {
+    GuardConfig::core(PathBuf::from("."))
 }
 
 #[test]

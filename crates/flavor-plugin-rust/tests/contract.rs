@@ -22,6 +22,7 @@ const RUST_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpect
                 "name.method",
                 "name.parameter",
                 "name.trait_signature",
+                "shape.repeated_token_pattern",
                 "test.attribute",
             ],
         },
@@ -104,6 +105,20 @@ const RUST_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
         section: "facts",
         key: "dispatch.branch",
         contains: &["RustMatchArmFact", "payload.lines", "span", "line"],
+    },
+    GrammarEntryValueExpectation {
+        section: "facts",
+        key: "shape.repeated_token_pattern",
+        contains: &[
+            "RustRepeatedTokenPatternFact",
+            "payload.occurrences",
+            "payload.total_lines",
+            "payload.token_count",
+            "payload.node_kind",
+            "payload.depth",
+            "span",
+            "line",
+        ],
     },
     GrammarEntryValueExpectation {
         section: "facts",

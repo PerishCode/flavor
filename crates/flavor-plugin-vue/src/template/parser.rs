@@ -1,11 +1,17 @@
-use flavor_core::{Diagnostic, Span, SyntaxBuilder};
+use flavor_core::{Diagnostic, Span};
+use flavor_grammar::{
+    find_html_comment_close, is_html_void_element, is_markup_name_char, markup_char_at,
+    scan_markup_name, RawAstBuilder,
+};
 
 use super::{
+    kind,
+    kind::Kind,
     names::{
         directive_base_len, is_attribute_name_char, is_directive_name, is_shorthand_directive,
-        is_tag_name_char, is_void_tag, is_whitespace, source_char_at,
+        is_whitespace,
     },
-    TemplateAst, VueTemplateKind,
+    TemplateAst,
 };
 
 pub fn parse_template(source: &str) -> TemplateAst {
@@ -16,7 +22,7 @@ pub fn parse_template(source: &str) -> TemplateAst {
 struct TemplateParser<'a> {
     source: &'a str,
     cursor: usize,
-    builder: SyntaxBuilder,
+    builder: RawAstBuilder,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -25,13 +31,13 @@ impl<'a> TemplateParser<'a> {
         Self {
             source,
             cursor: 0,
-            builder: SyntaxBuilder::new(),
+            builder: RawAstBuilder::new(kind::schema()),
             diagnostics: Vec::new(),
         }
     }
 
     fn parse(mut self) -> TemplateAst {
-        self.builder.start_schema_node(VueTemplateKind::Root);
+        self.builder.start_node(kind::ROOT);
         self.parse_children(None);
         self.builder.finish_node();
         TemplateAst::new(self.builder.finish(), self.diagnostics)
@@ -66,21 +72,18 @@ impl<'a> TemplateParser<'a> {
 
     fn parse_interpolation(&mut self) {
         let start = self.cursor;
-        self.builder
-            .start_schema_node(VueTemplateKind::Interpolation);
-        self.token_len(VueTemplateKind::InterpolationOpen, 2);
+        self.builder.start_node(kind::INTERPOLATION);
+        self.token_len(kind::INTERPOLATION_OPEN, 2);
         let expr_start = self.cursor;
         while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with("}}") {
             self.bump();
         }
         if self.cursor > expr_start {
-            self.builder.schema_token(
-                VueTemplateKind::ExpressionText,
-                &self.source[expr_start..self.cursor],
-            );
+            self.builder
+                .token(kind::EXPRESSION_TEXT, &self.source[expr_start..self.cursor]);
         }
         if self.source[self.cursor..].starts_with("}}") {
-            self.token_len(VueTemplateKind::InterpolationClose, 2);
+            self.token_len(kind::INTERPOLATION_CLOSE, 2);
         } else {
             self.error_at(start, "missing interpolation close delimiter");
         }
@@ -89,25 +92,22 @@ impl<'a> TemplateParser<'a> {
 
     fn parse_comment(&mut self) {
         let start = self.cursor;
-        self.builder.start_schema_node(VueTemplateKind::Comment);
-        while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with("-->") {
-            self.bump();
+        self.builder.start_node(kind::COMMENT);
+        match find_html_comment_close(self.source, self.cursor) {
+            Some(end) => self.cursor = end,
+            None => {
+                self.cursor = self.source.len();
+                self.error_at(start, "missing HTML comment close delimiter");
+            }
         }
-        if self.source[self.cursor..].starts_with("-->") {
-            self.cursor += 3;
-        } else {
-            self.error_at(start, "missing HTML comment close delimiter");
-        }
-        self.builder.schema_token(
-            VueTemplateKind::CommentText,
-            &self.source[start..self.cursor],
-        );
+        self.builder
+            .token(kind::COMMENT_TEXT, &self.source[start..self.cursor]);
         self.builder.finish_node();
     }
 
     fn parse_element(&mut self) {
         let start = self.cursor;
-        self.builder.start_schema_node(VueTemplateKind::Element);
+        self.builder.start_node(kind::ELEMENT);
         let Some(tag) = self.parse_start_tag() else {
             self.builder.finish_node();
             return;
@@ -117,7 +117,7 @@ impl<'a> TemplateParser<'a> {
             if !matched {
                 self.error_at(start, format!("missing closing </{}> tag", tag.name));
             }
-        } else if !tag.self_closing && !is_void_tag(&tag.name) {
+        } else if !tag.self_closing && !is_html_void_element(&tag.name) {
             let matched = self.parse_children(Some(&tag.name));
             if !matched {
                 self.error_at(start, format!("missing closing </{}> tag", tag.name));
@@ -127,12 +127,10 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn parse_start_tag(&mut self) -> Option<ParsedTag> {
-        self.builder.start_schema_node(VueTemplateKind::StartTag);
-        self.token_len(VueTemplateKind::LessThan, 1);
+        self.builder.start_node(kind::START_TAG);
+        self.token_len(kind::LESS_THAN, 1);
         let name_start = self.cursor;
-        while self.peek().is_some_and(is_tag_name_char) {
-            self.bump();
-        }
+        self.cursor = scan_markup_name(self.source, self.cursor, is_markup_name_char);
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(1), "expected tag name");
             self.parse_bad_tag_tail();
@@ -140,10 +138,8 @@ impl<'a> TemplateParser<'a> {
             return None;
         }
         let name = self.source[name_start..self.cursor].to_string();
-        self.builder.schema_token(
-            VueTemplateKind::TagName,
-            &self.source[name_start..self.cursor],
-        );
+        self.builder
+            .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
         let tail = self.parse_tag_tail();
         self.builder.finish_node();
         Some(ParsedTag {
@@ -154,20 +150,16 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn parse_end_tag(&mut self) {
-        self.builder.start_schema_node(VueTemplateKind::EndTag);
-        self.token_len(VueTemplateKind::LessThan, 1);
-        self.token_len(VueTemplateKind::Slash, 1);
+        self.builder.start_node(kind::END_TAG);
+        self.token_len(kind::LESS_THAN, 1);
+        self.token_len(kind::SLASH, 1);
         let name_start = self.cursor;
-        while self.peek().is_some_and(is_tag_name_char) {
-            self.bump();
-        }
+        self.cursor = scan_markup_name(self.source, self.cursor, is_markup_name_char);
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(2), "expected closing tag name");
         } else {
-            self.builder.schema_token(
-                VueTemplateKind::TagName,
-                &self.source[name_start..self.cursor],
-            );
+            self.builder
+                .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
         }
         self.parse_tag_tail();
         self.builder.finish_node();
@@ -177,13 +169,13 @@ impl<'a> TemplateParser<'a> {
         let mut tail = ParsedTagTail::default();
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("/>") {
-                self.token_len(VueTemplateKind::Slash, 1);
-                self.token_len(VueTemplateKind::GreaterThan, 1);
+                self.token_len(kind::SLASH, 1);
+                self.token_len(kind::GREATER_THAN, 1);
                 tail.self_closing = true;
                 return tail;
             }
             if self.source[self.cursor..].starts_with('>') {
-                self.token_len(VueTemplateKind::GreaterThan, 1);
+                self.token_len(kind::GREATER_THAN, 1);
                 return tail;
             }
             if self.peek().is_some_and(is_whitespace) {
@@ -208,28 +200,26 @@ impl<'a> TemplateParser<'a> {
         let name = &self.source[name_start..self.cursor];
         let is_directive = is_directive_name(name);
         let is_v_pre = name == "v-pre";
-        self.builder.start_schema_node(if is_directive {
-            VueTemplateKind::Directive
+        self.builder.start_node(if is_directive {
+            kind::DIRECTIVE
         } else {
-            VueTemplateKind::Attribute
+            kind::ATTRIBUTE
         });
         if is_directive {
             self.parse_directive_name(name);
         } else {
-            self.builder
-                .schema_token(VueTemplateKind::AttributeName, name);
+            self.builder.token(kind::ATTRIBUTE_NAME, name);
         }
         while self.peek().is_some_and(is_whitespace) {
             self.parse_whitespace();
         }
         if self.source[self.cursor..].starts_with('=') {
-            self.token_len(VueTemplateKind::Equals, 1);
+            self.token_len(kind::EQUALS, 1);
             while self.peek().is_some_and(is_whitespace) {
                 self.parse_whitespace();
             }
             if is_directive {
-                self.builder
-                    .start_schema_node(VueTemplateKind::DirectiveExpression);
+                self.builder.start_node(kind::DIRECTIVE_EXPRESSION);
                 self.parse_attribute_value();
                 self.builder.finish_node();
             } else {
@@ -241,23 +231,21 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn parse_directive_name(&mut self, name: &str) {
-        self.builder
-            .start_schema_node(VueTemplateKind::DirectiveName);
+        self.builder.start_node(kind::DIRECTIVE_NAME);
         let shorthand = is_shorthand_directive(name);
         let mut offset = directive_base_len(name);
-        self.builder
-            .schema_token(VueTemplateKind::DirectiveBase, &name[..offset]);
+        self.builder.token(kind::DIRECTIVE_BASE, &name[..offset]);
         if shorthand && offset < name.len() {
             let start = offset;
             offset = scan_arg(name, offset);
             self.builder
-                .schema_token(VueTemplateKind::DirectiveArgument, &name[start..offset]);
+                .token(kind::DIRECTIVE_ARGUMENT, &name[start..offset]);
         } else if offset < name.len() && name.as_bytes()[offset] == b':' {
             let start = offset;
             offset += 1;
             offset = scan_arg(name, offset);
             self.builder
-                .schema_token(VueTemplateKind::DirectiveArgument, &name[start..offset]);
+                .token(kind::DIRECTIVE_ARGUMENT, &name[start..offset]);
         }
         while offset < name.len() && name.as_bytes()[offset] == b'.' {
             let start = offset;
@@ -266,7 +254,7 @@ impl<'a> TemplateParser<'a> {
                 offset += 1;
             }
             self.builder
-                .schema_token(VueTemplateKind::DirectiveModifier, &name[start..offset]);
+                .token(kind::DIRECTIVE_MODIFIER, &name[start..offset]);
         }
         self.builder.finish_node();
     }
@@ -297,10 +285,8 @@ impl<'a> TemplateParser<'a> {
             }
         }
         if self.cursor > start {
-            self.builder.schema_token(
-                VueTemplateKind::AttributeValue,
-                &self.source[start..self.cursor],
-            );
+            self.builder
+                .token(kind::ATTRIBUTE_VALUE, &self.source[start..self.cursor]);
         }
     }
 
@@ -309,10 +295,8 @@ impl<'a> TemplateParser<'a> {
         while self.peek().is_some_and(is_whitespace) {
             self.bump();
         }
-        self.builder.schema_token(
-            VueTemplateKind::Whitespace,
-            &self.source[start..self.cursor],
-        );
+        self.builder
+            .token(kind::WHITESPACE, &self.source[start..self.cursor]);
     }
 
     fn parse_text(&mut self) {
@@ -325,7 +309,7 @@ impl<'a> TemplateParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .schema_token(VueTemplateKind::Text, &self.source[start..self.cursor]);
+                .token(kind::TEXT, &self.source[start..self.cursor]);
         }
     }
 
@@ -337,7 +321,7 @@ impl<'a> TemplateParser<'a> {
                 if name.as_deref() == Some(parent_tag) {
                     if self.cursor > start {
                         self.builder
-                            .schema_token(VueTemplateKind::Text, &self.source[start..self.cursor]);
+                            .token(kind::TEXT, &self.source[start..self.cursor]);
                     }
                     self.parse_end_tag();
                     return true;
@@ -347,7 +331,7 @@ impl<'a> TemplateParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .schema_token(VueTemplateKind::Text, &self.source[start..self.cursor]);
+                .token(kind::TEXT, &self.source[start..self.cursor]);
         }
         false
     }
@@ -359,10 +343,10 @@ impl<'a> TemplateParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .schema_token(VueTemplateKind::Error, &self.source[start..self.cursor]);
+                .token(kind::ERROR, &self.source[start..self.cursor]);
         }
         if self.source[self.cursor..].starts_with('>') {
-            self.token_len(VueTemplateKind::GreaterThan, 1);
+            self.token_len(kind::GREATER_THAN, 1);
         }
     }
 
@@ -370,23 +354,14 @@ impl<'a> TemplateParser<'a> {
         let start = self.cursor;
         self.bump();
         self.builder
-            .schema_token(VueTemplateKind::Error, &self.source[start..self.cursor]);
+            .token(kind::ERROR, &self.source[start..self.cursor]);
         self.error_at(start, "unexpected token in tag");
     }
 
     fn peek_close_tag_name(&self) -> Option<String> {
-        let mut cursor = self.cursor + 2;
-        let start = cursor;
-        while source_char_at(self.source, cursor).is_some_and(|ch| is_tag_name_char(ch.0)) {
-            cursor += source_char_at(self.source, cursor)
-                .map(|(_, width)| width)
-                .unwrap_or(0);
-        }
-        if cursor > start {
-            Some(self.source[start..cursor].to_string())
-        } else {
-            None
-        }
+        let start = self.cursor + 2;
+        let cursor = scan_markup_name(self.source, start, is_markup_name_char);
+        (cursor > start).then(|| self.source[start..cursor].to_string())
     }
 
     fn error_at(&mut self, offset: usize, message: impl Into<String>) {
@@ -398,20 +373,19 @@ impl<'a> TemplateParser<'a> {
         ));
     }
 
-    fn token_len(&mut self, kind: VueTemplateKind, len: usize) {
+    fn token_len(&mut self, kind: Kind, len: usize) {
         let start = self.cursor;
         self.cursor += len;
-        self.builder
-            .schema_token(kind, &self.source[start..self.cursor]);
+        self.builder.token(kind, &self.source[start..self.cursor]);
     }
 
     fn peek(&self) -> Option<char> {
-        self.source[self.cursor..].chars().next()
+        markup_char_at(self.source, self.cursor).map(|(ch, _)| ch)
     }
 
     fn bump(&mut self) {
-        if let Some(ch) = self.peek() {
-            self.cursor += ch.len_utf8();
+        if let Some((_, width)) = markup_char_at(self.source, self.cursor) {
+            self.cursor += width;
         }
     }
 }

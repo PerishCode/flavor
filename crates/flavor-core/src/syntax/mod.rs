@@ -4,7 +4,7 @@ mod cursor;
 mod token;
 mod trivia;
 
-pub use builder::{SyntaxBuilder, SyntaxKindSchema};
+pub use builder::SyntaxBuilder;
 pub use cst::{
     FlavorLanguage, RawSyntaxKind, SyntaxElement, SyntaxNode, SyntaxSpanExt, SyntaxToken,
 };

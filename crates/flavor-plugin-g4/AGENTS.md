@@ -1,13 +1,13 @@
 # AGENTS
 
 `crates/flavor-plugin-g4/` owns first-party `.g4` source analysis for flavor.
-It connects repo grammar files to the normal plugin/product pipeline while
+It connects repo grammar files to the normal plugin delivery pipeline while
 delegating grammar contract parsing to `flavor-grammar`.
 
 ## Directory Rules
 
 - `src/lib.rs` owns the public analysis entrypoint and output contract.
-- `src/product.rs` maps analysis output into `GrammarProduct` facts and
+- `src/plugin.rs` maps analysis output into `GrammarProduct` facts and
   diagnostics.
 - `tests/` covers `.g4` fact and diagnostic behavior.
 

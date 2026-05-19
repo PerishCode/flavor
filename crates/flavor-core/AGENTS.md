@@ -6,8 +6,8 @@ state primitives used by first-party syntax crates.
 ## Directory Rules
 
 - `src/source/` owns `SourceText`, `LineIndex`, positions, and spans.
-- `src/syntax/` owns rowan-backed syntax tree glue, schema-aware builders,
-  cursors, tokens, trivia, and language-neutral syntax wrappers.
+- `src/syntax/` owns rowan-backed syntax tree glue, raw builders, cursors,
+  tokens, trivia, and language-neutral syntax wrappers.
 - `src/report/` owns diagnostics, recovery sets, and snapshot dumps.
 - `src/state/` owns typed flavor-core config/state injection.
 - `tests/` covers substrate behavior and should stay language-neutral.
@@ -25,8 +25,8 @@ cargo test --locked -p flavor-core
 
 - Keep APIs small and typed. Callers should compose these primitives without
   reaching around them.
-- Use schema-aware syntax builder methods for language raw AST nodes/tokens;
-  keep raw token insertion for core trivia.
+- Keep this crate unaware of language schemas. Language raw AST node/token
+  validation and string-kind lookup belong in `flavor-grammar`.
 - Changes to spans, line indexing, diagnostics, or syntax wrappers can affect
   every frontend. Prefer focused tests in this crate plus downstream checks when
   behavior moves.

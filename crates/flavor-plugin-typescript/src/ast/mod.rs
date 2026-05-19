@@ -1,16 +1,16 @@
 use flavor_core::{SourceText, SyntaxNode, Token};
 
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar::Kind;
 
 #[derive(Debug, Clone)]
 pub struct TsSourceFile {
     source: SourceText,
-    tokens: Vec<Token<TsSyntaxKind>>,
+    tokens: Vec<Token<Kind>>,
     syntax: SyntaxNode,
 }
 
 impl TsSourceFile {
-    pub fn new(source: SourceText, tokens: Vec<Token<TsSyntaxKind>>, syntax: SyntaxNode) -> Self {
+    pub fn new(source: SourceText, tokens: Vec<Token<Kind>>, syntax: SyntaxNode) -> Self {
         Self {
             source,
             tokens,
@@ -22,11 +22,15 @@ impl TsSourceFile {
         &self.source
     }
 
-    pub fn tokens(&self) -> &[Token<TsSyntaxKind>] {
+    pub fn tokens(&self) -> &[Token<Kind>] {
         &self.tokens
     }
 
     pub fn syntax(&self) -> &SyntaxNode {
         &self.syntax
+    }
+
+    pub fn into_parts(self) -> (SourceText, Vec<Token<Kind>>, SyntaxNode) {
+        (self.source, self.tokens, self.syntax)
     }
 }

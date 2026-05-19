@@ -1,4 +1,4 @@
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar::{self as kind, Kind};
 
 use super::Parser;
 
@@ -9,11 +9,11 @@ impl<'a> Parser<'a> {
                 self.bump();
                 true
             }
-            TsSyntaxKind::OpenBrace => {
+            kind::OPEN_BRACE => {
                 self.parse_object_binding_pattern();
                 true
             }
-            TsSyntaxKind::OpenBracket => {
+            kind::OPEN_BRACKET => {
                 self.parse_array_binding_pattern();
                 true
             }
@@ -28,115 +28,98 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_rest_element(&mut self, message: &str) {
-        self.builder.start_schema_node(TsSyntaxKind::RestElement);
+        self.builder.start_node(kind::REST_ELEMENT);
         self.bump();
         self.parse_binding_name(message);
         self.builder.finish_node();
     }
 
     fn parse_object_binding_pattern(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::ObjectBindingPattern);
-        if self.expect(
-            TsSyntaxKind::OpenBrace,
-            "expected '{' to start binding pattern",
-        ) {
-            while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
-                self.parse_binding_element(TsSyntaxKind::CloseBrace);
-                if self.at(TsSyntaxKind::Comma) {
+        self.builder.start_node(kind::OBJECT_BINDING_PATTERN);
+        if self.expect(kind::OPEN_BRACE, "expected '{' to start binding pattern") {
+            while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                self.parse_binding_element(kind::CLOSE_BRACE);
+                if self.at(kind::COMMA) {
                     self.bump();
-                } else if !self.at(TsSyntaxKind::CloseBrace) {
+                } else if !self.at(kind::CLOSE_BRACE) {
                     self.error_here("expected ',' or '}' in binding pattern");
                     break;
                 }
             }
-            self.expect(
-                TsSyntaxKind::CloseBrace,
-                "expected '}' to close binding pattern",
-            );
+            self.expect(kind::CLOSE_BRACE, "expected '}' to close binding pattern");
         }
         self.builder.finish_node();
     }
 
     fn parse_array_binding_pattern(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::ArrayBindingPattern);
-        if self.expect(
-            TsSyntaxKind::OpenBracket,
-            "expected '[' to start binding pattern",
-        ) {
-            while !self.at_any(&[TsSyntaxKind::CloseBracket, TsSyntaxKind::EndOfFile]) {
-                if self.at(TsSyntaxKind::Comma) {
+        self.builder.start_node(kind::ARRAY_BINDING_PATTERN);
+        if self.expect(kind::OPEN_BRACKET, "expected '[' to start binding pattern") {
+            while !self.at_any(&[kind::CLOSE_BRACKET, kind::END_OF_FILE]) {
+                if self.at(kind::COMMA) {
                     self.bump();
                     continue;
                 }
-                self.parse_binding_element(TsSyntaxKind::CloseBracket);
-                if self.at(TsSyntaxKind::Comma) {
+                self.parse_binding_element(kind::CLOSE_BRACKET);
+                if self.at(kind::COMMA) {
                     self.bump();
-                } else if !self.at(TsSyntaxKind::CloseBracket) {
+                } else if !self.at(kind::CLOSE_BRACKET) {
                     self.error_here("expected ',' or ']' in binding pattern");
                     break;
                 }
             }
-            self.expect(
-                TsSyntaxKind::CloseBracket,
-                "expected ']' to close binding pattern",
-            );
+            self.expect(kind::CLOSE_BRACKET, "expected ']' to close binding pattern");
         }
         self.builder.finish_node();
     }
 
-    fn parse_binding_element(&mut self, close: TsSyntaxKind) {
-        self.builder.start_schema_node(TsSyntaxKind::BindingElement);
-        if self.at(TsSyntaxKind::DotDotDot) {
+    fn parse_binding_element(&mut self, close: Kind) {
+        self.builder.start_node(kind::BINDING_ELEMENT);
+        if self.at(kind::DOT_DOT_DOT) {
             self.parse_rest_element("expected rest binding target");
-        } else if self.at(TsSyntaxKind::OpenBrace) || self.at(TsSyntaxKind::OpenBracket) {
+        } else if self.at(kind::OPEN_BRACE) || self.at(kind::OPEN_BRACKET) {
             self.parse_binding_name("expected binding target");
         } else if is_binding_key(self.current()) {
             self.bump();
-            if self.at(TsSyntaxKind::Colon) {
+            if self.at(kind::COLON) {
                 self.bump();
                 self.parse_binding_name("expected binding target");
             }
         } else {
             self.error_here("expected binding element");
-            if !self.at_any(&[TsSyntaxKind::Comma, close, TsSyntaxKind::EndOfFile]) {
+            if !self.at_any(&[kind::COMMA, close, kind::END_OF_FILE]) {
                 self.bump();
             }
         }
-        if self.at(TsSyntaxKind::Equals) {
-            self.parse_initializer(&[TsSyntaxKind::Comma, close]);
+        if self.at(kind::EQUALS) {
+            self.parse_initializer(&[kind::COMMA, close]);
         }
         self.builder.finish_node();
     }
 }
 
-fn binding_stops() -> &'static [TsSyntaxKind] {
+fn binding_stops() -> &'static [Kind] {
     &[
-        TsSyntaxKind::Comma,
-        TsSyntaxKind::Semicolon,
-        TsSyntaxKind::CloseParen,
-        TsSyntaxKind::CloseBrace,
-        TsSyntaxKind::CloseBracket,
-        TsSyntaxKind::Equals,
-        TsSyntaxKind::EndOfFile,
+        kind::COMMA,
+        kind::SEMICOLON,
+        kind::CLOSE_PAREN,
+        kind::CLOSE_BRACE,
+        kind::CLOSE_BRACKET,
+        kind::EQUALS,
+        kind::END_OF_FILE,
     ]
 }
 
-fn is_binding_name(kind: TsSyntaxKind) -> bool {
+fn is_binding_name(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::Identifier
-            | TsSyntaxKind::KeywordSatisfies
-            | TsSyntaxKind::KeywordKeyof
-            | TsSyntaxKind::KeywordInfer
-            | TsSyntaxKind::KeywordUnique
+        kind::IDENTIFIER
+            | kind::KEYWORD_SATISFIES
+            | kind::KEYWORD_KEYOF
+            | kind::KEYWORD_INFER
+            | kind::KEYWORD_UNIQUE
     )
 }
 
-fn is_binding_key(kind: TsSyntaxKind) -> bool {
-    matches!(
-        kind,
-        TsSyntaxKind::StringLiteral | TsSyntaxKind::NumericLiteral
-    ) || is_binding_name(kind)
+fn is_binding_key(kind: Kind) -> bool {
+    matches!(kind, kind::STRING_LITERAL | kind::NUMERIC_LITERAL) || is_binding_name(kind)
 }

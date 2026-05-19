@@ -1,323 +1,232 @@
-use flavor_core::{Span, Token};
-use tree_sitter::{Node, Parser};
+use flavor_core::{LineIndex, SourceText, Span, Token};
+use flavor_grammar::{GrammarNode, GrammarToken, GrammarTree, TokenTextRun};
 
 use crate::{
     ast::TsSourceFile,
-    state::{SourceMode, TsPluginConfig},
-    syntax_kind::TsSyntaxKind,
+    internal::grammar::{self as kind, Kind},
+    model::{
+        TsDispatchBranchFact, TsFacts, TsImportFact, TsImportSpecifier, TsNameFact, TsNameKind,
+        TsxElementFact,
+    },
+    state::TsPluginConfig,
 };
 
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
-pub struct TsFacts {
-    pub import_count: usize,
-    pub export_count: usize,
-    pub names: Vec<TsNameFact>,
-    pub dispatch_branches: Vec<TsDispatchBranchFact>,
-    pub imports: Vec<TsImportFact>,
-    pub jsx_elements: Vec<TsxElementFact>,
-}
+type TsNode = GrammarNode;
+type TsToken = GrammarToken;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum TsNameKind {
-    Function,
-    Method,
-    Binding,
-    Parameter,
-}
+const BINDING_NODES: &[&str] = &[
+    "binding_pattern",
+    "object_binding_pattern",
+    "array_binding_pattern",
+    "rest_element",
+];
+const IMPORT_SPECIFIER_NODES: &[&str] = &["import_specifier"];
+const JSX_JOIN_TOKENS: &[&str] = &["DOT", "COLON", "MINUS"];
+const JSX_NAME_PREFIXES: &[&str] = &["KEYWORD_"];
+const JSX_NAME_TOKENS: &[&str] = &["IDENTIFIER", "NUMERIC_LITERAL"];
+const JSX_SKIP_TOKENS: &[&str] = &["LESS_THAN"];
+const NAME_TOKENS: &[&str] = &[
+    "IDENTIFIER",
+    "KEYWORD_SATISFIES",
+    "KEYWORD_KEYOF",
+    "KEYWORD_INFER",
+    "KEYWORD_UNIQUE",
+];
+const SPECIFIER_TOKENS: &[&str] = &[
+    "IDENTIFIER",
+    "KEYWORD_DEFAULT",
+    "KEYWORD_SATISFIES",
+    "KEYWORD_KEYOF",
+    "KEYWORD_INFER",
+    "KEYWORD_UNIQUE",
+];
 
-impl TsNameKind {
-    pub fn label(self) -> &'static str {
-        match self {
-            TsNameKind::Function => "function",
-            TsNameKind::Method => "method",
-            TsNameKind::Binding => "binding",
-            TsNameKind::Parameter => "parameter",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TsNameFact {
-    pub kind: TsNameKind,
-    pub name: String,
-    pub span: Span,
-    pub line: usize,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TsDispatchBranchFact {
-    pub span: Span,
-    pub line: usize,
-    pub lines: usize,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TsImportFact {
-    pub source: String,
-    pub type_only: bool,
-    pub specifiers: Vec<TsImportSpecifier>,
-    pub span: Span,
-    pub line: usize,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TsImportSpecifier {
-    Default(String),
-    Named(String),
-    Namespace(String),
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TsxElementFact {
-    pub name: String,
-    pub root: Option<String>,
-    pub intrinsic: Option<String>,
-    pub self_closing: bool,
-    pub span: Span,
-    pub line: usize,
-}
-
-pub fn collect(source_file: &TsSourceFile, config: &TsPluginConfig) -> TsFacts {
-    let mut facts = legacy_counts(source_file.tokens());
-    let Some(tree) = parse_tree(source_file.source().as_str(), config) else {
-        return facts;
+pub(crate) fn collect(source_file: &TsSourceFile, _config: &TsPluginConfig) -> TsFacts {
+    let tree = GrammarTree::new(source_file.syntax().clone(), kind::schema());
+    let mut collector = Collector {
+        source: source_file.source(),
+        line_index: source_file.source().line_index(),
+        facts: legacy_counts(source_file.tokens()),
     };
-    collect_node(
-        tree.root_node(),
-        source_file.source().as_str().as_bytes(),
-        &mut facts,
-    );
-    facts
+    collector.collect_node(tree.root());
+    collector.facts
 }
 
-fn legacy_counts(tokens: &[Token<TsSyntaxKind>]) -> TsFacts {
+fn legacy_counts(tokens: &[Token<Kind>]) -> TsFacts {
     let mut facts = TsFacts::default();
     for token in tokens {
         match token.kind {
-            TsSyntaxKind::KeywordImport => facts.import_count += 1,
-            TsSyntaxKind::KeywordExport => facts.export_count += 1,
+            kind::KEYWORD_IMPORT => facts.import_count += 1,
+            kind::KEYWORD_EXPORT => facts.export_count += 1,
             _ => {}
         }
     }
     facts
 }
 
-fn parse_tree(source: &str, config: &TsPluginConfig) -> Option<tree_sitter::Tree> {
-    let language = match config.source_mode {
-        SourceMode::JavaScript | SourceMode::TypeScript | SourceMode::Declaration => {
-            tree_sitter_typescript::LANGUAGE_TYPESCRIPT
-        }
-        SourceMode::Jsx | SourceMode::Tsx => tree_sitter_typescript::LANGUAGE_TSX,
-    };
-    let mut parser = Parser::new();
-    parser.set_language(&language.into()).ok()?;
-    parser.parse(source, None)
+struct Collector<'a> {
+    source: &'a SourceText,
+    line_index: LineIndex,
+    facts: TsFacts,
 }
 
-fn collect_node(node: Node<'_>, source: &[u8], facts: &mut TsFacts) {
-    match node.kind() {
-        "function_declaration" | "function_expression" | "generator_function" => {
-            collect_named_child(node, source, facts, "name", TsNameKind::Function);
-        }
-        "method_definition" | "method_signature" => {
-            collect_named_child(node, source, facts, "name", TsNameKind::Method);
-        }
-        "variable_declarator" => {
-            if let Some(name) = node.child_by_field_name("name") {
-                collect_pattern_names(name, source, facts, TsNameKind::Binding);
+impl Collector<'_> {
+    fn collect_node(&mut self, node: TsNode) {
+        match node.kind_name() {
+            Some("function_declaration" | "function_expression") => {
+                self.collect_first_name(&node, TsNameKind::Function);
             }
-        }
-        "required_parameter" | "optional_parameter" => {
-            if let Some(pattern) = node
-                .child_by_field_name("pattern")
-                .or_else(|| node.child_by_field_name("name"))
-                .or_else(|| first_named_child(node))
-            {
-                collect_pattern_names(pattern, source, facts, TsNameKind::Parameter);
+            Some("method_definition" | "method_declaration" | "method_signature") => {
+                self.collect_first_name(&node, TsNameKind::Method);
             }
-        }
-        "switch_case" => {
-            facts.dispatch_branches.push(TsDispatchBranchFact {
-                span: span_for(node),
-                line: line_for(node),
-                lines: line_span(node),
-            });
-        }
-        "import_statement" => {
-            if let Some(import) = collect_import(node, source) {
-                facts.imports.push(import);
+            Some("variable_declarator" | "variable_declaration") => {
+                self.collect_binding(&node, TsNameKind::Binding);
             }
-        }
-        "jsx_opening_element" | "jsx_self_closing_element" => {
-            if let Some(element) = collect_jsx_element(node, source) {
-                facts.jsx_elements.push(element);
+            Some("parameter" | "required_parameter" | "optional_parameter") => {
+                self.collect_binding(&node, TsNameKind::Parameter);
             }
-        }
-        _ => {}
-    }
-
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        collect_node(child, source, facts);
-    }
-}
-
-fn collect_named_child(
-    node: Node<'_>,
-    source: &[u8],
-    facts: &mut TsFacts,
-    field: &str,
-    kind: TsNameKind,
-) {
-    let Some(name) = node.child_by_field_name(field) else {
-        return;
-    };
-    push_name(name, source, facts, kind);
-}
-
-fn collect_pattern_names(node: Node<'_>, source: &[u8], facts: &mut TsFacts, kind: TsNameKind) {
-    match node.kind() {
-        "identifier" | "shorthand_property_identifier_pattern" => {
-            push_name(node, source, facts, kind);
-        }
-        "pair_pattern" => {
-            if let Some(value) = node.child_by_field_name("value") {
-                collect_pattern_names(value, source, facts, kind);
+            Some("switch_case") => self.collect_branch(&node),
+            Some("import_statement" | "import_declaration") => self.collect_import(&node),
+            Some("jsx_opening_element" | "jsx_self_closing_element") => {
+                self.collect_jsx_element(&node);
             }
-        }
-        "rest_pattern" => {
-            if let Some(pattern) = first_named_child(node) {
-                collect_pattern_names(pattern, source, facts, kind);
-            }
-        }
-        "array_pattern" | "object_pattern" | "assignment_pattern" => {
-            let mut cursor = node.walk();
-            for child in node.named_children(&mut cursor) {
-                collect_pattern_names(child, source, facts, kind);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn push_name(node: Node<'_>, source: &[u8], facts: &mut TsFacts, kind: TsNameKind) {
-    let Some(name) = node_text(node, source) else {
-        return;
-    };
-    if name == "this" {
-        return;
-    }
-    facts.names.push(TsNameFact {
-        kind,
-        name,
-        span: span_for(node),
-        line: line_for(node),
-    });
-}
-
-fn collect_import(node: Node<'_>, source: &[u8]) -> Option<TsImportFact> {
-    let source_node = node.child_by_field_name("source")?;
-    let source_text = string_value(&node_text(source_node, source)?)?;
-    let statement_text = node_text(node, source)?;
-    let mut specifiers = Vec::new();
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        if child.kind() == "import_clause" {
-            collect_import_clause(child, source, &mut specifiers);
-        }
-    }
-    Some(TsImportFact {
-        source: source_text,
-        type_only: statement_text.trim_start().starts_with("import type "),
-        specifiers,
-        span: span_for(node),
-        line: line_for(node),
-    })
-}
-
-fn collect_import_clause(node: Node<'_>, source: &[u8], specifiers: &mut Vec<TsImportSpecifier>) {
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        match child.kind() {
-            "identifier" => {
-                if let Some(name) = node_text(child, source) {
-                    specifiers.push(TsImportSpecifier::Default(name));
-                }
-            }
-            "namespace_import" => {
-                if let Some(name) =
-                    first_named_child(child).and_then(|node| node_text(node, source))
-                {
-                    specifiers.push(TsImportSpecifier::Namespace(name));
-                }
-            }
-            "named_imports" => collect_named_imports(child, source, specifiers),
             _ => {}
         }
-    }
-}
 
-fn collect_named_imports(node: Node<'_>, source: &[u8], specifiers: &mut Vec<TsImportSpecifier>) {
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        if child.kind() != "import_specifier" {
-            continue;
+        for child in node.children() {
+            self.collect_node(child);
         }
-        let Some(local) = child
-            .child_by_field_name("alias")
-            .or_else(|| child.child_by_field_name("name"))
-            .and_then(|node| node_text(node, source))
-        else {
-            continue;
+    }
+
+    fn collect_first_name(&mut self, node: &TsNode, kind: TsNameKind) {
+        let Some(name) = node.child_tokens_any(NAME_TOKENS).next() else {
+            return;
         };
-        specifiers.push(TsImportSpecifier::Named(local));
+        self.push_name(kind, &name);
+    }
+
+    fn collect_binding(&mut self, node: &TsNode, kind: TsNameKind) {
+        if let Some(pattern) = node.child_any(BINDING_NODES) {
+            self.collect_pattern_names(pattern, kind);
+        } else {
+            self.collect_first_name(node, kind);
+        }
+    }
+
+    fn collect_pattern_names(&mut self, node: TsNode, kind: TsNameKind) {
+        for name in node.tokens_any(NAME_TOKENS) {
+            self.push_name(kind, &name);
+        }
+    }
+
+    fn collect_branch(&mut self, node: &TsNode) {
+        let span = node.trimmed_span(self.source);
+        self.facts.dispatch_branches.push(TsDispatchBranchFact {
+            span,
+            line: self.line_for(span),
+            lines: self.line_span(span),
+        });
+    }
+
+    fn collect_import(&mut self, node: &TsNode) {
+        let Some(import) = self.import_fact(node) else {
+            return;
+        };
+        self.facts.imports.push(import);
+    }
+
+    fn import_fact(&self, node: &TsNode) -> Option<TsImportFact> {
+        let source = node
+            .token("STRING_LITERAL")
+            .and_then(|token| string_value(token.text()))?;
+        let mut specifiers = Vec::new();
+        if let Some(clause) = node.child("import_clause") {
+            self.collect_import_clause(&clause, &mut specifiers);
+        }
+        let span = node.trimmed_span(self.source);
+        Some(TsImportFact {
+            source,
+            type_only: node
+                .trimmed_source_text(self.source)
+                .trim_start()
+                .starts_with("import type "),
+            specifiers,
+            span,
+            line: self.line_for(span),
+        })
+    }
+
+    fn collect_import_clause(&self, node: &TsNode, specifiers: &mut Vec<TsImportSpecifier>) {
+        if let Some(default) = default_import(node) {
+            specifiers.push(TsImportSpecifier::Default(default));
+        }
+        for child in node.children() {
+            match child.kind_name() {
+                Some("namespace_import") => {
+                    if let Some(name) = last_specifier_name(&child) {
+                        specifiers.push(TsImportSpecifier::Namespace(name));
+                    }
+                }
+                Some("named_imports") => self.collect_named_imports(&child, specifiers),
+                _ => {}
+            }
+        }
+    }
+
+    fn collect_named_imports(&self, node: &TsNode, specifiers: &mut Vec<TsImportSpecifier>) {
+        for child in node.children_any(IMPORT_SPECIFIER_NODES) {
+            if let Some(name) = last_specifier_name(&child) {
+                specifiers.push(TsImportSpecifier::Named(name));
+            }
+        }
+    }
+
+    fn collect_jsx_element(&mut self, node: &TsNode) {
+        let Some(name) = jsx_name(node) else {
+            return;
+        };
+        let span = node.trimmed_span(self.source);
+        self.facts.jsx_elements.push(TsxElementFact {
+            root: jsx_root(&name),
+            intrinsic: jsx_intrinsic(&name),
+            name,
+            self_closing: node.has_token("SLASH"),
+            span,
+            line: self.line_for(span),
+        });
+    }
+
+    fn push_name(&mut self, kind: TsNameKind, token: &TsToken) {
+        if token.text() == "this" {
+            return;
+        }
+        let span = token.span();
+        self.facts.names.push(TsNameFact {
+            kind,
+            name: token.text().to_string(),
+            span,
+            line: self.line_for(span),
+        });
+    }
+
+    fn line_for(&self, span: Span) -> usize {
+        self.line_index.line(span.start)
+    }
+
+    fn line_span(&self, span: Span) -> usize {
+        self.line_index
+            .line(span.end)
+            .saturating_sub(self.line_index.line(span.start))
+            + 1
     }
 }
 
-fn collect_jsx_element(node: Node<'_>, source: &[u8]) -> Option<TsxElementFact> {
-    let name = node.child_by_field_name("name")?;
-    let text = node_text(name, source)?;
-    let intrinsic = intrinsic_name(name, &text);
-    Some(TsxElementFact {
-        root: jsx_root_name(name, source),
-        name: text,
-        intrinsic,
-        self_closing: node.kind() == "jsx_self_closing_element",
-        span: span_for(node),
-        line: line_for(node),
-    })
+fn default_import(node: &TsNode) -> Option<String> {
+    node.head_token_text_any(SPECIFIER_TOKENS)
 }
 
-fn intrinsic_name(node: Node<'_>, text: &str) -> Option<String> {
-    match node.kind() {
-        "identifier" => text
-            .chars()
-            .next()
-            .is_some_and(|ch| ch.is_ascii_lowercase())
-            .then(|| text.to_string()),
-        "jsx_namespace_name" => Some(text.to_string()),
-        _ => None,
-    }
-}
-
-fn jsx_root_name(node: Node<'_>, source: &[u8]) -> Option<String> {
-    match node.kind() {
-        "identifier" => node_text(node, source),
-        "member_expression" => node
-            .child_by_field_name("object")
-            .and_then(|object| jsx_root_name(object, source)),
-        _ => None,
-    }
-}
-
-fn first_named_child(node: Node<'_>) -> Option<Node<'_>> {
-    let mut cursor = node.walk();
-    let child = node.named_children(&mut cursor).next();
-    child
-}
-
-fn node_text(node: Node<'_>, source: &[u8]) -> Option<String> {
-    node.utf8_text(source).ok().map(str::to_string)
+fn last_specifier_name(node: &TsNode) -> Option<String> {
+    node.last_token_text_any(SPECIFIER_TOKENS)
 }
 
 fn string_value(text: &str) -> Option<String> {
@@ -329,17 +238,23 @@ fn string_value(text: &str) -> Option<String> {
     Some(trimmed[1..trimmed.len().saturating_sub(1)].to_string())
 }
 
-fn line_for(node: Node<'_>) -> usize {
-    node.start_position().row + 1
+fn jsx_name(node: &TsNode) -> Option<String> {
+    node.token_run_text(
+        TokenTextRun::new(JSX_NAME_TOKENS, JSX_JOIN_TOKENS)
+            .with_part_prefixes(JSX_NAME_PREFIXES)
+            .with_skip(JSX_SKIP_TOKENS),
+    )
 }
 
-fn line_span(node: Node<'_>) -> usize {
-    node.end_position()
-        .row
-        .saturating_sub(node.start_position().row)
-        + 1
+fn jsx_root(name: &str) -> Option<String> {
+    name.split_once('.').map(|(root, _)| root.to_string())
 }
 
-fn span_for(node: Node<'_>) -> Span {
-    Span::from_usize(node.start_byte(), node.end_byte())
+fn jsx_intrinsic(name: &str) -> Option<String> {
+    let intrinsic = name.contains(':')
+        || name
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_lowercase());
+    intrinsic.then(|| name.to_string())
 }

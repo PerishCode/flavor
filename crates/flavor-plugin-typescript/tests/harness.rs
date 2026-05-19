@@ -1,11 +1,16 @@
-use flavor_core::{RawSyntaxKind, SourceText};
-use flavor_plugin_typescript::{run, syntax_kind::TsSyntaxKind, SourceMode, TsPluginConfig};
+use flavor_core::SourceText;
+use flavor_plugin_typescript::{run, SourceMode, TsAnalysisOutput, TsPluginConfig};
+
+#[path = "../src/internal/grammar.rs"]
+mod kind;
+
+use kind::Kind;
 
 struct Case {
     name: &'static str,
     source: &'static str,
     mode: SourceMode,
-    nodes: &'static [TsSyntaxKind],
+    nodes: &'static [Kind],
 }
 
 #[test]
@@ -24,7 +29,7 @@ fn parses_harness_cases() {
             output.diagnostics
         );
         for kind in case.nodes {
-            assert!(has_node(&output, *kind), "{} missing {:?}", case.name, kind);
+            assert!(has_node(&output, kind), "{} missing {:?}", case.name, kind);
         }
     }
 }
@@ -36,13 +41,13 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/modern-class.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::ExportDeclaration,
-                TsSyntaxKind::ClassDeclaration,
-                TsSyntaxKind::ModifierList,
-                TsSyntaxKind::PropertyDeclaration,
-                TsSyntaxKind::MethodDeclaration,
-                TsSyntaxKind::ReturnStatement,
-                TsSyntaxKind::NewExpression,
+                kind::EXPORT_DECLARATION,
+                kind::CLASS_DECLARATION,
+                kind::MODIFIER_LIST,
+                kind::PROPERTY_DECLARATION,
+                kind::METHOD_DECLARATION,
+                kind::RETURN_STATEMENT,
+                kind::NEW_EXPRESSION,
             ],
         },
         Case {
@@ -50,11 +55,11 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/component.tsx"),
             mode: SourceMode::Tsx,
             nodes: &[
-                TsSyntaxKind::JsxElement,
-                TsSyntaxKind::JsxAttribute,
-                TsSyntaxKind::JsxSpreadAttribute,
-                TsSyntaxKind::JsxText,
-                TsSyntaxKind::JsxExpression,
+                kind::JSX_ELEMENT,
+                kind::JSX_ATTRIBUTE,
+                kind::JSX_SPREAD_ATTRIBUTE,
+                kind::JSX_TEXT,
+                kind::JSX_EXPRESSION,
             ],
         },
         Case {
@@ -62,12 +67,12 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/bindings.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::FunctionDeclaration,
-                TsSyntaxKind::ObjectBindingPattern,
-                TsSyntaxKind::ArrayBindingPattern,
-                TsSyntaxKind::BindingElement,
-                TsSyntaxKind::RestElement,
-                TsSyntaxKind::VariableDeclaration,
+                kind::FUNCTION_DECLARATION,
+                kind::OBJECT_BINDING_PATTERN,
+                kind::ARRAY_BINDING_PATTERN,
+                kind::BINDING_ELEMENT,
+                kind::REST_ELEMENT,
+                kind::VARIABLE_DECLARATION,
             ],
         },
         Case {
@@ -75,16 +80,16 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/control.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::FunctionDeclaration,
-                TsSyntaxKind::ForStatement,
-                TsSyntaxKind::IfStatement,
-                TsSyntaxKind::SwitchStatement,
-                TsSyntaxKind::SwitchCase,
-                TsSyntaxKind::TryStatement,
-                TsSyntaxKind::CatchClause,
-                TsSyntaxKind::CatchBinding,
-                TsSyntaxKind::ObjectBindingPattern,
-                TsSyntaxKind::FinallyClause,
+                kind::FUNCTION_DECLARATION,
+                kind::FOR_STATEMENT,
+                kind::IF_STATEMENT,
+                kind::SWITCH_STATEMENT,
+                kind::SWITCH_CASE,
+                kind::TRY_STATEMENT,
+                kind::CATCH_CLAUSE,
+                kind::CATCH_BINDING,
+                kind::OBJECT_BINDING_PATTERN,
+                kind::FINALLY_CLAUSE,
             ],
         },
         Case {
@@ -92,19 +97,19 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/types.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::ImportDeclaration,
-                TsSyntaxKind::ImportEqualsDeclaration,
-                TsSyntaxKind::ExternalModuleReference,
-                TsSyntaxKind::NamedImports,
-                TsSyntaxKind::ExportClause,
-                TsSyntaxKind::EnumDeclaration,
-                TsSyntaxKind::NamespaceDeclaration,
-                TsSyntaxKind::InterfaceDeclaration,
-                TsSyntaxKind::MethodSignature,
-                TsSyntaxKind::TypeAliasDeclaration,
-                TsSyntaxKind::UnionType,
-                TsSyntaxKind::ObjectType,
-                TsSyntaxKind::TypeMember,
+                kind::IMPORT_DECLARATION,
+                kind::IMPORT_EQUALS_DECLARATION,
+                kind::EXTERNAL_MODULE_REFERENCE,
+                kind::NAMED_IMPORTS,
+                kind::EXPORT_CLAUSE,
+                kind::ENUM_DECLARATION,
+                kind::NAMESPACE_DECLARATION,
+                kind::INTERFACE_DECLARATION,
+                kind::METHOD_SIGNATURE,
+                kind::TYPE_ALIAS_DECLARATION,
+                kind::UNION_TYPE,
+                kind::OBJECT_TYPE,
+                kind::TYPE_MEMBER,
             ],
         },
         Case {
@@ -112,10 +117,10 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/literals.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::ExportDeclaration,
-                TsSyntaxKind::VariableStatement,
-                TsSyntaxKind::VariableDeclaration,
-                TsSyntaxKind::BinaryExpression,
+                kind::EXPORT_DECLARATION,
+                kind::VARIABLE_STATEMENT,
+                kind::VARIABLE_DECLARATION,
+                kind::BINARY_EXPRESSION,
             ],
         },
         Case {
@@ -123,12 +128,12 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/operators.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::ExportDeclaration,
-                TsSyntaxKind::VariableStatement,
-                TsSyntaxKind::BinaryExpression,
-                TsSyntaxKind::UnaryExpression,
-                TsSyntaxKind::MemberExpression,
-                TsSyntaxKind::ElementAccessExpression,
+                kind::EXPORT_DECLARATION,
+                kind::VARIABLE_STATEMENT,
+                kind::BINARY_EXPRESSION,
+                kind::UNARY_EXPRESSION,
+                kind::MEMBER_EXPRESSION,
+                kind::ELEMENT_ACCESS_EXPRESSION,
             ],
         },
         Case {
@@ -136,20 +141,19 @@ fn cases() -> &'static [Case] {
             source: include_str!("../harness/cases/type-operators.ts"),
             mode: SourceMode::TypeScript,
             nodes: &[
-                TsSyntaxKind::TypeOperator,
-                TsSyntaxKind::IndexedAccessType,
-                TsSyntaxKind::MappedType,
-                TsSyntaxKind::ConditionalType,
-                TsSyntaxKind::TypeMember,
+                kind::TYPE_OPERATOR,
+                kind::INDEXED_ACCESS_TYPE,
+                kind::MAPPED_TYPE,
+                kind::CONDITIONAL_TYPE,
+                kind::TYPE_MEMBER,
             ],
         },
     ]
 }
 
-fn has_node(output: &flavor_plugin_typescript::TsAnalysisOutput, kind: TsSyntaxKind) -> bool {
+fn has_node(output: &TsAnalysisOutput, kind: Kind) -> bool {
     output
-        .source_file
-        .syntax()
+        .syntax
         .descendants()
-        .any(|node| node.kind() == RawSyntaxKind::from(kind))
+        .any(|node| node.kind() == kind::schema().raw_kind(kind))
 }

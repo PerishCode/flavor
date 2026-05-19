@@ -1,18 +1,20 @@
 use flavor_core::{Diagnostic, RawSyntaxKind, SourceText, Span, SyntaxToken};
+use flavor_grammar::RawAstSchema;
 use flavor_plugin_typescript::{run as run_ts, TsPluginConfig};
 
-use super::{TemplateAst, VueTemplateKind};
+use super::{kind, TemplateAst};
 
 const PREFIX: &str = "const __flavor_template_expr = ";
 const SUFFIX: &str = ";";
 
 pub fn validate_expressions(ast: &TemplateAst) -> Vec<Diagnostic> {
+    let schema = kind::schema();
     let mut diagnostics = Vec::new();
     for token in ast.syntax().descendants_with_tokens() {
         let Some(token) = token.into_token() else {
             continue;
         };
-        if let Some(expression) = template_expression(&token) {
+        if let Some(expression) = template_expression(&schema, &token) {
             diagnostics.extend(validate_expression(expression));
         }
     }
@@ -43,15 +45,18 @@ fn validate_expression(expression: TemplateExpression<'_>) -> Vec<Diagnostic> {
         .collect()
 }
 
-fn template_expression(token: &SyntaxToken) -> Option<TemplateExpression<'_>> {
-    if token.kind() == RawSyntaxKind::from(VueTemplateKind::ExpressionText) {
+fn template_expression<'a>(
+    schema: &RawAstSchema,
+    token: &'a SyntaxToken,
+) -> Option<TemplateExpression<'a>> {
+    if is_raw(schema, token.kind(), kind::EXPRESSION_TEXT) {
         return Some(TemplateExpression {
             text: token.text(),
             start: token_start(token),
         });
     }
 
-    if token.kind() == RawSyntaxKind::from(VueTemplateKind::DirectiveArgument) {
+    if is_raw(schema, token.kind(), kind::DIRECTIVE_ARGUMENT) {
         let text = token.text();
         let (inner, offset) = strip_dynamic_arg(text)?;
         return Some(TemplateExpression {
@@ -60,11 +65,11 @@ fn template_expression(token: &SyntaxToken) -> Option<TemplateExpression<'_>> {
         });
     }
 
-    if token.kind() != RawSyntaxKind::from(VueTemplateKind::AttributeValue) {
+    if !is_raw(schema, token.kind(), kind::ATTRIBUTE_VALUE) {
         return None;
     }
     let parent = token.parent()?;
-    if parent.kind() != RawSyntaxKind::from(VueTemplateKind::DirectiveExpression) {
+    if !is_raw(schema, parent.kind(), kind::DIRECTIVE_EXPRESSION) {
         return None;
     }
     let text = token.text();
@@ -76,6 +81,10 @@ fn template_expression(token: &SyntaxToken) -> Option<TemplateExpression<'_>> {
         text: inner,
         start: start.saturating_add(to_u32(offset)),
     })
+}
+
+fn is_raw(schema: &RawAstSchema, raw: RawSyntaxKind, kind: kind::Kind) -> bool {
+    schema.raw_kind_name(raw) == Some(kind)
 }
 
 fn map_diagnostic(

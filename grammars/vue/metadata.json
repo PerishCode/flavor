@@ -67,13 +67,13 @@
           "template.expression": "interpolation | directive_expression | dynamic_argument -> VueFacts.template_expression_count + VueFacts.template_expressions: VueTemplateExpressionFact(span, line)"
         },
         "nodes": {
-          "attribute": "VueTemplateKind::Attribute",
-          "directive": "VueTemplateKind::Directive",
-          "directive_expression": "VueTemplateKind::DirectiveExpression",
-          "element": "VueTemplateKind::Element",
-          "end_tag": "VueTemplateKind::EndTag",
-          "interpolation": "VueTemplateKind::Interpolation",
-          "start_tag": "VueTemplateKind::StartTag",
+          "attribute": "raw:attribute",
+          "directive": "raw:directive",
+          "directive_expression": "raw:directive_expression",
+          "element": "raw:element",
+          "end_tag": "raw:end_tag",
+          "interpolation": "raw:interpolation",
+          "start_tag": "raw:start_tag",
           "template_document": "TemplateAst.root"
         },
         "recovery": {

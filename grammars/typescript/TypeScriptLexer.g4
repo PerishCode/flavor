@@ -108,9 +108,9 @@ TEMPLATE_LITERAL: '`' (~[`\\] | '\\' .)* '`';
 REGEX_LITERAL: '/' (~[/\\\r\n] | '\\' .)+ '/' [a-zA-Z]*;
 BIG_INT_LITERAL: [0-9]+ 'n';
 NUMERIC_LITERAL: [0-9]+ ('.' [0-9]+)? ([eE] [+-]? [0-9]+)?;
-IDENTIFIER: [a-zA-Z_$] [a-zA-Z0-9_$]*; // tree-sitter:identifier
-JSX_IDENTIFIER: [a-zA-Z_] [a-zA-Z0-9_]*; // tree-sitter:identifier
-JSX_NAMESPACE: [a-zA-Z_] [a-zA-Z0-9_]*; // tree-sitter:jsx_namespace_name
-JSX_TEXT_TOKEN: ~[<>\r\n]+; // tree-sitter:jsx_text
+IDENTIFIER: [a-zA-Z_$] [a-zA-Z0-9_$]*;
+JSX_IDENTIFIER: [a-zA-Z_] [a-zA-Z0-9_]*;
+JSX_NAMESPACE: [a-zA-Z_] [a-zA-Z0-9_]*;
+JSX_TEXT_TOKEN: ~[<>\r\n]+;
 WS: [ \t\r\n]+ -> channel(HIDDEN);
 UNKNOWN: .;

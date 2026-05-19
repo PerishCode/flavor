@@ -1,20 +1,32 @@
 use flavor_core::{RawSyntaxKind, SourceText};
-use flavor_plugin_svelte::{
-    markup::{parse_markup, SvelteMarkupKind},
-    run, SveltePluginConfig,
-};
+use flavor_plugin_svelte::{run, SveltePluginConfig};
 
-fn has_node(ast: &flavor_plugin_svelte::SvelteMarkupAst, kind: SvelteMarkupKind) -> bool {
+#[path = "../src/markup/ast.rs"]
+mod ast;
+#[path = "../src/markup/attribute.rs"]
+mod attribute;
+#[path = "../src/markup/kind.rs"]
+pub mod kind;
+#[path = "../src/markup/names.rs"]
+mod names;
+#[path = "../src/markup/parser.rs"]
+mod parser;
+
+use ast::SvelteMarkupAst;
+use kind::Kind;
+use parser::parse_markup;
+
+fn has_node(ast: &SvelteMarkupAst, kind: Kind) -> bool {
     ast.syntax()
         .descendants()
-        .any(|node| node.kind() == RawSyntaxKind::from(kind))
+        .any(|node| node.kind() == kind::schema().raw_kind(kind))
 }
 
-fn token_count(ast: &flavor_plugin_svelte::SvelteMarkupAst, kind: SvelteMarkupKind) -> usize {
+fn token_count(ast: &SvelteMarkupAst, kind: Kind) -> usize {
     ast.syntax()
         .descendants_with_tokens()
         .filter_map(|element| element.into_token())
-        .filter(|token| token.kind() == RawSyntaxKind::from(kind))
+        .filter(|token| token.kind() == kind::schema().raw_kind(kind))
         .count()
 }
 
@@ -22,10 +34,10 @@ fn is_core_trivia(kind: RawSyntaxKind) -> bool {
     matches!(kind.0, 1..=4)
 }
 
-fn assert_cst_matches_schema(ast: &flavor_plugin_svelte::SvelteMarkupAst) {
+fn assert_cst_matches_schema(ast: &SvelteMarkupAst) {
     for node in ast.syntax().descendants() {
         assert!(
-            SvelteMarkupKind::raw_is_node(node.kind()),
+            kind::schema().raw_is_node(node.kind()),
             "node kind {:?} is not declared as a G4 node",
             node.kind()
         );
@@ -36,7 +48,7 @@ fn assert_cst_matches_schema(ast: &flavor_plugin_svelte::SvelteMarkupAst) {
         .filter_map(|element| element.into_token())
     {
         assert!(
-            SvelteMarkupKind::raw_is_token(token.kind()) || is_core_trivia(token.kind()),
+            kind::schema().raw_is_token(token.kind()) || is_core_trivia(token.kind()),
             "token kind {:?} is not declared as a G4 token",
             token.kind()
         );
@@ -49,9 +61,9 @@ fn parses_elements_and_components() {
     let ast = parse_markup(source);
 
     assert_eq!(ast.syntax().text().to_string(), source);
-    assert!(has_node(&ast, SvelteMarkupKind::Element));
-    assert!(has_node(&ast, SvelteMarkupKind::Component));
-    assert!(has_node(&ast, SvelteMarkupKind::Mustache));
+    assert!(has_node(&ast, kind::ELEMENT));
+    assert!(has_node(&ast, kind::COMPONENT));
+    assert!(has_node(&ast, kind::MUSTACHE));
     assert!(ast.diagnostics().is_empty());
 }
 
@@ -80,12 +92,12 @@ fn parses_blocks_render() {
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(SvelteMarkupKind::Block))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::BLOCK))
             .count(),
         2
     );
-    assert!(has_node(&ast, SvelteMarkupKind::BlockBranch));
-    assert!(has_node(&ast, SvelteMarkupKind::RenderTag));
+    assert!(has_node(&ast, kind::BLOCK_BRANCH));
+    assert!(has_node(&ast, kind::RENDER_TAG));
     assert!(ast.diagnostics().is_empty());
 }
 
@@ -98,13 +110,13 @@ fn classifies_directives_and_shorthands() {
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(SvelteMarkupKind::Directive))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::DIRECTIVE))
             .count(),
         4
     );
-    assert!(has_node(&ast, SvelteMarkupKind::SpreadAttribute));
-    assert!(has_node(&ast, SvelteMarkupKind::ShorthandAttribute));
-    assert_eq!(token_count(&ast, SvelteMarkupKind::DirectiveArgument), 4);
+    assert!(has_node(&ast, kind::SPREAD_ATTRIBUTE));
+    assert!(has_node(&ast, kind::SHORTHAND_ATTRIBUTE));
+    assert_eq!(token_count(&ast, kind::DIRECTIVE_ARGUMENT), 4);
 }
 
 #[test]
@@ -125,14 +137,14 @@ fn parses_snippet_await() {
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(SvelteMarkupKind::Block))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::BLOCK))
             .count(),
         3
     );
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(SvelteMarkupKind::BlockBranch))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::BLOCK_BRANCH))
             .count(),
         2
     );
@@ -148,8 +160,8 @@ fn parses_special_tags() {
     let ast = parse_markup(source);
 
     assert_eq!(ast.syntax().text().to_string(), source);
-    assert!(has_node(&ast, SvelteMarkupKind::Component));
-    assert!(has_node(&ast, SvelteMarkupKind::SpecialTag));
+    assert!(has_node(&ast, kind::COMPONENT));
+    assert!(has_node(&ast, kind::SPECIAL_TAG));
     assert!(ast.diagnostics().is_empty());
 }
 

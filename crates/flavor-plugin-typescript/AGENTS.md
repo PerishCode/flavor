@@ -5,13 +5,16 @@ facts on top of `flavor-core`.
 
 ## Directory Rules
 
-- `src/lexer/` owns token scanning.
-- `src/parser/` owns TypeScript, JavaScript, and JSX/TSX grammar.
-- `src/ast/`, `src/facts/`, and `src/visit/` own typed AST access, derived facts,
-  and traversal hooks.
-- `src/state/` owns `TsPluginConfig` and `TsPluginState`.
-- `build.rs` derives `TsSyntaxKind` from the TypeScript G4 raw AST schema.
-- `src/syntax_kind.rs` includes generated frontend syntax kind definitions.
+- `src/lib.rs`, `src/model.rs`, `src/plugin.rs`, and `src/state/` own the
+  public analyzer facade, output model, first-party plugin delivery, and
+  injected state/config.
+- `src/lexer/` owns internal token scanning.
+- `src/parser/` owns the internal TypeScript, JavaScript, and JSX/TSX grammar.
+- `src/ast/` owns the internal source file wrapper. `src/facts/` consumes the
+  grammar-owned dynamic tree view to derive facts. `src/visit/` owns traversal
+  hooks.
+- `src/internal/grammar.rs` owns plugin-local string kind constants and schema
+  loading from `grammars/typescript`; it is not a public API.
 - `harness/cases/` contains representative parser fixtures.
 - `tests/` covers scanner, parser, run output, and harness behavior.
 
@@ -31,11 +34,11 @@ cargo test --locked -p flavor-plugin-typescript
 - Keep recovery deterministic and diagnostics source-backed.
 - Keep the plugin lexer/parser as the staged parser backend for this refactor;
   raw CST node/token kinds must continue to come from the TypeScript G4 raw AST
-  schema and schema-aware builder paths.
-- If syntax kinds move, update the TypeScript G4 surface, parser, AST/fact
-  consumers, and tests together.
-- Embedded expression users, such as Vue and Svelte frontends, depend on this
-  crate staying language-frontend oriented rather than CLI-oriented.
+  schema and raw AST construction must go through `flavor-grammar`.
+- If string kind constants move, update the TypeScript G4 surface, parser, raw
+  tree fact consumers, and tests together.
+- Embedded expression users, such as Vue and Svelte frontends, must use the
+  public analyzer facade rather than internal lexer/parser modules.
 
 ## FAQ
 

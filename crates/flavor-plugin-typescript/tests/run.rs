@@ -1,6 +1,9 @@
 use flavor_core::SourceText;
 use flavor_plugin_typescript::{run, SourceMode, TsPluginConfig};
 
+#[path = "../src/internal/grammar.rs"]
+mod kind;
+
 #[test]
 fn run_accepts_injected_config() {
     let config = TsPluginConfig {
@@ -12,10 +15,10 @@ fn run_accepts_injected_config() {
         config,
     );
 
-    assert_eq!(output.source_file.source().name(), "sample.tsx");
+    assert_eq!(output.source.name(), "sample.tsx");
     assert_eq!(
-        output.source_file.tokens().last().map(|token| token.kind),
-        Some(flavor_plugin_typescript::syntax_kind::TsSyntaxKind::EndOfFile)
+        output.tokens.last().map(|token| token.kind),
+        Some(kind::END_OF_FILE)
     );
     assert!(output.diagnostics.is_empty());
 }

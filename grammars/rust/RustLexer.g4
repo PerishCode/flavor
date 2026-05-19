@@ -4,6 +4,7 @@ lexer grammar RustLexer;
 KEYWORD_FN: 'fn';
 KEYWORD_IMPL: 'impl';
 KEYWORD_TRAIT: 'trait';
+KEYWORD_FOR: 'for';
 KEYWORD_LET: 'let';
 KEYWORD_MATCH: 'match';
 IDENTIFIER: [a-zA-Z_] [a-zA-Z0-9_]*; // tree-sitter:identifier

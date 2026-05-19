@@ -1,20 +1,20 @@
-use flavor_core::{RawSyntaxKind, SourceText};
-use flavor_plugin_typescript::{run, syntax_kind::TsSyntaxKind, SourceMode, TsPluginConfig};
+use flavor_core::SourceText;
+use flavor_plugin_typescript::{run, SourceMode, TsAnalysisOutput, TsPluginConfig};
 
-fn has_node(output: &flavor_plugin_typescript::TsAnalysisOutput, kind: TsSyntaxKind) -> bool {
+#[path = "../src/internal/grammar.rs"]
+mod kind;
+
+use kind::Kind;
+
+fn has_node(output: &TsAnalysisOutput, kind: Kind) -> bool {
     output
-        .source_file
-        .syntax()
+        .syntax
         .descendants()
-        .any(|node| node.kind() == RawSyntaxKind::from(kind))
+        .any(|node| node.kind() == kind::schema().raw_kind(kind))
 }
 
-fn has_token(output: &flavor_plugin_typescript::TsAnalysisOutput, kind: TsSyntaxKind) -> bool {
-    output
-        .source_file
-        .tokens()
-        .iter()
-        .any(|token| token.kind == kind)
+fn has_token(output: &TsAnalysisOutput, kind: Kind) -> bool {
+    output.tokens.iter().any(|token| token.kind == kind)
 }
 
 #[test]
@@ -24,12 +24,9 @@ fn builds_source_file_cst() {
         TsPluginConfig::default(),
     );
 
-    assert_eq!(
-        output.source_file.syntax().text().to_string(),
-        "const value = 1;"
-    );
-    assert!(has_node(&output, TsSyntaxKind::VariableStatement));
-    assert!(has_node(&output, TsSyntaxKind::VariableDeclaration));
+    assert_eq!(output.syntax.text().to_string(), "const value = 1;");
+    assert!(has_node(&output, kind::VARIABLE_STATEMENT));
+    assert!(has_node(&output, kind::VARIABLE_DECLARATION));
 }
 
 #[test]
@@ -39,7 +36,7 @@ fn keeps_trivia_in_cst() {
         TsPluginConfig::default(),
     );
 
-    let text = output.source_file.syntax().text().to_string();
+    let text = output.syntax.text().to_string();
     assert_eq!(text, "// leading\nconst value = 1;");
 }
 
@@ -54,13 +51,8 @@ fn parses_tsx_cst() {
         config,
     );
 
-    assert!(output
-        .source_file
-        .syntax()
-        .text()
-        .to_string()
-        .contains("<div />"));
-    assert!(has_node(&output, TsSyntaxKind::Initializer));
+    assert!(output.syntax.text().to_string().contains("<div />"));
+    assert!(has_node(&output, kind::INITIALIZER));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -78,11 +70,11 @@ fn parses_tsx_element_nodes() {
         config,
     );
 
-    assert!(has_node(&output, TsSyntaxKind::JsxElement));
-    assert!(has_node(&output, TsSyntaxKind::JsxOpeningElement));
-    assert!(has_node(&output, TsSyntaxKind::JsxClosingElement));
-    assert!(has_node(&output, TsSyntaxKind::JsxAttribute));
-    assert!(has_node(&output, TsSyntaxKind::JsxExpression));
+    assert!(has_node(&output, kind::JSX_ELEMENT));
+    assert!(has_node(&output, kind::JSX_OPENING_ELEMENT));
+    assert!(has_node(&output, kind::JSX_CLOSING_ELEMENT));
+    assert!(has_node(&output, kind::JSX_ATTRIBUTE));
+    assert!(has_node(&output, kind::JSX_EXPRESSION));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -100,12 +92,12 @@ fn parses_tsx_edge_nodes() {
         config,
     );
 
-    assert!(has_node(&output, TsSyntaxKind::JsxElement));
-    assert!(has_node(&output, TsSyntaxKind::ParenthesizedExpression));
-    assert!(has_node(&output, TsSyntaxKind::JsxAttribute));
-    assert!(has_node(&output, TsSyntaxKind::JsxSpreadAttribute));
-    assert!(has_node(&output, TsSyntaxKind::JsxText));
-    assert!(has_node(&output, TsSyntaxKind::JsxExpression));
+    assert!(has_node(&output, kind::JSX_ELEMENT));
+    assert!(has_node(&output, kind::PARENTHESIZED_EXPRESSION));
+    assert!(has_node(&output, kind::JSX_ATTRIBUTE));
+    assert!(has_node(&output, kind::JSX_SPREAD_ATTRIBUTE));
+    assert!(has_node(&output, kind::JSX_TEXT));
+    assert!(has_node(&output, kind::JSX_EXPRESSION));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -116,8 +108,8 @@ fn keeps_ts_comparison() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::BinaryExpression));
-    assert!(!has_node(&output, TsSyntaxKind::JsxElement));
+    assert!(has_node(&output, kind::BINARY_EXPRESSION));
+    assert!(!has_node(&output, kind::JSX_ELEMENT));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -131,10 +123,10 @@ fn parses_function_declaration_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::FunctionDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::ParameterList));
-    assert!(has_node(&output, TsSyntaxKind::ReturnType));
-    assert!(has_node(&output, TsSyntaxKind::Block));
+    assert!(has_node(&output, kind::FUNCTION_DECLARATION));
+    assert!(has_node(&output, kind::PARAMETER_LIST));
+    assert!(has_node(&output, kind::RETURN_TYPE));
+    assert!(has_node(&output, kind::BLOCK));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -148,12 +140,12 @@ fn parses_binding_patterns() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ObjectBindingPattern));
-    assert!(has_node(&output, TsSyntaxKind::ArrayBindingPattern));
-    assert!(has_node(&output, TsSyntaxKind::BindingElement));
-    assert!(has_node(&output, TsSyntaxKind::RestElement));
-    assert!(has_node(&output, TsSyntaxKind::Initializer));
-    assert!(has_node(&output, TsSyntaxKind::Parameter));
+    assert!(has_node(&output, kind::OBJECT_BINDING_PATTERN));
+    assert!(has_node(&output, kind::ARRAY_BINDING_PATTERN));
+    assert!(has_node(&output, kind::BINDING_ELEMENT));
+    assert!(has_node(&output, kind::REST_ELEMENT));
+    assert!(has_node(&output, kind::INITIALIZER));
+    assert!(has_node(&output, kind::PARAMETER));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -167,11 +159,11 @@ fn parses_decorated_class_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ClassDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::DecoratorList));
-    assert!(has_node(&output, TsSyntaxKind::TypeParameters));
-    assert!(has_node(&output, TsSyntaxKind::HeritageClause));
-    assert!(has_node(&output, TsSyntaxKind::ClassBody));
+    assert!(has_node(&output, kind::CLASS_DECLARATION));
+    assert!(has_node(&output, kind::DECORATOR_LIST));
+    assert!(has_node(&output, kind::TYPE_PARAMETERS));
+    assert!(has_node(&output, kind::HERITAGE_CLAUSE));
+    assert!(has_node(&output, kind::CLASS_BODY));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -198,19 +190,19 @@ fn parses_module_declaration_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ImportDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::ImportClause));
-    assert!(has_node(&output, TsSyntaxKind::ImportEqualsDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::ExternalModuleReference));
-    assert!(has_node(&output, TsSyntaxKind::NamespaceImport));
-    assert!(has_node(&output, TsSyntaxKind::NamedImports));
-    assert!(has_node(&output, TsSyntaxKind::ImportSpecifier));
-    assert!(has_node(&output, TsSyntaxKind::ExportDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::ExportClause));
-    assert!(has_node(&output, TsSyntaxKind::NamedExports));
-    assert!(has_node(&output, TsSyntaxKind::ExportSpecifier));
-    assert!(has_node(&output, TsSyntaxKind::ExportAssignment));
-    assert!(has_node(&output, TsSyntaxKind::NamespaceExportDeclaration));
+    assert!(has_node(&output, kind::IMPORT_DECLARATION));
+    assert!(has_node(&output, kind::IMPORT_CLAUSE));
+    assert!(has_node(&output, kind::IMPORT_EQUALS_DECLARATION));
+    assert!(has_node(&output, kind::EXTERNAL_MODULE_REFERENCE));
+    assert!(has_node(&output, kind::NAMESPACE_IMPORT));
+    assert!(has_node(&output, kind::NAMED_IMPORTS));
+    assert!(has_node(&output, kind::IMPORT_SPECIFIER));
+    assert!(has_node(&output, kind::EXPORT_DECLARATION));
+    assert!(has_node(&output, kind::EXPORT_CLAUSE));
+    assert!(has_node(&output, kind::NAMED_EXPORTS));
+    assert!(has_node(&output, kind::EXPORT_SPECIFIER));
+    assert!(has_node(&output, kind::EXPORT_ASSIGNMENT));
+    assert!(has_node(&output, kind::NAMESPACE_EXPORT_DECLARATION));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -224,13 +216,13 @@ fn parses_enum_namespace_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::EnumDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::EnumBody));
-    assert!(has_node(&output, TsSyntaxKind::EnumMember));
-    assert!(has_node(&output, TsSyntaxKind::NamespaceDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::NamespaceBody));
-    assert!(has_node(&output, TsSyntaxKind::VariableStatement));
-    assert!(has_node(&output, TsSyntaxKind::TypeAliasDeclaration));
+    assert!(has_node(&output, kind::ENUM_DECLARATION));
+    assert!(has_node(&output, kind::ENUM_BODY));
+    assert!(has_node(&output, kind::ENUM_MEMBER));
+    assert!(has_node(&output, kind::NAMESPACE_DECLARATION));
+    assert!(has_node(&output, kind::NAMESPACE_BODY));
+    assert!(has_node(&output, kind::VARIABLE_STATEMENT));
+    assert!(has_node(&output, kind::TYPE_ALIAS_DECLARATION));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -244,20 +236,20 @@ fn parses_control_flow_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ForStatement));
-    assert!(has_node(&output, TsSyntaxKind::IfStatement));
-    assert!(has_node(&output, TsSyntaxKind::SwitchStatement));
-    assert!(has_node(&output, TsSyntaxKind::SwitchBody));
-    assert!(has_node(&output, TsSyntaxKind::SwitchCase));
-    assert!(has_node(&output, TsSyntaxKind::ReturnStatement));
-    assert!(has_node(&output, TsSyntaxKind::TryStatement));
-    assert!(has_node(&output, TsSyntaxKind::CatchClause));
-    assert!(has_node(&output, TsSyntaxKind::CatchBinding));
-    assert!(has_node(&output, TsSyntaxKind::ObjectBindingPattern));
-    assert!(has_node(&output, TsSyntaxKind::FinallyClause));
-    assert!(has_node(&output, TsSyntaxKind::ThrowStatement));
-    assert!(has_node(&output, TsSyntaxKind::BreakStatement));
-    assert!(has_node(&output, TsSyntaxKind::ContinueStatement));
+    assert!(has_node(&output, kind::FOR_STATEMENT));
+    assert!(has_node(&output, kind::IF_STATEMENT));
+    assert!(has_node(&output, kind::SWITCH_STATEMENT));
+    assert!(has_node(&output, kind::SWITCH_BODY));
+    assert!(has_node(&output, kind::SWITCH_CASE));
+    assert!(has_node(&output, kind::RETURN_STATEMENT));
+    assert!(has_node(&output, kind::TRY_STATEMENT));
+    assert!(has_node(&output, kind::CATCH_CLAUSE));
+    assert!(has_node(&output, kind::CATCH_BINDING));
+    assert!(has_node(&output, kind::OBJECT_BINDING_PATTERN));
+    assert!(has_node(&output, kind::FINALLY_CLAUSE));
+    assert!(has_node(&output, kind::THROW_STATEMENT));
+    assert!(has_node(&output, kind::BREAK_STATEMENT));
+    assert!(has_node(&output, kind::CONTINUE_STATEMENT));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -271,11 +263,11 @@ fn parses_expression_shape_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::CallExpression));
-    assert!(has_node(&output, TsSyntaxKind::MemberExpression));
-    assert!(has_node(&output, TsSyntaxKind::BinaryExpression));
-    assert!(has_node(&output, TsSyntaxKind::ObjectExpression));
-    assert!(has_node(&output, TsSyntaxKind::ArrayExpression));
+    assert!(has_node(&output, kind::CALL_EXPRESSION));
+    assert!(has_node(&output, kind::MEMBER_EXPRESSION));
+    assert!(has_node(&output, kind::BINARY_EXPRESSION));
+    assert!(has_node(&output, kind::OBJECT_EXPRESSION));
+    assert!(has_node(&output, kind::ARRAY_EXPRESSION));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -287,11 +279,11 @@ fn parses_literal_tokens() {
         TsPluginConfig::default(),
     );
 
-    assert_eq!(output.source_file.syntax().text().to_string(), source);
-    assert!(has_token(&output, TsSyntaxKind::BigIntLiteral));
-    assert!(has_token(&output, TsSyntaxKind::RegexLiteral));
-    assert!(has_token(&output, TsSyntaxKind::TemplateLiteral));
-    assert!(has_token(&output, TsSyntaxKind::Slash));
+    assert_eq!(output.syntax.text().to_string(), source);
+    assert!(has_token(&output, kind::BIG_INT_LITERAL));
+    assert!(has_token(&output, kind::REGEX_LITERAL));
+    assert!(has_token(&output, kind::TEMPLATE_LITERAL));
+    assert!(has_token(&output, kind::SLASH));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -303,10 +295,10 @@ fn parses_keyword_exprs() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::BinaryExpression));
-    assert!(has_node(&output, TsSyntaxKind::UnaryExpression));
-    assert!(has_node(&output, TsSyntaxKind::MemberExpression));
-    assert!(has_token(&output, TsSyntaxKind::KeywordSatisfies));
+    assert!(has_node(&output, kind::BINARY_EXPRESSION));
+    assert!(has_node(&output, kind::UNARY_EXPRESSION));
+    assert!(has_node(&output, kind::MEMBER_EXPRESSION));
+    assert!(has_token(&output, kind::KEYWORD_SATISFIES));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -318,9 +310,9 @@ fn parses_optional_chains() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::CallExpression));
-    assert!(has_node(&output, TsSyntaxKind::MemberExpression));
-    assert!(has_node(&output, TsSyntaxKind::ElementAccessExpression));
+    assert!(has_node(&output, kind::CALL_EXPRESSION));
+    assert!(has_node(&output, kind::MEMBER_EXPRESSION));
+    assert!(has_node(&output, kind::ELEMENT_ACCESS_EXPRESSION));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -334,12 +326,12 @@ fn parses_rich_expr_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ArrowFunction));
-    assert!(has_node(&output, TsSyntaxKind::ConditionalExpression));
-    assert!(has_node(&output, TsSyntaxKind::NewExpression));
-    assert!(has_node(&output, TsSyntaxKind::UnaryExpression));
-    assert!(has_node(&output, TsSyntaxKind::AwaitExpression));
-    assert!(has_node(&output, TsSyntaxKind::TypeParameters));
+    assert!(has_node(&output, kind::ARROW_FUNCTION));
+    assert!(has_node(&output, kind::CONDITIONAL_EXPRESSION));
+    assert!(has_node(&output, kind::NEW_EXPRESSION));
+    assert!(has_node(&output, kind::UNARY_EXPRESSION));
+    assert!(has_node(&output, kind::AWAIT_EXPRESSION));
+    assert!(has_node(&output, kind::TYPE_PARAMETERS));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -353,13 +345,13 @@ fn parses_type_shape_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::UnionType));
-    assert!(has_node(&output, TsSyntaxKind::TypeReference));
-    assert!(has_node(&output, TsSyntaxKind::ArrayType));
-    assert!(has_node(&output, TsSyntaxKind::ObjectType));
-    assert!(has_node(&output, TsSyntaxKind::TypeMember));
-    assert!(has_node(&output, TsSyntaxKind::ParameterList));
-    assert!(has_node(&output, TsSyntaxKind::ReturnType));
+    assert!(has_node(&output, kind::UNION_TYPE));
+    assert!(has_node(&output, kind::TYPE_REFERENCE));
+    assert!(has_node(&output, kind::ARRAY_TYPE));
+    assert!(has_node(&output, kind::OBJECT_TYPE));
+    assert!(has_node(&output, kind::TYPE_MEMBER));
+    assert!(has_node(&output, kind::PARAMETER_LIST));
+    assert!(has_node(&output, kind::RETURN_TYPE));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -373,11 +365,11 @@ fn parses_type_operator_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::TypeOperator));
-    assert!(has_node(&output, TsSyntaxKind::IndexedAccessType));
-    assert!(has_node(&output, TsSyntaxKind::MappedType));
-    assert!(has_node(&output, TsSyntaxKind::ConditionalType));
-    assert!(has_node(&output, TsSyntaxKind::TypeMember));
+    assert!(has_node(&output, kind::TYPE_OPERATOR));
+    assert!(has_node(&output, kind::INDEXED_ACCESS_TYPE));
+    assert!(has_node(&output, kind::MAPPED_TYPE));
+    assert!(has_node(&output, kind::CONDITIONAL_TYPE));
+    assert!(has_node(&output, kind::TYPE_MEMBER));
     assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
@@ -391,11 +383,11 @@ fn parses_interface_declaration_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::InterfaceDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::InterfaceBody));
-    assert!(has_node(&output, TsSyntaxKind::PropertySignature));
-    assert!(has_node(&output, TsSyntaxKind::MethodSignature));
-    assert!(has_node(&output, TsSyntaxKind::HeritageClause));
+    assert!(has_node(&output, kind::INTERFACE_DECLARATION));
+    assert!(has_node(&output, kind::INTERFACE_BODY));
+    assert!(has_node(&output, kind::PROPERTY_SIGNATURE));
+    assert!(has_node(&output, kind::METHOD_SIGNATURE));
+    assert!(has_node(&output, kind::HERITAGE_CLAUSE));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -409,10 +401,10 @@ fn parses_type_alias_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ExportDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::TypeAliasDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::UnionType));
-    assert!(has_node(&output, TsSyntaxKind::TypeReference));
+    assert!(has_node(&output, kind::EXPORT_DECLARATION));
+    assert!(has_node(&output, kind::TYPE_ALIAS_DECLARATION));
+    assert!(has_node(&output, kind::UNION_TYPE));
+    assert!(has_node(&output, kind::TYPE_REFERENCE));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -426,10 +418,10 @@ fn parses_class_member_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ClassMember));
-    assert!(has_node(&output, TsSyntaxKind::PropertyDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::MethodDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::DecoratorList));
+    assert!(has_node(&output, kind::CLASS_MEMBER));
+    assert!(has_node(&output, kind::PROPERTY_DECLARATION));
+    assert!(has_node(&output, kind::METHOD_DECLARATION));
+    assert!(has_node(&output, kind::DECORATOR_LIST));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -443,12 +435,12 @@ fn parses_modifier_nodes() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::ExportDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::ModifierList));
-    assert!(has_node(&output, TsSyntaxKind::ClassDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::PropertyDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::MethodDeclaration));
-    assert!(has_node(&output, TsSyntaxKind::VariableStatement));
+    assert!(has_node(&output, kind::EXPORT_DECLARATION));
+    assert!(has_node(&output, kind::MODIFIER_LIST));
+    assert!(has_node(&output, kind::CLASS_DECLARATION));
+    assert!(has_node(&output, kind::PROPERTY_DECLARATION));
+    assert!(has_node(&output, kind::METHOD_DECLARATION));
+    assert!(has_node(&output, kind::VARIABLE_STATEMENT));
     assert!(output.diagnostics.is_empty());
 }
 
@@ -462,6 +454,6 @@ fn parses_accessor_members() {
         TsPluginConfig::default(),
     );
 
-    assert!(has_node(&output, TsSyntaxKind::MethodDeclaration));
+    assert!(has_node(&output, kind::METHOD_DECLARATION));
     assert!(output.diagnostics.is_empty());
 }

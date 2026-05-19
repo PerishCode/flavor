@@ -1,8 +1,9 @@
-use flavor_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt};
+use flavor_core::{LineIndex, Span};
+use flavor_grammar::{GrammarNode, GrammarTree};
 
 use crate::{
     descriptor::{SvelteBlock, SvelteDescriptor},
-    markup::{SvelteMarkupAst, SvelteMarkupKind},
+    markup::{kind, SvelteMarkupAst},
 };
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
@@ -35,6 +36,8 @@ pub struct SvelteMarkupNameFact {
     pub line: usize,
 }
 
+type MarkupNode = GrammarNode;
+
 pub fn collect(descriptor: &SvelteDescriptor, markup: Option<&SvelteMarkupAst>) -> SvelteFacts {
     let mut facts = SvelteFacts {
         script_count: usize::from(descriptor.module_script.is_some())
@@ -57,45 +60,46 @@ pub fn collect(descriptor: &SvelteDescriptor, markup: Option<&SvelteMarkupAst>) 
     };
     if let Some(markup) = markup {
         let context = MarkupFactContext::new(markup);
-        for node in markup.syntax().descendants() {
-            match node.kind() {
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::Element) => {
+        let tree = GrammarTree::new(markup.syntax().clone(), kind::schema());
+        for node in tree.root().descendants() {
+            match node.kind_name() {
+                Some("element") => {
                     facts.markup_element_count += 1;
                     if let Some(fact) = element_fact(&node, &context) {
                         facts.markup_elements.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::Component) => {
+                Some("component") => {
                     facts.markup_component_count += 1;
                     if let Some(fact) = element_fact(&node, &context) {
                         facts.markup_components.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::Block) => {
+                Some("block") => {
                     facts.markup_block_count += 1;
                     if let Some(fact) = keyword_fact(&node, &context) {
                         facts.markup_blocks.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::BlockBranch) => {
+                Some("block_branch") => {
                     facts.markup_branch_count += 1;
                     if let Some(fact) = keyword_fact(&node, &context) {
                         facts.markup_branches.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::RenderTag) => {
+                Some("render_tag") => {
                     facts.markup_render_count += 1;
                     if let Some(fact) = keyword_fact(&node, &context) {
                         facts.markup_renders.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::SpecialTag) => {
+                Some("special_tag") => {
                     facts.markup_special_count += 1;
                     if let Some(fact) = keyword_fact(&node, &context) {
                         facts.markup_specials.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(SvelteMarkupKind::Directive) => {
+                Some("directive") => {
                     facts.markup_directive_count += 1;
                     if let Some(fact) = directive_fact(&node, &context) {
                         facts.markup_directives.push(fact);
@@ -129,40 +133,30 @@ impl MarkupFactContext {
     }
 }
 
-fn element_fact(node: &SyntaxNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
-    let span = node.source_span();
+fn element_fact(node: &MarkupNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
+    let span = node.span();
     Some(SvelteMarkupNameFact {
-        name: token_text(node, SvelteMarkupKind::TagName)?,
+        name: node.token_text("TAG_NAME")?,
         span,
         line: context.line(span),
     })
 }
 
-fn keyword_fact(node: &SyntaxNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
-    let span = node.source_span();
+fn keyword_fact(node: &MarkupNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
+    let span = node.span();
     Some(SvelteMarkupNameFact {
-        name: token_text(node, SvelteMarkupKind::BlockKeyword)?,
+        name: node.token_text("BLOCK_KEYWORD")?,
         span,
         line: context.line(span),
     })
 }
 
-fn directive_fact(node: &SyntaxNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
-    let name = node
-        .children()
-        .find(|child| child.kind() == RawSyntaxKind::from(SvelteMarkupKind::DirectiveName))
-        .map(|child| child.text().to_string())?;
-    let span = node.source_span();
+fn directive_fact(node: &MarkupNode, context: &MarkupFactContext) -> Option<SvelteMarkupNameFact> {
+    let name = node.child_text("directive_name")?;
+    let span = node.span();
     Some(SvelteMarkupNameFact {
         name,
         span,
         line: context.line(span),
     })
-}
-
-fn token_text(node: &SyntaxNode, kind: SvelteMarkupKind) -> Option<String> {
-    node.descendants_with_tokens()
-        .filter_map(|element| element.into_token())
-        .find(|token| token.kind() == RawSyntaxKind::from(kind))
-        .map(|token| token.text().to_string())
 }

@@ -1,14 +1,34 @@
 use std::collections::BTreeSet;
 
+mod markup;
 mod metadata;
-mod render;
+mod parse;
+mod raw_builder;
+mod schema;
 mod source;
+#[cfg(feature = "tree-sitter-backend")]
+mod tree_sitter_raw;
+mod view;
 
+pub use markup::{
+    find_balanced_brace_close, find_html_comment_close, is_html_void_element, is_markup_name_char,
+    markup_char_at, scan_markup_name,
+};
 pub use metadata::{parse_metadata, parse_metadata_validated};
+pub use parse::GrammarParseOutput;
+pub use raw_builder::RawAstBuilder;
+pub use schema::{
+    GrammarBundle, GrammarKindName, GrammarSpec, RawAstSchema, RawAstSymbol, RawAstSymbolKind,
+};
 pub use source::{
     parse_g4_source, parse_g4_source_validated, validate_g4_source, G4Binding, G4GrammarKind,
-    G4Reference, G4Rule, G4Source, RawAstSchema, RawAstSymbol, RawAstSymbolKind,
+    G4Reference, G4Rule, G4Source,
 };
+#[cfg(feature = "tree-sitter-backend")]
+pub use tree_sitter_raw::{
+    parse_tree_sitter, tree_sitter_error_span, TreeSitterParseConfig, TreeSitterRawAstAdapter,
+};
+pub use view::{GrammarContext, GrammarNode, GrammarToken, GrammarTree, TokenTextRun};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GrammarMetadata {

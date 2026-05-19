@@ -1,40 +1,15 @@
-pub fn source_char_at(source: &str, offset: usize) -> Option<(char, usize)> {
-    source[offset..]
-        .chars()
-        .next()
-        .map(|ch| (ch, ch.len_utf8()))
-}
+use flavor_grammar::is_markup_name_char;
 
 pub fn is_whitespace(ch: char) -> bool {
     ch.is_whitespace()
 }
 
 pub fn is_tag_name_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | ':' | '$')
+    is_markup_name_char(ch) || ch == '$'
 }
 
 pub fn is_attribute_name_char(ch: char) -> bool {
     !ch.is_whitespace() && !matches!(ch, '=' | '>' | '/' | '"' | '\'' | '{' | '}')
-}
-
-pub fn is_void_tag(name: &str) -> bool {
-    matches!(
-        name,
-        "area"
-            | "base"
-            | "br"
-            | "col"
-            | "embed"
-            | "hr"
-            | "img"
-            | "input"
-            | "link"
-            | "meta"
-            | "param"
-            | "source"
-            | "track"
-            | "wbr"
-    )
 }
 
 pub fn is_component_tag(name: &str) -> bool {

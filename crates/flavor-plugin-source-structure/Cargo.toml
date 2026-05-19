@@ -1,9 +1,0 @@
-[package]
-name = "flavor-plugin-source-structure"
-version = "0.1.0"
-edition = "2021"
-license = "MIT"
-description = "First-party source-structure plugin for flavor."
-
-[dependencies]
-flavor-core = { path = "../flavor-core" }

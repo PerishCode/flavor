@@ -1,4 +1,7 @@
-use flavor_plugin_vue::sfc::parse_sfc;
+#[path = "../src/sfc/parser.rs"]
+mod sfc_parser;
+
+use sfc_parser::parse_sfc;
 
 #[test]
 fn parses_sfc_descriptor() {

@@ -8,12 +8,13 @@ mod modules;
 mod statements;
 mod types;
 
-use flavor_core::{Diagnostic, SourceText, Span, SyntaxBuilder, SyntaxNode, Token};
+use flavor_core::{Diagnostic, SourceText, Span, SyntaxNode, Token};
+use flavor_grammar::RawAstBuilder;
 
 use crate::{
     ast::TsSourceFile,
+    internal::grammar::{self as kind, Kind},
     state::{SourceMode, TsPluginConfig},
-    syntax_kind::TsSyntaxKind,
 };
 
 #[derive(Debug, Clone)]
@@ -24,7 +25,7 @@ pub struct TsParseOutput {
 
 pub fn parse(
     source: SourceText,
-    tokens: Vec<Token<TsSyntaxKind>>,
+    tokens: Vec<Token<Kind>>,
     config: &TsPluginConfig,
 ) -> TsParseOutput {
     let (syntax, diagnostics) = Parser::new(&source, &tokens, config).parse();
@@ -36,24 +37,20 @@ pub fn parse(
 
 struct Parser<'a> {
     source: &'a SourceText,
-    tokens: &'a [Token<TsSyntaxKind>],
+    tokens: &'a [Token<Kind>],
     cursor: usize,
-    builder: SyntaxBuilder,
+    builder: RawAstBuilder,
     diagnostics: Vec<Diagnostic>,
     jsx: bool,
 }
 
 impl<'a> Parser<'a> {
-    fn new(
-        source: &'a SourceText,
-        tokens: &'a [Token<TsSyntaxKind>],
-        config: &TsPluginConfig,
-    ) -> Self {
+    fn new(source: &'a SourceText, tokens: &'a [Token<Kind>], config: &TsPluginConfig) -> Self {
         Self {
             source,
             tokens,
             cursor: 0,
-            builder: SyntaxBuilder::new(),
+            builder: RawAstBuilder::new(kind::schema()),
             diagnostics: Vec::new(),
             jsx: matches!(config.source_mode, SourceMode::Jsx | SourceMode::Tsx)
                 && config.jsx.enabled,
@@ -61,8 +58,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse(mut self) -> (SyntaxNode, Vec<Diagnostic>) {
-        self.builder.start_schema_node(TsSyntaxKind::SourceFile);
-        while !self.at(TsSyntaxKind::EndOfFile) {
+        self.builder.start_node(kind::SOURCE_FILE);
+        while !self.at(kind::END_OF_FILE) {
             self.parse_statement();
         }
         self.builder.finish_node();
@@ -71,71 +68,62 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) {
         match self.current() {
-            TsSyntaxKind::At => match self.kind_after_decorators() {
-                Some(TsSyntaxKind::KeywordClass) => self.parse_class_declaration(true),
-                Some(TsSyntaxKind::KeywordFunction) => self.parse_function_declaration(true),
+            kind::AT => match self.kind_after_decorators() {
+                Some(kind::KEYWORD_CLASS) => self.parse_class_declaration(true),
+                Some(kind::KEYWORD_FUNCTION) => self.parse_function_declaration(true),
                 _ => self.parse_unknown_statement(),
             },
-            TsSyntaxKind::KeywordClass => self.parse_class_declaration(false),
-            TsSyntaxKind::KeywordConst | TsSyntaxKind::KeywordLet => {
-                self.parse_variable_statement()
-            }
-            TsSyntaxKind::KeywordBreak => self.parse_break_statement(),
-            TsSyntaxKind::KeywordContinue => self.parse_continue_statement(),
-            TsSyntaxKind::KeywordDo => self.parse_do_statement(),
-            TsSyntaxKind::KeywordImport => self.parse_import_declaration(),
-            TsSyntaxKind::KeywordFor => self.parse_for_statement(),
-            TsSyntaxKind::KeywordExport => self.parse_export_declaration(),
-            TsSyntaxKind::KeywordEnum => self.parse_enum_declaration(),
-            TsSyntaxKind::KeywordFunction => self.parse_function_declaration(false),
-            TsSyntaxKind::KeywordIf => self.parse_if_statement(),
-            TsSyntaxKind::KeywordInterface => self.parse_interface_declaration(),
-            TsSyntaxKind::KeywordModule | TsSyntaxKind::KeywordNamespace => {
-                self.parse_namespace_declaration()
-            }
-            TsSyntaxKind::KeywordReturn => self.parse_return_statement(),
-            TsSyntaxKind::KeywordSwitch => self.parse_switch_statement(),
-            TsSyntaxKind::KeywordThrow => self.parse_throw_statement(),
-            TsSyntaxKind::KeywordTry => self.parse_try_statement(),
-            TsSyntaxKind::KeywordType => self.parse_type_alias_declaration(),
-            TsSyntaxKind::KeywordWhile => self.parse_while_statement(),
+            kind::KEYWORD_CLASS => self.parse_class_declaration(false),
+            kind::KEYWORD_CONST | kind::KEYWORD_LET => self.parse_variable_statement(),
+            kind::KEYWORD_BREAK => self.parse_break_statement(),
+            kind::KEYWORD_CONTINUE => self.parse_continue_statement(),
+            kind::KEYWORD_DO => self.parse_do_statement(),
+            kind::KEYWORD_IMPORT => self.parse_import_declaration(),
+            kind::KEYWORD_FOR => self.parse_for_statement(),
+            kind::KEYWORD_EXPORT => self.parse_export_declaration(),
+            kind::KEYWORD_ENUM => self.parse_enum_declaration(),
+            kind::KEYWORD_FUNCTION => self.parse_function_declaration(false),
+            kind::KEYWORD_IF => self.parse_if_statement(),
+            kind::KEYWORD_INTERFACE => self.parse_interface_declaration(),
+            kind::KEYWORD_MODULE | kind::KEYWORD_NAMESPACE => self.parse_namespace_declaration(),
+            kind::KEYWORD_RETURN => self.parse_return_statement(),
+            kind::KEYWORD_SWITCH => self.parse_switch_statement(),
+            kind::KEYWORD_THROW => self.parse_throw_statement(),
+            kind::KEYWORD_TRY => self.parse_try_statement(),
+            kind::KEYWORD_TYPE => self.parse_type_alias_declaration(),
+            kind::KEYWORD_WHILE => self.parse_while_statement(),
             kind if is_modifier_kind(kind) => self.parse_modified_statement(),
-            TsSyntaxKind::OpenBrace => self.parse_block(TsSyntaxKind::Block),
+            kind::OPEN_BRACE => self.parse_block(kind::BLOCK),
             _ => self.parse_expression_statement(),
         }
     }
 
     fn parse_modified_statement(&mut self) {
         match self.kind_after_modifiers() {
-            Some(TsSyntaxKind::KeywordClass) => self.parse_class_declaration(false),
-            Some(TsSyntaxKind::KeywordConst | TsSyntaxKind::KeywordLet) => {
-                self.parse_variable_statement()
-            }
-            Some(TsSyntaxKind::KeywordFunction) => self.parse_function_declaration(false),
-            Some(TsSyntaxKind::KeywordInterface) => self.parse_interface_declaration(),
-            Some(TsSyntaxKind::KeywordEnum) => self.parse_enum_declaration(),
-            Some(TsSyntaxKind::KeywordModule | TsSyntaxKind::KeywordNamespace) => {
+            Some(kind::KEYWORD_CLASS) => self.parse_class_declaration(false),
+            Some(kind::KEYWORD_CONST | kind::KEYWORD_LET) => self.parse_variable_statement(),
+            Some(kind::KEYWORD_FUNCTION) => self.parse_function_declaration(false),
+            Some(kind::KEYWORD_INTERFACE) => self.parse_interface_declaration(),
+            Some(kind::KEYWORD_ENUM) => self.parse_enum_declaration(),
+            Some(kind::KEYWORD_MODULE | kind::KEYWORD_NAMESPACE) => {
                 self.parse_namespace_declaration()
             }
-            Some(TsSyntaxKind::KeywordType) => self.parse_type_alias_declaration(),
+            Some(kind::KEYWORD_TYPE) => self.parse_type_alias_declaration(),
             _ => self.parse_expression_statement(),
         }
     }
 
-    fn kind_after_decorators(&self) -> Option<TsSyntaxKind> {
+    fn kind_after_decorators(&self) -> Option<Kind> {
         let mut cursor = self.cursor;
         while self
             .token_at(cursor)
-            .is_some_and(|token| token.kind == TsSyntaxKind::At)
+            .is_some_and(|token| token.kind == kind::AT)
         {
             cursor += 1;
             while let Some(token) = self.token_at(cursor) {
                 if matches!(
                     token.kind,
-                    TsSyntaxKind::At
-                        | TsSyntaxKind::KeywordClass
-                        | TsSyntaxKind::KeywordFunction
-                        | TsSyntaxKind::EndOfFile
+                    kind::AT | kind::KEYWORD_CLASS | kind::KEYWORD_FUNCTION | kind::END_OF_FILE
                 ) {
                     break;
                 }
@@ -145,7 +133,7 @@ impl<'a> Parser<'a> {
         self.token_at(cursor).map(|token| token.kind)
     }
 
-    fn kind_after_modifiers(&self) -> Option<TsSyntaxKind> {
+    fn kind_after_modifiers(&self) -> Option<Kind> {
         let mut cursor = self.cursor;
         while self
             .token_at(cursor)
@@ -160,14 +148,14 @@ impl<'a> Parser<'a> {
         if !is_modifier_kind(self.current()) {
             return;
         }
-        self.builder.start_schema_node(TsSyntaxKind::ModifierList);
+        self.builder.start_node(kind::MODIFIER_LIST);
         while is_modifier_kind(self.current()) {
             self.bump();
         }
         self.builder.finish_node();
     }
 
-    fn expect(&mut self, kind: TsSyntaxKind, message: &str) -> bool {
+    fn expect(&mut self, kind: Kind, message: &str) -> bool {
         if self.at(kind) {
             self.bump();
             true
@@ -178,28 +166,23 @@ impl<'a> Parser<'a> {
     }
 
     fn bump(&mut self) {
-        if self.at(TsSyntaxKind::EndOfFile) {
+        if self.at(kind::END_OF_FILE) {
             return;
         }
         let token = &self.tokens[self.cursor];
-        for trivia in &token.leading {
-            self.builder
-                .token(trivia.kind, self.source.slice(trivia.span));
-        }
-        self.builder
-            .schema_token(token.kind, self.source.slice(token.span));
+        self.builder.source_token(self.source, token);
         self.cursor += 1;
     }
 
-    fn at(&self, kind: TsSyntaxKind) -> bool {
+    fn at(&self, kind: Kind) -> bool {
         self.current() == kind
     }
 
-    fn at_any(&self, kinds: &[TsSyntaxKind]) -> bool {
+    fn at_any(&self, kinds: &[Kind]) -> bool {
         kinds.contains(&self.current())
     }
 
-    fn next_is(&self, kind: TsSyntaxKind) -> bool {
+    fn next_is(&self, kind: Kind) -> bool {
         self.token_kind_at(1) == kind
     }
 
@@ -207,35 +190,35 @@ impl<'a> Parser<'a> {
         self.jsx
     }
 
-    fn current(&self) -> TsSyntaxKind {
+    fn current(&self) -> Kind {
         self.token_at(self.cursor)
-            .map_or(TsSyntaxKind::EndOfFile, |token| token.kind)
+            .map_or(kind::END_OF_FILE, |token| token.kind)
     }
 
-    fn token_kind_at(&self, offset: usize) -> TsSyntaxKind {
+    fn token_kind_at(&self, offset: usize) -> Kind {
         self.token_at(self.cursor + offset)
-            .map_or(TsSyntaxKind::EndOfFile, |token| token.kind)
+            .map_or(kind::END_OF_FILE, |token| token.kind)
     }
 
-    fn token_kind_at_back(&self, offset: usize) -> TsSyntaxKind {
+    fn token_kind_at_back(&self, offset: usize) -> Kind {
         self.cursor
             .checked_sub(offset)
             .and_then(|cursor| self.token_at(cursor))
-            .map_or(TsSyntaxKind::EndOfFile, |token| token.kind)
+            .map_or(kind::END_OF_FILE, |token| token.kind)
     }
 
-    fn token_at(&self, cursor: usize) -> Option<&'a Token<TsSyntaxKind>> {
+    fn token_at(&self, cursor: usize) -> Option<&'a Token<Kind>> {
         self.tokens.get(cursor)
     }
 
-    fn has_top_level_any(&self, kinds: &[TsSyntaxKind], stops: &[TsSyntaxKind]) -> bool {
+    fn has_top_level_any(&self, kinds: &[Kind], stops: &[Kind]) -> bool {
         let mut cursor = self.cursor;
         let mut paren_depth = 0usize;
         let mut brace_depth = 0usize;
         let mut bracket_depth = 0usize;
         let mut angle_depth = 0usize;
         while let Some(token) = self.token_at(cursor) {
-            if token.kind == TsSyntaxKind::EndOfFile {
+            if token.kind == kind::END_OF_FILE {
                 return false;
             }
             if paren_depth == 0
@@ -255,14 +238,14 @@ impl<'a> Parser<'a> {
                 return true;
             }
             match token.kind {
-                TsSyntaxKind::OpenParen => paren_depth += 1,
-                TsSyntaxKind::CloseParen if paren_depth > 0 => paren_depth -= 1,
-                TsSyntaxKind::OpenBrace => brace_depth += 1,
-                TsSyntaxKind::CloseBrace if brace_depth > 0 => brace_depth -= 1,
-                TsSyntaxKind::OpenBracket => bracket_depth += 1,
-                TsSyntaxKind::CloseBracket if bracket_depth > 0 => bracket_depth -= 1,
-                TsSyntaxKind::LessThan => angle_depth += 1,
-                TsSyntaxKind::GreaterThan if angle_depth > 0 => angle_depth -= 1,
+                kind::OPEN_PAREN => paren_depth += 1,
+                kind::CLOSE_PAREN if paren_depth > 0 => paren_depth -= 1,
+                kind::OPEN_BRACE => brace_depth += 1,
+                kind::CLOSE_BRACE if brace_depth > 0 => brace_depth -= 1,
+                kind::OPEN_BRACKET => bracket_depth += 1,
+                kind::CLOSE_BRACKET if bracket_depth > 0 => bracket_depth -= 1,
+                kind::LESS_THAN => angle_depth += 1,
+                kind::GREATER_THAN if angle_depth > 0 => angle_depth -= 1,
                 _ => {}
             }
             cursor += 1;
@@ -289,17 +272,17 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn is_modifier_kind(kind: TsSyntaxKind) -> bool {
+fn is_modifier_kind(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::KeywordAbstract
-            | TsSyntaxKind::KeywordAsync
-            | TsSyntaxKind::KeywordDeclare
-            | TsSyntaxKind::KeywordOverride
-            | TsSyntaxKind::KeywordPrivate
-            | TsSyntaxKind::KeywordProtected
-            | TsSyntaxKind::KeywordPublic
-            | TsSyntaxKind::KeywordReadonly
-            | TsSyntaxKind::KeywordStatic
+        kind::KEYWORD_ABSTRACT
+            | kind::KEYWORD_ASYNC
+            | kind::KEYWORD_DECLARE
+            | kind::KEYWORD_OVERRIDE
+            | kind::KEYWORD_PRIVATE
+            | kind::KEYWORD_PROTECTED
+            | kind::KEYWORD_PUBLIC
+            | kind::KEYWORD_READONLY
+            | kind::KEYWORD_STATIC
     )
 }

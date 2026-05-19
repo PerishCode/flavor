@@ -1,54 +1,52 @@
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar as kind;
 
 use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_type_alias_declaration(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::TypeAliasDeclaration);
+        self.builder.start_node(kind::TYPE_ALIAS_DECLARATION);
         self.parse_modifier_list();
         self.bump();
-        if self.at(TsSyntaxKind::Identifier) {
+        if self.at(kind::IDENTIFIER) {
             self.bump();
         } else {
             self.error_here("expected type alias name");
         }
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type parameters",
             );
         }
-        if self.expect(TsSyntaxKind::Equals, "expected '=' in type alias") {
-            self.parse_type(&[TsSyntaxKind::Semicolon, TsSyntaxKind::EndOfFile]);
+        if self.expect(kind::EQUALS, "expected '=' in type alias") {
+            self.parse_type(&[kind::SEMICOLON, kind::END_OF_FILE]);
         }
-        if self.at(TsSyntaxKind::Semicolon) {
+        if self.at(kind::SEMICOLON) {
             self.bump();
         }
         self.builder.finish_node();
     }
 
     pub(super) fn parse_interface_declaration(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::InterfaceDeclaration);
+        self.builder.start_node(kind::INTERFACE_DECLARATION);
         self.parse_modifier_list();
         self.bump();
-        if self.at(TsSyntaxKind::Identifier) {
+        if self.at(kind::IDENTIFIER) {
             self.bump();
         } else {
             self.error_here("expected interface name");
         }
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type parameters",
             );
         }
-        if self.at(TsSyntaxKind::KeywordExtends) {
+        if self.at(kind::KEYWORD_EXTENDS) {
             self.parse_heritage_clause();
         }
         self.parse_interface_body();
@@ -56,23 +54,17 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_variable_statement(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::VariableStatement);
+        self.builder.start_node(kind::VARIABLE_STATEMENT);
         self.parse_modifier_list();
-        self.builder
-            .start_schema_node(TsSyntaxKind::VariableDeclarationList);
+        self.builder.start_node(kind::VARIABLE_DECLARATION_LIST);
         self.bump();
 
         loop {
-            if self.at_any(&[
-                TsSyntaxKind::Semicolon,
-                TsSyntaxKind::CloseBrace,
-                TsSyntaxKind::EndOfFile,
-            ]) {
+            if self.at_any(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 break;
             }
             self.parse_variable_declaration();
-            if self.at(TsSyntaxKind::Comma) {
+            if self.at(kind::COMMA) {
                 self.bump();
                 continue;
             }
@@ -80,76 +72,66 @@ impl<'a> Parser<'a> {
         }
 
         self.builder.finish_node();
-        if self.at(TsSyntaxKind::Semicolon) {
+        if self.at(kind::SEMICOLON) {
             self.bump();
         }
         self.builder.finish_node();
     }
 
     fn parse_variable_declaration(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::VariableDeclaration);
+        self.builder.start_node(kind::VARIABLE_DECLARATION);
         self.parse_binding_name("expected variable name");
-        if self.at(TsSyntaxKind::Question) || self.at(TsSyntaxKind::Bang) {
+        if self.at(kind::QUESTION) || self.at(kind::BANG) {
             self.bump();
         }
-        if self.at(TsSyntaxKind::Colon) {
+        if self.at(kind::COLON) {
             self.parse_type_annotation(
-                TsSyntaxKind::TypeAnnotation,
+                kind::TYPE_ANNOTATION,
                 &[
-                    TsSyntaxKind::Equals,
-                    TsSyntaxKind::Comma,
-                    TsSyntaxKind::Semicolon,
-                    TsSyntaxKind::CloseParen,
-                    TsSyntaxKind::CloseBrace,
+                    kind::EQUALS,
+                    kind::COMMA,
+                    kind::SEMICOLON,
+                    kind::CLOSE_PAREN,
+                    kind::CLOSE_BRACE,
                 ],
             );
         }
-        if self.at(TsSyntaxKind::Equals) {
-            self.parse_initializer(&[
-                TsSyntaxKind::Comma,
-                TsSyntaxKind::Semicolon,
-                TsSyntaxKind::CloseBrace,
-            ]);
+        if self.at(kind::EQUALS) {
+            self.parse_initializer(&[kind::COMMA, kind::SEMICOLON, kind::CLOSE_BRACE]);
         }
         self.builder.finish_node();
     }
 
     pub(super) fn parse_function_declaration(&mut self, has_decorators: bool) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::FunctionDeclaration);
+        self.builder.start_node(kind::FUNCTION_DECLARATION);
         if has_decorators {
             self.parse_decorator_list();
         }
         self.parse_modifier_list();
         self.bump();
-        if self.at(TsSyntaxKind::Identifier) {
+        if self.at(kind::IDENTIFIER) {
             self.bump();
         } else {
             self.error_here("expected function name");
         }
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type parameters",
             );
         }
         self.parse_parameter_list();
-        if self.at(TsSyntaxKind::Colon) {
+        if self.at(kind::COLON) {
             self.parse_type_annotation(
-                TsSyntaxKind::ReturnType,
-                &[
-                    TsSyntaxKind::OpenBrace,
-                    TsSyntaxKind::Semicolon,
-                    TsSyntaxKind::EndOfFile,
-                ],
+                kind::RETURN_TYPE,
+                &[kind::OPEN_BRACE, kind::SEMICOLON, kind::END_OF_FILE],
             );
         }
-        if self.at(TsSyntaxKind::OpenBrace) {
-            self.parse_block(TsSyntaxKind::Block);
-        } else if self.at(TsSyntaxKind::Semicolon) {
+        if self.at(kind::OPEN_BRACE) {
+            self.parse_block(kind::BLOCK);
+        } else if self.at(kind::SEMICOLON) {
             self.bump();
         } else {
             self.error_here("expected function body");
@@ -158,81 +140,70 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_parameter_list(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::ParameterList);
-        if !self.expect(
-            TsSyntaxKind::OpenParen,
-            "expected '(' to start parameter list",
-        ) {
+        self.builder.start_node(kind::PARAMETER_LIST);
+        if !self.expect(kind::OPEN_PAREN, "expected '(' to start parameter list") {
             self.builder.finish_node();
             return;
         }
-        while !self.at_any(&[TsSyntaxKind::CloseParen, TsSyntaxKind::EndOfFile]) {
+        while !self.at_any(&[kind::CLOSE_PAREN, kind::END_OF_FILE]) {
             self.parse_parameter();
-            if self.at(TsSyntaxKind::Comma) {
+            if self.at(kind::COMMA) {
                 self.bump();
-            } else if !self.at(TsSyntaxKind::CloseParen) {
+            } else if !self.at(kind::CLOSE_PAREN) {
                 self.error_here("expected ',' or ')' in parameter list");
                 break;
             }
         }
-        self.expect(
-            TsSyntaxKind::CloseParen,
-            "expected ')' to close parameter list",
-        );
+        self.expect(kind::CLOSE_PAREN, "expected ')' to close parameter list");
         self.builder.finish_node();
     }
 
     fn parse_parameter(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::Parameter);
-        if self.at(TsSyntaxKind::DotDotDot) {
+        self.builder.start_node(kind::PARAMETER);
+        if self.at(kind::DOT_DOT_DOT) {
             self.parse_rest_element("expected parameter name");
         } else {
             self.parse_binding_name("expected parameter name");
         }
-        if self.at(TsSyntaxKind::Question) {
+        if self.at(kind::QUESTION) {
             self.bump();
         }
-        if self.at(TsSyntaxKind::Colon) {
+        if self.at(kind::COLON) {
             self.parse_type_annotation(
-                TsSyntaxKind::TypeAnnotation,
-                &[
-                    TsSyntaxKind::Equals,
-                    TsSyntaxKind::Comma,
-                    TsSyntaxKind::CloseParen,
-                ],
+                kind::TYPE_ANNOTATION,
+                &[kind::EQUALS, kind::COMMA, kind::CLOSE_PAREN],
             );
         }
-        if self.at(TsSyntaxKind::Equals) {
-            self.parse_initializer(&[TsSyntaxKind::Comma, TsSyntaxKind::CloseParen]);
+        if self.at(kind::EQUALS) {
+            self.parse_initializer(&[kind::COMMA, kind::CLOSE_PAREN]);
         }
         self.builder.finish_node();
     }
 
     pub(super) fn parse_class_declaration(&mut self, has_decorators: bool) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::ClassDeclaration);
+        self.builder.start_node(kind::CLASS_DECLARATION);
         if has_decorators {
             self.parse_decorator_list();
         }
         self.parse_modifier_list();
         self.bump();
-        if self.at(TsSyntaxKind::Identifier) {
+        if self.at(kind::IDENTIFIER) {
             self.bump();
         } else {
             self.error_here("expected class name");
         }
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type parameters",
             );
         }
-        if self.at(TsSyntaxKind::KeywordExtends) || self.at(TsSyntaxKind::KeywordImplements) {
+        if self.at(kind::KEYWORD_EXTENDS) || self.at(kind::KEYWORD_IMPLEMENTS) {
             self.parse_heritage_clause();
         }
-        if self.at(TsSyntaxKind::OpenBrace) {
+        if self.at(kind::OPEN_BRACE) {
             self.parse_class_body();
         } else {
             self.error_here("expected class body");
@@ -241,15 +212,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_decorator_list(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::DecoratorList);
-        while self.at(TsSyntaxKind::At) {
-            self.builder.start_schema_node(TsSyntaxKind::Decorator);
+        self.builder.start_node(kind::DECORATOR_LIST);
+        while self.at(kind::AT) {
+            self.builder.start_node(kind::DECORATOR);
             self.bump();
-            if self.at(TsSyntaxKind::Identifier) {
+            if self.at(kind::IDENTIFIER) {
                 self.bump();
-                while self.at(TsSyntaxKind::Dot) {
+                while self.at(kind::DOT) {
                     self.bump();
-                    if self.at(TsSyntaxKind::Identifier) {
+                    if self.at(kind::IDENTIFIER) {
                         self.bump();
                     } else {
                         self.error_here("expected decorator property name");
@@ -259,11 +230,11 @@ impl<'a> Parser<'a> {
             } else {
                 self.error_here("expected decorator name");
             }
-            if self.at(TsSyntaxKind::OpenParen) {
+            if self.at(kind::OPEN_PAREN) {
                 self.parse_balanced_node(
-                    TsSyntaxKind::Expression,
-                    TsSyntaxKind::OpenParen,
-                    TsSyntaxKind::CloseParen,
+                    kind::EXPRESSION,
+                    kind::OPEN_PAREN,
+                    kind::CLOSE_PAREN,
                     "expected ')' to close decorator arguments",
                 );
             }
@@ -273,8 +244,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_heritage_clause(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::HeritageClause);
-        while !self.at_any(&[TsSyntaxKind::OpenBrace, TsSyntaxKind::EndOfFile]) {
+        self.builder.start_node(kind::HERITAGE_CLAUSE);
+        while !self.at_any(&[kind::OPEN_BRACE, kind::END_OF_FILE]) {
             self.bump();
         }
         self.builder.finish_node();

@@ -21,23 +21,23 @@
           "primitive.usage": "jsx element name or root matches primitive imports -> primitive usage flag"
         },
         "nodes": {
-          "import_statement": "tree-sitter:import_statement",
-          "jsx_attribute": "tree-sitter:jsx_attribute",
-          "jsx_element": "tree-sitter:jsx_element",
-          "jsx_expression": "tree-sitter:jsx_expression",
-          "jsx_opening_element": "tree-sitter:jsx_opening_element",
-          "jsx_self_closing_element": "tree-sitter:jsx_self_closing_element",
-          "member_expression": "tree-sitter:member_expression",
-          "program": "tree-sitter:program"
+          "import_statement": "grammar:import_statement",
+          "jsx_attribute": "grammar:jsx_attribute",
+          "jsx_element": "grammar:jsx_element",
+          "jsx_expression": "grammar:jsx_expression",
+          "jsx_opening_element": "grammar:jsx_opening_element",
+          "jsx_self_closing_element": "grammar:jsx_self_closing_element",
+          "member_expression": "grammar:member_expression",
+          "program": "grammar:program"
         },
         "recovery": {
           "rule.continuation": "JSX facts may emit outside broken subtrees",
-          "tree_sitter.errors": "collect ERROR nodes",
-          "tree_sitter.missing": "collect MISSING nodes"
+          "parser.errors": "collect parser diagnostics",
+          "raw_ast.recovery": "unknown token ranges remain source-backed raw text"
         },
         "spans": {
-          "element.line": "opening node start_position.row + 1",
-          "element.range": "opening node start_byte..end_byte",
+          "element.line": "opening raw AST node line",
+          "element.range": "opening raw AST node span",
           "script.offset": "host block start_line added to element line"
         }
       },
@@ -68,29 +68,28 @@
           "name.parameter": "parameter pattern identifiers -> TsNameFact(kind:parameter, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)"
         },
         "nodes": {
-          "function_declaration": "tree-sitter:function_declaration",
-          "function_expression": "tree-sitter:function_expression",
-          "import_clause": "tree-sitter:import_clause",
-          "import_specifier": "tree-sitter:import_specifier",
-          "import_statement": "tree-sitter:import_statement",
-          "method_definition": "tree-sitter:method_definition",
-          "method_signature": "tree-sitter:method_signature",
-          "namespace_import": "tree-sitter:namespace_import",
-          "optional_parameter": "tree-sitter:optional_parameter",
-          "program": "tree-sitter:program",
-          "required_parameter": "tree-sitter:required_parameter",
-          "switch_case": "tree-sitter:switch_case",
-          "variable_declarator": "tree-sitter:variable_declarator"
+          "function_declaration": "grammar:function_declaration",
+          "function_expression": "grammar:function_expression",
+          "import_clause": "grammar:import_clause",
+          "import_specifier": "grammar:import_specifier",
+          "import_statement": "grammar:import_statement",
+          "method_definition": "grammar:method_definition",
+          "method_signature": "grammar:method_signature",
+          "namespace_import": "grammar:namespace_import",
+          "optional_parameter": "grammar:optional_parameter",
+          "program": "grammar:program",
+          "required_parameter": "grammar:required_parameter",
+          "switch_case": "grammar:switch_case",
+          "variable_declarator": "grammar:variable_declarator"
         },
         "recovery": {
-          "legacy.cst": "existing harness remains until grammar-backed CST is complete",
-          "tree_sitter.errors": "collect ERROR nodes",
-          "tree_sitter.missing": "collect MISSING nodes"
+          "parser.errors": "collect parser diagnostics",
+          "raw_ast.recovery": "unknown token ranges remain source-backed raw text"
         },
         "spans": {
           "diagnostic.range": "parser range mapped through host offset",
-          "node.line": "start_position.row + 1",
-          "node.range": "start_byte..end_byte",
+          "node.line": "raw AST node line",
+          "node.range": "raw AST node span",
           "script.offset": "host block start_line added to fact line"
         }
       },

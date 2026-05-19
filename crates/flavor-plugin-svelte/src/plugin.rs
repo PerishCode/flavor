@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
-use flavor_plugin_typescript::product as typescript_product;
+use flavor_plugin_typescript::plugin as typescript_plugin;
 use flavor_shared::product as shared_product;
 
 use crate::{facts::SvelteMarkupNameFact, run as run_svelte, SvelteBlock, SveltePluginConfig};
@@ -102,7 +102,7 @@ fn push_embedded_script<F>(
         block.start_offset,
         block.start_line,
     ));
-    typescript_product::satisfy_script(
+    typescript_plugin::satisfy_script(
         entrypoint,
         path,
         &block.content,

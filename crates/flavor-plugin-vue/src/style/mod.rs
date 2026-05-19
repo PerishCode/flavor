@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct StyleFacts {
     pub scoped: bool,

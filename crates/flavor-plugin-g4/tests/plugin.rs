@@ -1,9 +1,9 @@
 use flavor_core::GrammarProduct;
 
 #[test]
-fn product_exposes_g4_facts() {
+fn plugin_exposes_g4_facts() {
     let mut products = Vec::<GrammarProduct>::new();
-    flavor_plugin_g4::product::satisfy(
+    flavor_plugin_g4::plugin::satisfy(
         &|grammar_id| (grammar_id == "g4").then_some("grammar_file"),
         "SampleLexer.g4",
         r#"
@@ -26,9 +26,9 @@ IDENTIFIER: [a-zA-Z_]+;
 }
 
 #[test]
-fn product_exposes_parse_diagnostics() {
+fn plugin_exposes_parse_diagnostics() {
     let mut products = Vec::<GrammarProduct>::new();
-    flavor_plugin_g4::product::satisfy(
+    flavor_plugin_g4::plugin::satisfy(
         &|grammar_id| (grammar_id == "g4").then_some("grammar_file"),
         "SampleParser.g4",
         "parser grammar SampleParser;\nsource_file: missing_rule EOF;\n",

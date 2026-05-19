@@ -24,16 +24,16 @@
           "markup.special": "special_tag -> SvelteFacts.markup_special_count + SvelteFacts.markup_specials: SvelteMarkupNameFact(name, span, line) -> Fact(payload.name, span, line)"
         },
         "nodes": {
-          "block": "SvelteMarkupKind::Block",
-          "block_branch": "SvelteMarkupKind::BlockBranch",
-          "component": "SvelteMarkupKind::Component",
-          "directive": "SvelteMarkupKind::Directive",
-          "element": "SvelteMarkupKind::Element",
+          "block": "raw:block",
+          "block_branch": "raw:block_branch",
+          "component": "raw:component",
+          "directive": "raw:directive",
+          "element": "raw:element",
           "markup_document": "SvelteMarkupAst.root",
-          "mustache": "SvelteMarkupKind::Mustache",
-          "render_tag": "SvelteMarkupKind::RenderTag",
-          "special_tag": "SvelteMarkupKind::SpecialTag",
-          "start_tag": "SvelteMarkupKind::StartTag"
+          "mustache": "raw:mustache",
+          "render_tag": "raw:render_tag",
+          "special_tag": "raw:special_tag",
+          "start_tag": "raw:start_tag"
         },
         "recovery": {
           "each.binding": "validate only each source expression before as",

@@ -1,37 +1,31 @@
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar::{self as kind, Kind};
 
 use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_return_statement(&mut self) {
-        self.parse_expression_tail_statement(
-            TsSyntaxKind::ReturnStatement,
-            TsSyntaxKind::KeywordReturn,
-        );
+        self.parse_expression_tail_statement(kind::RETURN_STATEMENT, kind::KEYWORD_RETURN);
     }
 
     pub(super) fn parse_throw_statement(&mut self) {
-        self.parse_expression_tail_statement(
-            TsSyntaxKind::ThrowStatement,
-            TsSyntaxKind::KeywordThrow,
-        );
+        self.parse_expression_tail_statement(kind::THROW_STATEMENT, kind::KEYWORD_THROW);
     }
 
     pub(super) fn parse_break_statement(&mut self) {
-        self.parse_label_tail_statement(TsSyntaxKind::BreakStatement);
+        self.parse_label_tail_statement(kind::BREAK_STATEMENT);
     }
 
     pub(super) fn parse_continue_statement(&mut self) {
-        self.parse_label_tail_statement(TsSyntaxKind::ContinueStatement);
+        self.parse_label_tail_statement(kind::CONTINUE_STATEMENT);
     }
 
     pub(super) fn parse_if_statement(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::IfStatement);
+        self.builder.start_node(kind::IF_STATEMENT);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start if condition");
         self.parse_statement_or_block();
-        if self.at(TsSyntaxKind::KeywordElse) {
-            self.builder.start_schema_node(TsSyntaxKind::ElseClause);
+        if self.at(kind::KEYWORD_ELSE) {
+            self.builder.start_node(kind::ELSE_CLAUSE);
             self.bump();
             self.parse_statement_or_block();
             self.builder.finish_node();
@@ -40,7 +34,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_for_statement(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::ForStatement);
+        self.builder.start_node(kind::FOR_STATEMENT);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start for header");
         self.parse_statement_or_block();
@@ -48,7 +42,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_while_statement(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::WhileStatement);
+        self.builder.start_node(kind::WHILE_STATEMENT);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start while condition");
         self.parse_statement_or_block();
@@ -56,10 +50,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_do_statement(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::DoStatement);
+        self.builder.start_node(kind::DO_STATEMENT);
         self.bump();
         self.parse_statement_or_block();
-        if self.at(TsSyntaxKind::KeywordWhile) {
+        if self.at(kind::KEYWORD_WHILE) {
             self.bump();
             self.parse_parenthesized_condition("expected '(' to start do-while condition");
             self.parse_optional_semicolon();
@@ -70,8 +64,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_switch_statement(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::SwitchStatement);
+        self.builder.start_node(kind::SWITCH_STATEMENT);
         self.bump();
         self.parse_parenthesized_condition("expected '(' to start switch condition");
         self.parse_switch_body();
@@ -79,15 +72,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_try_statement(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::TryStatement);
+        self.builder.start_node(kind::TRY_STATEMENT);
         self.bump();
-        self.parse_block(TsSyntaxKind::Block);
+        self.parse_block(kind::BLOCK);
         let mut has_handler = false;
-        if self.at(TsSyntaxKind::KeywordCatch) {
+        if self.at(kind::KEYWORD_CATCH) {
             has_handler = true;
             self.parse_catch_clause();
         }
-        if self.at(TsSyntaxKind::KeywordFinally) {
+        if self.at(kind::KEYWORD_FINALLY) {
             has_handler = true;
             self.parse_finally_clause();
         }
@@ -97,50 +90,38 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_expression_tail_statement(&mut self, kind: TsSyntaxKind, keyword: TsSyntaxKind) {
-        self.builder.start_schema_node(kind);
+    fn parse_expression_tail_statement(&mut self, kind: Kind, keyword: Kind) {
+        self.builder.start_node(kind);
         debug_assert!(self.at(keyword));
         self.bump();
-        if !self.at_any(&[
-            TsSyntaxKind::Semicolon,
-            TsSyntaxKind::CloseBrace,
-            TsSyntaxKind::EndOfFile,
-        ]) {
-            self.parse_expression(&[
-                TsSyntaxKind::Semicolon,
-                TsSyntaxKind::CloseBrace,
-                TsSyntaxKind::EndOfFile,
-            ]);
+        if !self.at_any(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+            self.parse_expression(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]);
         }
         self.parse_optional_semicolon();
         self.builder.finish_node();
     }
 
-    fn parse_label_tail_statement(&mut self, kind: TsSyntaxKind) {
-        self.builder.start_schema_node(kind);
+    fn parse_label_tail_statement(&mut self, kind: Kind) {
+        self.builder.start_node(kind);
         self.bump();
-        self.parse_balanced_tokens_until(&[
-            TsSyntaxKind::Semicolon,
-            TsSyntaxKind::CloseBrace,
-            TsSyntaxKind::EndOfFile,
-        ]);
+        self.parse_balanced_tokens_until(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]);
         self.parse_optional_semicolon();
         self.builder.finish_node();
     }
 
     fn parse_parenthesized_condition(&mut self, message: &str) {
         self.parse_balanced_node(
-            TsSyntaxKind::ParenthesizedExpression,
-            TsSyntaxKind::OpenParen,
-            TsSyntaxKind::CloseParen,
+            kind::PARENTHESIZED_EXPRESSION,
+            kind::OPEN_PAREN,
+            kind::CLOSE_PAREN,
             message,
         );
     }
 
     fn parse_statement_or_block(&mut self) {
-        if self.at(TsSyntaxKind::OpenBrace) {
-            self.parse_block(TsSyntaxKind::Block);
-        } else if self.at(TsSyntaxKind::EndOfFile) {
+        if self.at(kind::OPEN_BRACE) {
+            self.parse_block(kind::BLOCK);
+        } else if self.at(kind::END_OF_FILE) {
             self.error_here("expected statement");
         } else {
             self.parse_statement();
@@ -148,42 +129,39 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_switch_body(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::SwitchBody);
-        if self.expect(TsSyntaxKind::OpenBrace, "expected '{' to start switch body") {
-            while !self.at_any(&[TsSyntaxKind::CloseBrace, TsSyntaxKind::EndOfFile]) {
+        self.builder.start_node(kind::SWITCH_BODY);
+        if self.expect(kind::OPEN_BRACE, "expected '{' to start switch body") {
+            while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 self.parse_switch_case();
             }
-            self.expect(
-                TsSyntaxKind::CloseBrace,
-                "expected '}' to close switch body",
-            );
+            self.expect(kind::CLOSE_BRACE, "expected '}' to close switch body");
         }
         self.builder.finish_node();
     }
 
     fn parse_switch_case(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::SwitchCase);
-        if self.at(TsSyntaxKind::KeywordCase) {
+        self.builder.start_node(kind::SWITCH_CASE);
+        if self.at(kind::KEYWORD_CASE) {
             self.bump();
             self.parse_expression(&[
-                TsSyntaxKind::Colon,
-                TsSyntaxKind::CloseBrace,
-                TsSyntaxKind::KeywordCase,
-                TsSyntaxKind::KeywordDefault,
-                TsSyntaxKind::EndOfFile,
+                kind::COLON,
+                kind::CLOSE_BRACE,
+                kind::KEYWORD_CASE,
+                kind::KEYWORD_DEFAULT,
+                kind::END_OF_FILE,
             ]);
-        } else if self.at(TsSyntaxKind::KeywordDefault) {
+        } else if self.at(kind::KEYWORD_DEFAULT) {
             self.bump();
         } else {
             self.error_here("expected case or default in switch body");
             self.bump();
         }
-        self.expect(TsSyntaxKind::Colon, "expected ':' after switch label");
+        self.expect(kind::COLON, "expected ':' after switch label");
         while !self.at_any(&[
-            TsSyntaxKind::KeywordCase,
-            TsSyntaxKind::KeywordDefault,
-            TsSyntaxKind::CloseBrace,
-            TsSyntaxKind::EndOfFile,
+            kind::KEYWORD_CASE,
+            kind::KEYWORD_DEFAULT,
+            kind::CLOSE_BRACE,
+            kind::END_OF_FILE,
         ]) {
             self.parse_statement();
         }
@@ -191,38 +169,35 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_catch_clause(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::CatchClause);
+        self.builder.start_node(kind::CATCH_CLAUSE);
         self.bump();
-        if self.at(TsSyntaxKind::OpenParen) {
+        if self.at(kind::OPEN_PAREN) {
             self.parse_catch_binding();
         }
-        self.parse_block(TsSyntaxKind::Block);
+        self.parse_block(kind::BLOCK);
         self.builder.finish_node();
     }
 
     fn parse_catch_binding(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::CatchBinding);
+        self.builder.start_node(kind::CATCH_BINDING);
         self.bump();
-        if !self.at_any(&[TsSyntaxKind::CloseParen, TsSyntaxKind::EndOfFile]) {
+        if !self.at_any(&[kind::CLOSE_PAREN, kind::END_OF_FILE]) {
             self.parse_binding_name("expected catch binding");
-            if self.at(TsSyntaxKind::Colon) {
+            if self.at(kind::COLON) {
                 self.parse_type_annotation(
-                    TsSyntaxKind::TypeAnnotation,
-                    &[TsSyntaxKind::CloseParen, TsSyntaxKind::EndOfFile],
+                    kind::TYPE_ANNOTATION,
+                    &[kind::CLOSE_PAREN, kind::END_OF_FILE],
                 );
             }
         }
-        self.expect(
-            TsSyntaxKind::CloseParen,
-            "expected ')' to close catch binding",
-        );
+        self.expect(kind::CLOSE_PAREN, "expected ')' to close catch binding");
         self.builder.finish_node();
     }
 
     fn parse_finally_clause(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::FinallyClause);
+        self.builder.start_node(kind::FINALLY_CLAUSE);
         self.bump();
-        self.parse_block(TsSyntaxKind::Block);
+        self.parse_block(kind::BLOCK);
         self.builder.finish_node();
     }
 }

@@ -1,4 +1,4 @@
-pub mod product;
+pub mod plugin;
 
 use flavor_core::SourceText;
 use flavor_grammar::{parse_g4_source_validated, G4Source, GrammarError};

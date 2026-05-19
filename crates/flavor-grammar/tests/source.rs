@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use flavor_core::RawSyntaxKind;
 use flavor_grammar::{
     parse_g4_source_validated, parse_metadata_validated, validate_metadata_source_shape, G4Source,
     GrammarMetadata, RawAstSchema, RawAstSymbolKind,
@@ -90,106 +91,33 @@ item: IDENTIFIER STRING_LITERAL?;
     .unwrap();
 
     let schema = RawAstSchema::from_g4_sources("sample", 100, &[parser, lexer]).unwrap();
-    assert_eq!(schema.grammar_id, "sample");
+    assert_eq!(schema.grammar_id(), "sample");
     assert_eq!(
-        schema.symbol("source_file").map(|symbol| (
-            symbol.variant.as_str(),
-            symbol.kind,
-            symbol.raw_kind
-        )),
-        Some(("SourceFile", RawAstSymbolKind::Node, 100))
+        schema
+            .symbol("source_file")
+            .map(|symbol| (symbol.kind, symbol.raw_kind)),
+        Some((RawAstSymbolKind::Node, 100))
     );
     assert_eq!(
-        schema.symbol("STRING_LITERAL").map(|symbol| (
-            symbol.variant.as_str(),
-            symbol.kind,
-            symbol.raw_kind
-        )),
-        Some(("StringLiteral", RawAstSymbolKind::Token, 103))
+        schema
+            .symbol("STRING_LITERAL")
+            .map(|symbol| (symbol.kind, symbol.raw_kind)),
+        Some((RawAstSymbolKind::Token, 103))
     );
-    let rendered = schema
-        .render_rust_enum("SampleSyntaxKind", "flavor_core::RawSyntaxKind")
-        .unwrap();
-    assert!(rendered.contains("pub enum SampleSyntaxKind"));
-    assert!(rendered.contains("SourceFile = 100"));
-    assert!(rendered.contains("StringLiteral = 103"));
-    assert!(rendered.contains("impl From<SampleSyntaxKind> for flavor_core::RawSyntaxKind"));
-    assert!(rendered.contains("impl flavor_core::SyntaxKindSchema for SampleSyntaxKind"));
-    assert!(rendered.contains("pub fn is_node"));
-    assert!(rendered.contains("pub fn is_token"));
-    assert!(rendered.contains("pub fn raw_is_node"));
-    assert!(rendered.contains("matches!(kind.0, 100..=101)"));
-    assert!(rendered.contains("matches!(kind.0, 102..=103)"));
-    let rendered_with_fallback = schema
-        .render_rust_enum_fallback(
-            "SampleSyntaxKind",
-            "flavor_core::RawSyntaxKind",
-            Some("Item"),
-        )
-        .unwrap();
-    assert!(rendered_with_fallback.contains("pub fn from_raw"));
-    assert!(rendered_with_fallback.contains("_ => Self::Item"));
-}
-
-#[test]
-fn renders_rust_adapters() {
-    let lexer = parse_g4_source_validated(
-        r#"
-lexer grammar SampleLexer;
-KEYWORD_FN: 'fn';
-IDENTIFIER: [a-zA-Z_]+; // tree-sitter:identifier
-WS: [ \t]+;
-RAW_TEXT: .;
-"#,
-    )
-    .unwrap();
-    let parser = parse_g4_source_validated(
-        r#"
-parser grammar SampleParser;
-source_file: IDENTIFIER EOF;
-"#,
-    )
-    .unwrap();
-    let metadata = parse_metadata_validated(&sample_metadata_with_sections(
-        Some("crates/sample"),
-        serde_json::json!({
-            "nodes": {
-                "source_file": "tree-sitter:source_file"
-            },
-            "facts": {
-                "name": "source_file -> SampleName"
-            },
-            "diagnostics": {
-                "parse": "ERROR -> sample/parse"
-            },
-            "spans": {
-                "node": "byte range"
-            },
-            "recovery": {
-                "error": "skip"
-            }
-        }),
-    ))
-    .unwrap()
-    .remove(0);
-    let sources = [parser, lexer];
-    let schema = RawAstSchema::from_g4_sources("sample", 100, &sources).unwrap();
-
-    let nodes = schema
-        .render_rust_node_adapter("SampleKind", "node_kind", &metadata, "tree-sitter")
-        .unwrap();
-    assert!(nodes.contains(r#""source_file" => Some(SampleKind::SourceFile)"#));
-
-    let tokens = schema
-        .render_rust_token_adapter("SampleKind", "token_kind", &sources, "tree-sitter")
-        .unwrap();
-    assert!(tokens.contains(r#""identifier" => Some(SampleKind::Identifier)"#));
-
-    let gaps = schema
-        .render_rust_gap_adapter("SampleKind", "gap_kind", &sources, "WS", "RAW_TEXT")
-        .unwrap();
-    assert!(gaps.contains(r#""fn" => SampleKind::KeywordFn"#));
-    assert!(gaps.contains("_ => SampleKind::RawText"));
+    assert_eq!(schema.raw_kind("source_file"), RawSyntaxKind(100));
+    assert_eq!(schema.raw_kind("STRING_LITERAL"), RawSyntaxKind(103));
+    assert!(schema.is_node_name("source_file"));
+    assert!(schema.is_token_name("STRING_LITERAL"));
+    assert!(schema.raw_is_node(RawSyntaxKind(100)));
+    assert!(schema.raw_is_token(RawSyntaxKind(103)));
+    assert_eq!(
+        schema.raw_kind_name(RawSyntaxKind(100)),
+        Some("source_file")
+    );
+    assert_eq!(
+        schema.raw_kind_name(RawSyntaxKind(103)),
+        Some("STRING_LITERAL")
+    );
 }
 
 #[test]
@@ -232,18 +160,8 @@ FOO_BAR: 'x';
     )
     .unwrap();
     let schema = RawAstSchema::from_g4_sources("sample", 100, &[parser, lexer]).unwrap();
-    assert_eq!(
-        schema
-            .symbol("foo_bar")
-            .map(|symbol| symbol.variant.as_str()),
-        Some("FooBarNode")
-    );
-    assert_eq!(
-        schema
-            .symbol("FOO_BAR")
-            .map(|symbol| symbol.variant.as_str()),
-        Some("FooBarToken")
-    );
+    assert!(schema.symbol("foo_bar").is_some());
+    assert!(schema.symbol("FOO_BAR").is_some());
 }
 
 #[test]
@@ -323,7 +241,7 @@ fn metadata_derives_raw_schemas() {
                     panic!("{} schema errors: {errors:?}", path.display());
                 });
             assert!(
-                !schema.symbols.is_empty(),
+                !schema.symbols().is_empty(),
                 "{} should derive raw AST symbols for {}",
                 path.display(),
                 document.name

@@ -1,26 +1,20 @@
-pub mod facts;
-pub mod product;
-pub mod sfc;
+mod facts;
+pub mod model;
+pub mod plugin;
+mod sfc;
 pub mod state;
-pub mod style;
-pub mod template;
-pub mod visit;
+mod style;
+mod template;
+mod visit;
 
 use flavor_core::{Diagnostic, SourceText, Span};
 
-pub use facts::VueFacts;
-pub use sfc::VueSfcDescriptor;
+pub use model::{
+    TemplateAst, VueAnalysisOutput, VueFacts, VueSfcBlock, VueSfcDescriptor, VueSfcError,
+    VueTemplateDirectiveClass, VueTemplateDirectiveFact, VueTemplateElementFact,
+    VueTemplateExpressionFact,
+};
 pub use state::{TemplateConfig, VuePluginConfig, VuePluginState};
-pub use template::TemplateAst;
-
-#[derive(Debug, Clone)]
-pub struct VueAnalysisOutput {
-    pub source: SourceText,
-    pub descriptor: VueSfcDescriptor,
-    pub template: Option<TemplateAst>,
-    pub facts: VueFacts,
-    pub diagnostics: Vec<Diagnostic>,
-}
 
 #[derive(Debug, Clone)]
 pub struct VuePluginAnalyzer {

@@ -7,7 +7,6 @@ members = [
     "crates/flavor-plugin-g4",
     "crates/flavor-plugin-rust",
     "crates/flavor-plugin-svelte",
-    "crates/flavor-plugin-source-structure",
     "crates/flavor-plugin-typescript",
     "crates/flavor-plugin-vue",
     "crates/flavor-grammar",

@@ -25,32 +25,32 @@ pub(super) fn satisfy(
     }
 
     match source.kind {
-        SourceKind::G4 => flavor_plugin_g4::product::satisfy(
+        SourceKind::G4 => flavor_plugin_g4::plugin::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
             &mut products,
         ),
-        SourceKind::Rust => flavor_plugin_rust::product::satisfy_with_config(
+        SourceKind::Rust => flavor_plugin_rust::plugin::satisfy_with_config(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
             rust_config(config, &source),
             &mut products,
         ),
-        SourceKind::TypeScript => flavor_plugin_typescript::product::satisfy_source(
+        SourceKind::TypeScript => flavor_plugin_typescript::plugin::satisfy_source(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
             &mut products,
         ),
-        SourceKind::Vue => flavor_plugin_vue::product::satisfy(
+        SourceKind::Vue => flavor_plugin_vue::plugin::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
             &mut products,
         ),
-        SourceKind::Svelte => flavor_plugin_svelte::product::satisfy(
+        SourceKind::Svelte => flavor_plugin_svelte::plugin::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,

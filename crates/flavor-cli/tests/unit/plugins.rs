@@ -20,7 +20,6 @@ fn bundled_manifests_are_explicit() {
         .collect::<BTreeSet<_>>();
 
     assert!(ids.contains("flavor-plugin-filesystem"));
-    assert!(ids.contains("flavor-plugin-source-structure"));
     assert!(ids.contains("flavor-plugin-g4"));
     assert!(ids.contains("flavor-plugin-rust"));
     assert!(ids.contains("flavor-plugin-typescript"));
@@ -65,19 +64,19 @@ fn host_selects_manifest_scopes() {
     );
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::SourceFile, Some(SourceKind::G4)),
-        vec!["flavor-plugin-source-structure", "flavor-plugin-g4"]
+        vec!["flavor-plugin-filesystem", "flavor-plugin-g4"]
     );
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::SourceFile, Some(SourceKind::Rust)),
-        vec!["flavor-plugin-source-structure", "flavor-plugin-rust"]
+        vec!["flavor-plugin-filesystem", "flavor-plugin-rust"]
     );
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::SourceFile, Some(SourceKind::Vue)),
-        vec!["flavor-plugin-source-structure", "flavor-plugin-vue"]
+        vec!["flavor-plugin-filesystem", "flavor-plugin-vue"]
     );
     assert_eq!(
         selected_plugin_ids(&manifests, ScopeKind::DirectoryChildren, None),
-        vec!["flavor-plugin-filesystem", "flavor-plugin-source-structure"]
+        vec!["flavor-plugin-filesystem"]
     );
 }
 

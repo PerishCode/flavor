@@ -2,14 +2,17 @@ mod kinds;
 
 use flavor_core::{SourceText, Span, Token, Trivia, TriviaKind};
 
-use crate::{state::TsPluginConfig, syntax_kind::TsSyntaxKind};
+use crate::{
+    internal::grammar::{self as kind, Kind},
+    state::TsPluginConfig,
+};
 
 use self::kinds::{
     is_bin_digit, is_hex_digit, is_identifier_part, is_identifier_start, is_oct_digit,
     is_regex_prefix, is_whitespace, keyword_kind, punctuators,
 };
 
-pub fn scan(source: &SourceText, _config: &TsPluginConfig) -> Vec<Token<TsSyntaxKind>> {
+pub fn scan(source: &SourceText, _config: &TsPluginConfig) -> Vec<Token<Kind>> {
     Scanner::new(source.as_str()).scan()
 }
 
@@ -23,13 +26,13 @@ impl<'a> Scanner<'a> {
         Self { source, cursor: 0 }
     }
 
-    fn scan(mut self) -> Vec<Token<TsSyntaxKind>> {
+    fn scan(mut self) -> Vec<Token<Kind>> {
         let mut tokens = Vec::new();
         let mut previous = None;
         loop {
             let leading = self.collect_leading_trivia();
             let token = self.next_token(leading, previous);
-            let at_end = token.kind == TsSyntaxKind::EndOfFile;
+            let at_end = token.kind == kind::END_OF_FILE;
             if !at_end {
                 previous = Some(token.kind);
             }
@@ -79,14 +82,10 @@ impl<'a> Scanner<'a> {
         trivia
     }
 
-    fn next_token(
-        &mut self,
-        leading: Vec<Trivia>,
-        previous: Option<TsSyntaxKind>,
-    ) -> Token<TsSyntaxKind> {
+    fn next_token(&mut self, leading: Vec<Trivia>, previous: Option<Kind>) -> Token<Kind> {
         let start = self.cursor;
         let Some(ch) = self.peek() else {
-            return token(TsSyntaxKind::EndOfFile, start, start, leading);
+            return token(kind::END_OF_FILE, start, start, leading);
         };
 
         if is_identifier_start(ch) {
@@ -104,22 +103,22 @@ impl<'a> Scanner<'a> {
             self.bump();
             self.scan_digits(|value| value.is_ascii_digit());
             self.scan_exponent();
-            return token(TsSyntaxKind::NumericLiteral, start, self.cursor, leading);
+            return token(kind::NUMERIC_LITERAL, start, self.cursor, leading);
         }
 
         if ch == '"' || ch == '\'' {
             self.scan_string(ch);
-            return token(TsSyntaxKind::StringLiteral, start, self.cursor, leading);
+            return token(kind::STRING_LITERAL, start, self.cursor, leading);
         }
 
         if ch == '`' {
             self.scan_template();
-            return token(TsSyntaxKind::TemplateLiteral, start, self.cursor, leading);
+            return token(kind::TEMPLATE_LITERAL, start, self.cursor, leading);
         }
 
         if ch == '/' && self.can_start_regex(previous) {
             self.scan_regex();
-            return token(TsSyntaxKind::RegexLiteral, start, self.cursor, leading);
+            return token(kind::REGEX_LITERAL, start, self.cursor, leading);
         }
 
         if let Some(kind) = self.scan_punctuator() {
@@ -127,30 +126,30 @@ impl<'a> Scanner<'a> {
         }
 
         let kind = match ch {
-            '(' => TsSyntaxKind::OpenParen,
-            ')' => TsSyntaxKind::CloseParen,
-            '{' => TsSyntaxKind::OpenBrace,
-            '}' => TsSyntaxKind::CloseBrace,
-            '[' => TsSyntaxKind::OpenBracket,
-            ']' => TsSyntaxKind::CloseBracket,
-            '<' => TsSyntaxKind::LessThan,
-            '>' => TsSyntaxKind::GreaterThan,
-            '/' => TsSyntaxKind::Slash,
-            '+' => TsSyntaxKind::Plus,
-            '-' => TsSyntaxKind::Minus,
-            '*' => TsSyntaxKind::Star,
-            '=' => TsSyntaxKind::Equals,
-            ';' => TsSyntaxKind::Semicolon,
-            ':' => TsSyntaxKind::Colon,
-            ',' => TsSyntaxKind::Comma,
-            '.' => TsSyntaxKind::Dot,
-            '@' => TsSyntaxKind::At,
-            '?' => TsSyntaxKind::Question,
-            '!' => TsSyntaxKind::Bang,
-            '|' => TsSyntaxKind::Pipe,
-            '&' => TsSyntaxKind::Ampersand,
-            '%' => TsSyntaxKind::Percent,
-            _ => TsSyntaxKind::Unknown,
+            '(' => kind::OPEN_PAREN,
+            ')' => kind::CLOSE_PAREN,
+            '{' => kind::OPEN_BRACE,
+            '}' => kind::CLOSE_BRACE,
+            '[' => kind::OPEN_BRACKET,
+            ']' => kind::CLOSE_BRACKET,
+            '<' => kind::LESS_THAN,
+            '>' => kind::GREATER_THAN,
+            '/' => kind::SLASH,
+            '+' => kind::PLUS,
+            '-' => kind::MINUS,
+            '*' => kind::STAR,
+            '=' => kind::EQUALS,
+            ';' => kind::SEMICOLON,
+            ':' => kind::COLON,
+            ',' => kind::COMMA,
+            '.' => kind::DOT,
+            '@' => kind::AT,
+            '?' => kind::QUESTION,
+            '!' => kind::BANG,
+            '|' => kind::PIPE,
+            '&' => kind::AMPERSAND,
+            '%' => kind::PERCENT,
+            _ => kind::UNKNOWN,
         };
         self.bump();
         token(kind, start, self.cursor, leading)
@@ -170,7 +169,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn scan_number(&mut self) -> TsSyntaxKind {
+    fn scan_number(&mut self) -> Kind {
         if self.peek() == Some('0') {
             match self.peek_n(1) {
                 Some('x' | 'X') => return self.scan_radix(is_hex_digit),
@@ -192,21 +191,21 @@ impl<'a> Scanner<'a> {
         }
         if decimal_only && self.peek() == Some('n') {
             self.bump();
-            TsSyntaxKind::BigIntLiteral
+            kind::BIG_INT_LITERAL
         } else {
-            TsSyntaxKind::NumericLiteral
+            kind::NUMERIC_LITERAL
         }
     }
 
-    fn scan_radix(&mut self, predicate: impl Fn(char) -> bool) -> TsSyntaxKind {
+    fn scan_radix(&mut self, predicate: impl Fn(char) -> bool) -> Kind {
         self.bump();
         self.bump();
         self.scan_digits(predicate);
         if self.peek() == Some('n') {
             self.bump();
-            TsSyntaxKind::BigIntLiteral
+            kind::BIG_INT_LITERAL
         } else {
-            TsSyntaxKind::NumericLiteral
+            kind::NUMERIC_LITERAL
         }
     }
 
@@ -266,7 +265,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn can_start_regex(&self, previous: Option<TsSyntaxKind>) -> bool {
+    fn can_start_regex(&self, previous: Option<Kind>) -> bool {
         if self.source[self.cursor..].starts_with("//")
             || self.source[self.cursor..].starts_with("/*")
             || self.source[self.cursor..].starts_with("/=")
@@ -326,7 +325,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn scan_punctuator(&mut self) -> Option<TsSyntaxKind> {
+    fn scan_punctuator(&mut self) -> Option<Kind> {
         for (text, kind) in punctuators() {
             if self.source[self.cursor..].starts_with(text) {
                 self.cursor += text.len();
@@ -357,12 +356,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
-fn token(
-    kind: TsSyntaxKind,
-    start: usize,
-    end: usize,
-    leading: Vec<Trivia>,
-) -> Token<TsSyntaxKind> {
+fn token(kind: Kind, start: usize, end: usize, leading: Vec<Trivia>) -> Token<Kind> {
     Token {
         kind,
         span: span(start, end),

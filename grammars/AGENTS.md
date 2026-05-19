@@ -9,7 +9,9 @@ files for plugin-facing grammar contracts.
 - Use `.g4` for grammar source and `metadata.json` for flavor-specific
   contract metadata.
 - Do not place plugin DSL, rule DSL, or consumer config here.
-- Keep parser backend details out of the grammar source of truth.
+- Keep parser backend details out of the `.g4` grammar source text. Executable
+  parser orchestration belongs in `flavor-grammar` runtime code, not plugin
+  crates.
 - When implementation behavior changes, update the relevant grammar and harness
   in the same change.
 

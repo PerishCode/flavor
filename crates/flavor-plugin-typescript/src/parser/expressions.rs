@@ -1,13 +1,13 @@
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar::{self as kind, Kind};
 
 use super::Parser;
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_expression(&mut self, stops: &[TsSyntaxKind]) {
-        self.builder.start_schema_node(TsSyntaxKind::Expression);
+    pub(super) fn parse_expression(&mut self, stops: &[Kind]) {
+        self.builder.start_node(kind::EXPRESSION);
         let shape = self.expression_shape(stops);
         if let Some(shape) = shape {
-            self.builder.start_schema_node(shape);
+            self.builder.start_node(shape);
             self.parse_expression_tokens_until(stops);
             self.builder.finish_node();
         } else {
@@ -16,72 +16,71 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn expression_shape(&self, stops: &[TsSyntaxKind]) -> Option<TsSyntaxKind> {
-        if self.has_top_level_any(&[TsSyntaxKind::Arrow], stops) {
-            Some(TsSyntaxKind::ArrowFunction)
-        } else if self.has_top_level_any(&[TsSyntaxKind::Question], stops) {
-            Some(TsSyntaxKind::ConditionalExpression)
+    fn expression_shape(&self, stops: &[Kind]) -> Option<Kind> {
+        if self.has_top_level_any(&[kind::ARROW], stops) {
+            Some(kind::ARROW_FUNCTION)
+        } else if self.has_top_level_any(&[kind::QUESTION], stops) {
+            Some(kind::CONDITIONAL_EXPRESSION)
         } else if self.has_top_level_any(binary_operators(), stops) {
-            Some(TsSyntaxKind::BinaryExpression)
+            Some(kind::BINARY_EXPRESSION)
         } else {
             None
         }
     }
 
-    fn parse_expression_tokens_until(&mut self, stops: &[TsSyntaxKind]) {
-        while !self.at(TsSyntaxKind::EndOfFile) && !self.at_any(stops) {
+    fn parse_expression_tokens_until(&mut self, stops: &[Kind]) {
+        while !self.at(kind::END_OF_FILE) && !self.at_any(stops) {
             match self.current() {
-                TsSyntaxKind::LessThan if self.jsx_enabled() && self.starts_jsx_open() => {
+                kind::LESS_THAN if self.jsx_enabled() && self.starts_jsx_open() => {
                     self.parse_jsx_element();
                 }
-                TsSyntaxKind::KeywordAwait => self.parse_await_expression(),
-                TsSyntaxKind::KeywordNew => self.parse_new_expression(),
-                kind if is_expr_base(kind) && self.next_is(TsSyntaxKind::OpenParen) => {
+                kind::KEYWORD_AWAIT => self.parse_await_expression(),
+                kind::KEYWORD_NEW => self.parse_new_expression(),
+                kind if is_expr_base(kind) && self.next_is(kind::OPEN_PAREN) => {
                     self.parse_call_expression();
                 }
-                TsSyntaxKind::Identifier if self.next_is(TsSyntaxKind::LessThan) => {
+                kind::IDENTIFIER if self.next_is(kind::LESS_THAN) => {
                     self.parse_typed_call();
                 }
                 kind if is_expr_base(kind)
-                    && (self.next_is(TsSyntaxKind::Dot)
-                        || self.next_is(TsSyntaxKind::QuestionDot)) =>
+                    && (self.next_is(kind::DOT) || self.next_is(kind::QUESTION_DOT)) =>
                 {
                     self.parse_member_chain();
                 }
                 kind if is_unary_operator(kind) => self.parse_unary_expression(),
-                TsSyntaxKind::OpenBrace => self.parse_balanced_node(
-                    TsSyntaxKind::ObjectExpression,
-                    TsSyntaxKind::OpenBrace,
-                    TsSyntaxKind::CloseBrace,
+                kind::OPEN_BRACE => self.parse_balanced_node(
+                    kind::OBJECT_EXPRESSION,
+                    kind::OPEN_BRACE,
+                    kind::CLOSE_BRACE,
                     "expected '}' to close object expression",
                 ),
-                TsSyntaxKind::OpenBracket => self.parse_balanced_node(
-                    TsSyntaxKind::ArrayExpression,
-                    TsSyntaxKind::OpenBracket,
-                    TsSyntaxKind::CloseBracket,
+                kind::OPEN_BRACKET => self.parse_balanced_node(
+                    kind::ARRAY_EXPRESSION,
+                    kind::OPEN_BRACKET,
+                    kind::CLOSE_BRACKET,
                     "expected ']' to close array expression",
                 ),
-                TsSyntaxKind::OpenParen => self.parse_parenthesized_expression(),
+                kind::OPEN_PAREN => self.parse_parenthesized_expression(),
                 _ => self.bump(),
             }
         }
     }
 
     fn parse_call_expression(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::CallExpression);
+        self.builder.start_node(kind::CALL_EXPRESSION);
         self.bump();
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type arguments",
             );
         }
         self.parse_balanced_node(
-            TsSyntaxKind::ParenthesizedExpression,
-            TsSyntaxKind::OpenParen,
-            TsSyntaxKind::CloseParen,
+            kind::PARENTHESIZED_EXPRESSION,
+            kind::OPEN_PAREN,
+            kind::CLOSE_PAREN,
             "expected ')' to close call arguments",
         );
         self.builder.finish_node();
@@ -96,28 +95,28 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_new_expression(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::NewExpression);
+        self.builder.start_node(kind::NEW_EXPRESSION);
         self.bump();
-        if self.at(TsSyntaxKind::Identifier) && self.next_is(TsSyntaxKind::Dot) {
+        if self.at(kind::IDENTIFIER) && self.next_is(kind::DOT) {
             self.parse_member_expression();
-        } else if self.at(TsSyntaxKind::Identifier) {
+        } else if self.at(kind::IDENTIFIER) {
             self.bump();
         } else {
             self.error_here("expected constructor name");
         }
-        if self.at(TsSyntaxKind::LessThan) {
+        if self.at(kind::LESS_THAN) {
             self.parse_balanced_node(
-                TsSyntaxKind::TypeParameters,
-                TsSyntaxKind::LessThan,
-                TsSyntaxKind::GreaterThan,
+                kind::TYPE_PARAMETERS,
+                kind::LESS_THAN,
+                kind::GREATER_THAN,
                 "expected '>' to close type arguments",
             );
         }
-        if self.at(TsSyntaxKind::OpenParen) {
+        if self.at(kind::OPEN_PAREN) {
             self.parse_balanced_node(
-                TsSyntaxKind::ParenthesizedExpression,
-                TsSyntaxKind::OpenParen,
-                TsSyntaxKind::CloseParen,
+                kind::PARENTHESIZED_EXPRESSION,
+                kind::OPEN_PAREN,
+                kind::CLOSE_PAREN,
                 "expected ')' to close constructor arguments",
             );
         }
@@ -125,16 +124,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unary_expression(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::UnaryExpression);
+        self.builder.start_node(kind::UNARY_EXPRESSION);
         self.bump();
         self.parse_expression_operand();
         self.builder.finish_node();
     }
 
     fn parse_await_expression(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::AwaitExpression);
+        self.builder.start_node(kind::AWAIT_EXPRESSION);
         self.bump();
         self.parse_expression_operand();
         self.builder.finish_node();
@@ -142,66 +139,61 @@ impl<'a> Parser<'a> {
 
     fn parse_expression_operand(&mut self) {
         match self.current() {
-            TsSyntaxKind::KeywordNew => self.parse_new_expression(),
-            kind if is_expr_base(kind) && self.next_is(TsSyntaxKind::OpenParen) => {
+            kind::KEYWORD_NEW => self.parse_new_expression(),
+            kind if is_expr_base(kind) && self.next_is(kind::OPEN_PAREN) => {
                 self.parse_call_expression();
             }
             kind if is_expr_base(kind)
-                && (self.next_is(TsSyntaxKind::Dot) || self.next_is(TsSyntaxKind::QuestionDot)) =>
+                && (self.next_is(kind::DOT) || self.next_is(kind::QUESTION_DOT)) =>
             {
                 self.parse_member_chain();
             }
-            TsSyntaxKind::OpenParen => self.parse_parenthesized_expression(),
-            TsSyntaxKind::OpenBracket => self.parse_balanced_node(
-                TsSyntaxKind::ArrayExpression,
-                TsSyntaxKind::OpenBracket,
-                TsSyntaxKind::CloseBracket,
+            kind::OPEN_PAREN => self.parse_parenthesized_expression(),
+            kind::OPEN_BRACKET => self.parse_balanced_node(
+                kind::ARRAY_EXPRESSION,
+                kind::OPEN_BRACKET,
+                kind::CLOSE_BRACKET,
                 "expected ']' to close array expression",
             ),
-            TsSyntaxKind::OpenBrace => self.parse_balanced_node(
-                TsSyntaxKind::ObjectExpression,
-                TsSyntaxKind::OpenBrace,
-                TsSyntaxKind::CloseBrace,
+            kind::OPEN_BRACE => self.parse_balanced_node(
+                kind::OBJECT_EXPRESSION,
+                kind::OPEN_BRACE,
+                kind::CLOSE_BRACE,
                 "expected '}' to close object expression",
             ),
-            kind if kind != TsSyntaxKind::EndOfFile => self.bump(),
+            kind if kind != kind::END_OF_FILE => self.bump(),
             _ => {}
         }
     }
 
     fn parse_parenthesized_expression(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::ParenthesizedExpression);
-        if self.expect(TsSyntaxKind::OpenParen, "expected '(' to start expression") {
-            self.parse_expression_tokens_until(&[
-                TsSyntaxKind::CloseParen,
-                TsSyntaxKind::EndOfFile,
-            ]);
-            self.expect(TsSyntaxKind::CloseParen, "expected ')' to close expression");
+        self.builder.start_node(kind::PARENTHESIZED_EXPRESSION);
+        if self.expect(kind::OPEN_PAREN, "expected '(' to start expression") {
+            self.parse_expression_tokens_until(&[kind::CLOSE_PAREN, kind::END_OF_FILE]);
+            self.expect(kind::CLOSE_PAREN, "expected ')' to close expression");
         }
         self.builder.finish_node();
     }
 
     fn parse_member_expression(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::MemberExpression);
+        self.builder.start_node(kind::MEMBER_EXPRESSION);
         self.bump();
-        while self.at(TsSyntaxKind::Dot) || self.at(TsSyntaxKind::QuestionDot) {
+        while self.at(kind::DOT) || self.at(kind::QUESTION_DOT) {
             self.bump();
             if is_property_name(self.current()) {
                 self.bump();
-            } else if self.at(TsSyntaxKind::OpenBracket) {
+            } else if self.at(kind::OPEN_BRACKET) {
                 self.parse_balanced_node(
-                    TsSyntaxKind::ElementAccessExpression,
-                    TsSyntaxKind::OpenBracket,
-                    TsSyntaxKind::CloseBracket,
+                    kind::ELEMENT_ACCESS_EXPRESSION,
+                    kind::OPEN_BRACKET,
+                    kind::CLOSE_BRACKET,
                     "expected ']' to close element access",
                 );
-            } else if self.at(TsSyntaxKind::OpenParen) {
+            } else if self.at(kind::OPEN_PAREN) {
                 self.parse_balanced_node(
-                    TsSyntaxKind::ParenthesizedExpression,
-                    TsSyntaxKind::OpenParen,
-                    TsSyntaxKind::CloseParen,
+                    kind::PARENTHESIZED_EXPRESSION,
+                    kind::OPEN_PAREN,
+                    kind::CLOSE_PAREN,
                     "expected ')' to close call arguments",
                 );
             } else {
@@ -215,14 +207,14 @@ impl<'a> Parser<'a> {
     fn parse_member_chain(&mut self) {
         let has_call = self.has_member_call();
         if has_call {
-            self.builder.start_schema_node(TsSyntaxKind::CallExpression);
+            self.builder.start_node(kind::CALL_EXPRESSION);
         }
         self.parse_member_expression();
-        if self.at(TsSyntaxKind::OpenParen) {
+        if self.at(kind::OPEN_PAREN) {
             self.parse_balanced_node(
-                TsSyntaxKind::ParenthesizedExpression,
-                TsSyntaxKind::OpenParen,
-                TsSyntaxKind::CloseParen,
+                kind::PARENTHESIZED_EXPRESSION,
+                kind::OPEN_PAREN,
+                kind::CLOSE_PAREN,
                 "expected ')' to close call arguments",
             );
         }
@@ -236,16 +228,16 @@ impl<'a> Parser<'a> {
         let mut depth = 0usize;
         while let Some(token) = self.token_at(cursor) {
             match token.kind {
-                TsSyntaxKind::LessThan => depth += 1,
-                TsSyntaxKind::GreaterThan => {
+                kind::LESS_THAN => depth += 1,
+                kind::GREATER_THAN => {
                     depth = depth.saturating_sub(1);
                     if depth == 0 {
                         return self
                             .token_at(cursor + 1)
-                            .is_some_and(|next| next.kind == TsSyntaxKind::OpenParen);
+                            .is_some_and(|next| next.kind == kind::OPEN_PAREN);
                     }
                 }
-                TsSyntaxKind::EndOfFile => return false,
+                kind::END_OF_FILE => return false,
                 _ => {}
             }
             cursor += 1;
@@ -256,28 +248,24 @@ impl<'a> Parser<'a> {
     fn has_member_call(&self) -> bool {
         let mut cursor = self.cursor + 1;
         while let Some(token) = self.token_at(cursor) {
-            if !matches!(token.kind, TsSyntaxKind::Dot | TsSyntaxKind::QuestionDot) {
+            if !matches!(token.kind, kind::DOT | kind::QUESTION_DOT) {
                 return false;
             }
             cursor += 1;
             if self
                 .token_at(cursor)
-                .is_some_and(|next| next.kind == TsSyntaxKind::OpenParen)
+                .is_some_and(|next| next.kind == kind::OPEN_PAREN)
             {
                 return true;
             }
             if self
                 .token_at(cursor)
-                .is_some_and(|next| next.kind == TsSyntaxKind::OpenBracket)
+                .is_some_and(|next| next.kind == kind::OPEN_BRACKET)
             {
-                cursor = self.skip_balanced(
-                    cursor,
-                    TsSyntaxKind::OpenBracket,
-                    TsSyntaxKind::CloseBracket,
-                );
+                cursor = self.skip_balanced(cursor, kind::OPEN_BRACKET, kind::CLOSE_BRACKET);
                 if self
                     .token_at(cursor)
-                    .is_some_and(|next| next.kind == TsSyntaxKind::OpenParen)
+                    .is_some_and(|next| next.kind == kind::OPEN_PAREN)
                 {
                     return true;
                 }
@@ -292,7 +280,7 @@ impl<'a> Parser<'a> {
             cursor += 1;
             if self
                 .token_at(cursor)
-                .is_some_and(|next| next.kind == TsSyntaxKind::OpenParen)
+                .is_some_and(|next| next.kind == kind::OPEN_PAREN)
             {
                 return true;
             }
@@ -300,7 +288,7 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn skip_balanced(&self, mut cursor: usize, open: TsSyntaxKind, close: TsSyntaxKind) -> usize {
+    fn skip_balanced(&self, mut cursor: usize, open: Kind, close: Kind) -> usize {
         let mut depth = 0usize;
         while let Some(token) = self.token_at(cursor) {
             if token.kind == open {
@@ -310,7 +298,7 @@ impl<'a> Parser<'a> {
                 if depth == 0 {
                     return cursor + 1;
                 }
-            } else if token.kind == TsSyntaxKind::EndOfFile {
+            } else if token.kind == kind::END_OF_FILE {
                 return cursor;
             }
             cursor += 1;
@@ -319,96 +307,96 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn is_unary_operator(kind: TsSyntaxKind) -> bool {
+fn is_unary_operator(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::Bang
-            | TsSyntaxKind::Plus
-            | TsSyntaxKind::Minus
-            | TsSyntaxKind::PlusPlus
-            | TsSyntaxKind::MinusMinus
-            | TsSyntaxKind::KeywordDelete
-            | TsSyntaxKind::KeywordTypeof
-            | TsSyntaxKind::KeywordVoid
-            | TsSyntaxKind::KeywordYield
+        kind::BANG
+            | kind::PLUS
+            | kind::MINUS
+            | kind::PLUS_PLUS
+            | kind::MINUS_MINUS
+            | kind::KEYWORD_DELETE
+            | kind::KEYWORD_TYPEOF
+            | kind::KEYWORD_VOID
+            | kind::KEYWORD_YIELD
     )
 }
 
-fn is_expr_base(kind: TsSyntaxKind) -> bool {
+fn is_expr_base(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::Identifier | TsSyntaxKind::KeywordSuper | TsSyntaxKind::KeywordThis
+        kind::IDENTIFIER | kind::KEYWORD_SUPER | kind::KEYWORD_THIS
     )
 }
 
-fn is_property_name(kind: TsSyntaxKind) -> bool {
+fn is_property_name(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::Identifier
-            | TsSyntaxKind::KeywordAs
-            | TsSyntaxKind::KeywordAwait
-            | TsSyntaxKind::KeywordClass
-            | TsSyntaxKind::KeywordDefault
-            | TsSyntaxKind::KeywordEnum
-            | TsSyntaxKind::KeywordFrom
-            | TsSyntaxKind::KeywordFunction
-            | TsSyntaxKind::KeywordGet
-            | TsSyntaxKind::KeywordImport
-            | TsSyntaxKind::KeywordInfer
-            | TsSyntaxKind::KeywordInstanceof
-            | TsSyntaxKind::KeywordInterface
-            | TsSyntaxKind::KeywordKeyof
-            | TsSyntaxKind::KeywordLet
-            | TsSyntaxKind::KeywordModule
-            | TsSyntaxKind::KeywordNamespace
-            | TsSyntaxKind::KeywordNew
-            | TsSyntaxKind::KeywordNull
-            | TsSyntaxKind::KeywordSatisfies
-            | TsSyntaxKind::KeywordSet
-            | TsSyntaxKind::KeywordStatic
-            | TsSyntaxKind::KeywordSuper
-            | TsSyntaxKind::KeywordThis
-            | TsSyntaxKind::KeywordTrue
-            | TsSyntaxKind::KeywordFalse
-            | TsSyntaxKind::KeywordType
-            | TsSyntaxKind::KeywordTypeof
-            | TsSyntaxKind::KeywordUnique
-            | TsSyntaxKind::KeywordVoid
-            | TsSyntaxKind::KeywordDelete
-            | TsSyntaxKind::KeywordYield
+        kind::IDENTIFIER
+            | kind::KEYWORD_AS
+            | kind::KEYWORD_AWAIT
+            | kind::KEYWORD_CLASS
+            | kind::KEYWORD_DEFAULT
+            | kind::KEYWORD_ENUM
+            | kind::KEYWORD_FROM
+            | kind::KEYWORD_FUNCTION
+            | kind::KEYWORD_GET
+            | kind::KEYWORD_IMPORT
+            | kind::KEYWORD_INFER
+            | kind::KEYWORD_INSTANCEOF
+            | kind::KEYWORD_INTERFACE
+            | kind::KEYWORD_KEYOF
+            | kind::KEYWORD_LET
+            | kind::KEYWORD_MODULE
+            | kind::KEYWORD_NAMESPACE
+            | kind::KEYWORD_NEW
+            | kind::KEYWORD_NULL
+            | kind::KEYWORD_SATISFIES
+            | kind::KEYWORD_SET
+            | kind::KEYWORD_STATIC
+            | kind::KEYWORD_SUPER
+            | kind::KEYWORD_THIS
+            | kind::KEYWORD_TRUE
+            | kind::KEYWORD_FALSE
+            | kind::KEYWORD_TYPE
+            | kind::KEYWORD_TYPEOF
+            | kind::KEYWORD_UNIQUE
+            | kind::KEYWORD_VOID
+            | kind::KEYWORD_DELETE
+            | kind::KEYWORD_YIELD
     )
 }
 
-fn binary_operators() -> &'static [TsSyntaxKind] {
+fn binary_operators() -> &'static [Kind] {
     &[
-        TsSyntaxKind::Plus,
-        TsSyntaxKind::Minus,
-        TsSyntaxKind::Star,
-        TsSyntaxKind::Slash,
-        TsSyntaxKind::Equals,
-        TsSyntaxKind::EqualsEquals,
-        TsSyntaxKind::EqualsEqualsEquals,
-        TsSyntaxKind::BangEquals,
-        TsSyntaxKind::BangEqualsEquals,
-        TsSyntaxKind::LessThan,
-        TsSyntaxKind::LessThanEquals,
-        TsSyntaxKind::GreaterThan,
-        TsSyntaxKind::GreaterThanEquals,
-        TsSyntaxKind::PlusEquals,
-        TsSyntaxKind::MinusEquals,
-        TsSyntaxKind::StarEquals,
-        TsSyntaxKind::SlashEquals,
-        TsSyntaxKind::Percent,
-        TsSyntaxKind::PercentEquals,
-        TsSyntaxKind::AmpersandAmpersand,
-        TsSyntaxKind::Pipe,
-        TsSyntaxKind::PipePipe,
-        TsSyntaxKind::Ampersand,
-        TsSyntaxKind::QuestionQuestion,
-        TsSyntaxKind::KeywordIn,
-        TsSyntaxKind::KeywordInstanceof,
-        TsSyntaxKind::KeywordOf,
-        TsSyntaxKind::KeywordAs,
-        TsSyntaxKind::KeywordSatisfies,
+        kind::PLUS,
+        kind::MINUS,
+        kind::STAR,
+        kind::SLASH,
+        kind::EQUALS,
+        kind::EQUALS_EQUALS,
+        kind::EQUALS_EQUALS_EQUALS,
+        kind::BANG_EQUALS,
+        kind::BANG_EQUALS_EQUALS,
+        kind::LESS_THAN,
+        kind::LESS_THAN_EQUALS,
+        kind::GREATER_THAN,
+        kind::GREATER_THAN_EQUALS,
+        kind::PLUS_EQUALS,
+        kind::MINUS_EQUALS,
+        kind::STAR_EQUALS,
+        kind::SLASH_EQUALS,
+        kind::PERCENT,
+        kind::PERCENT_EQUALS,
+        kind::AMPERSAND_AMPERSAND,
+        kind::PIPE,
+        kind::PIPE_PIPE,
+        kind::AMPERSAND,
+        kind::QUESTION_QUESTION,
+        kind::KEYWORD_IN,
+        kind::KEYWORD_INSTANCEOF,
+        kind::KEYWORD_OF,
+        kind::KEYWORD_AS,
+        kind::KEYWORD_SATISFIES,
     ]
 }

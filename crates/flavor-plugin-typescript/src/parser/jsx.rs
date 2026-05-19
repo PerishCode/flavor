@@ -1,10 +1,10 @@
-use crate::syntax_kind::TsSyntaxKind;
+use crate::internal::grammar::{self as kind, Kind};
 
 use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_jsx_element(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::JsxElement);
+        self.builder.start_node(kind::JSX_ELEMENT);
         let Some(name) = self.parse_jsx_opening() else {
             self.builder.finish_node();
             return;
@@ -13,7 +13,7 @@ impl<'a> Parser<'a> {
             self.builder.finish_node();
             return;
         }
-        while !self.at(TsSyntaxKind::EndOfFile) {
+        while !self.at(kind::END_OF_FILE) {
             if self.starts_jsx_close() {
                 self.parse_jsx_closing();
                 self.builder.finish_node();
@@ -21,11 +21,11 @@ impl<'a> Parser<'a> {
             }
             if self.starts_jsx_open() {
                 self.parse_jsx_element();
-            } else if self.at(TsSyntaxKind::OpenBrace) {
+            } else if self.at(kind::OPEN_BRACE) {
                 self.parse_balanced_node(
-                    TsSyntaxKind::JsxExpression,
-                    TsSyntaxKind::OpenBrace,
-                    TsSyntaxKind::CloseBrace,
+                    kind::JSX_EXPRESSION,
+                    kind::OPEN_BRACE,
+                    kind::CLOSE_BRACE,
                     "expected '}' to close JSX expression",
                 );
             } else {
@@ -40,19 +40,18 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn starts_jsx_open(&self) -> bool {
-        self.at(TsSyntaxKind::LessThan) && is_jsx_name_start(self.token_kind_at(1))
+        self.at(kind::LESS_THAN) && is_jsx_name_start(self.token_kind_at(1))
     }
 
     fn parse_jsx_opening(&mut self) -> Option<String> {
-        self.builder
-            .start_schema_node(TsSyntaxKind::JsxOpeningElement);
+        self.builder.start_node(kind::JSX_OPENING_ELEMENT);
         self.bump();
         let Some(name) = self.parse_jsx_name("expected JSX tag name") else {
             self.builder.finish_node();
             return None;
         };
-        while !self.at_any(&[TsSyntaxKind::GreaterThan, TsSyntaxKind::EndOfFile]) {
-            if self.at(TsSyntaxKind::Slash) && self.next_is(TsSyntaxKind::GreaterThan) {
+        while !self.at_any(&[kind::GREATER_THAN, kind::END_OF_FILE]) {
+            if self.at(kind::SLASH) && self.next_is(kind::GREATER_THAN) {
                 self.bump();
                 self.bump();
                 self.builder.finish_node();
@@ -60,7 +59,7 @@ impl<'a> Parser<'a> {
             }
             self.parse_jsx_attribute();
         }
-        if self.at(TsSyntaxKind::GreaterThan) {
+        if self.at(kind::GREATER_THAN) {
             self.bump();
         } else {
             self.error_here("expected '>' to close JSX opening tag");
@@ -70,12 +69,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_closing(&mut self) {
-        self.builder
-            .start_schema_node(TsSyntaxKind::JsxClosingElement);
+        self.builder.start_node(kind::JSX_CLOSING_ELEMENT);
         self.bump();
         self.bump();
         self.parse_jsx_name("expected JSX closing tag name");
-        if self.at(TsSyntaxKind::GreaterThan) {
+        if self.at(kind::GREATER_THAN) {
             self.bump();
         } else {
             self.error_here("expected '>' to close JSX closing tag");
@@ -84,30 +82,29 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_attribute(&mut self) {
-        if self.at(TsSyntaxKind::OpenBrace) {
-            self.builder
-                .start_schema_node(TsSyntaxKind::JsxSpreadAttribute);
+        if self.at(kind::OPEN_BRACE) {
+            self.builder.start_node(kind::JSX_SPREAD_ATTRIBUTE);
             self.parse_balanced_node(
-                TsSyntaxKind::JsxExpression,
-                TsSyntaxKind::OpenBrace,
-                TsSyntaxKind::CloseBrace,
+                kind::JSX_EXPRESSION,
+                kind::OPEN_BRACE,
+                kind::CLOSE_BRACE,
                 "expected '}' to close JSX spread attribute",
             );
             self.builder.finish_node();
             return;
         }
         if is_jsx_name_start(self.current()) {
-            self.builder.start_schema_node(TsSyntaxKind::JsxAttribute);
+            self.builder.start_node(kind::JSX_ATTRIBUTE);
             self.parse_jsx_name("expected JSX attribute name");
-            if self.at(TsSyntaxKind::Equals) {
+            if self.at(kind::EQUALS) {
                 self.bump();
-                if self.at(TsSyntaxKind::StringLiteral) {
+                if self.at(kind::STRING_LITERAL) {
                     self.bump();
-                } else if self.at(TsSyntaxKind::OpenBrace) {
+                } else if self.at(kind::OPEN_BRACE) {
                     self.parse_balanced_node(
-                        TsSyntaxKind::JsxExpression,
-                        TsSyntaxKind::OpenBrace,
-                        TsSyntaxKind::CloseBrace,
+                        kind::JSX_EXPRESSION,
+                        kind::OPEN_BRACE,
+                        kind::CLOSE_BRACE,
                         "expected '}' to close JSX attribute expression",
                     );
                 }
@@ -119,9 +116,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_jsx_text(&mut self) {
-        self.builder.start_schema_node(TsSyntaxKind::JsxText);
-        while !self.at(TsSyntaxKind::EndOfFile)
-            && !self.at(TsSyntaxKind::OpenBrace)
+        self.builder.start_node(kind::JSX_TEXT);
+        while !self.at(kind::END_OF_FILE)
+            && !self.at(kind::OPEN_BRACE)
             && !self.starts_jsx_open()
             && !self.starts_jsx_close()
         {
@@ -142,7 +139,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let end = self.token_kind_at_back(1);
-        debug_assert!(end != TsSyntaxKind::EndOfFile);
+        debug_assert!(end != kind::END_OF_FILE);
         let span_end = self
             .token_at(self.cursor.saturating_sub(1))
             .map_or(start, |token| token.span.end);
@@ -154,56 +151,53 @@ impl<'a> Parser<'a> {
     }
 
     fn starts_jsx_close(&self) -> bool {
-        self.at(TsSyntaxKind::LessThan) && self.next_is(TsSyntaxKind::Slash)
+        self.at(kind::LESS_THAN) && self.next_is(kind::SLASH)
     }
 
     fn was_jsx_self_closing(&self) -> bool {
-        self.token_kind_at_back(1) == TsSyntaxKind::GreaterThan
-            && self.token_kind_at_back(2) == TsSyntaxKind::Slash
+        self.token_kind_at_back(1) == kind::GREATER_THAN
+            && self.token_kind_at_back(2) == kind::SLASH
     }
 }
 
-fn is_jsx_name_start(kind: TsSyntaxKind) -> bool {
-    kind == TsSyntaxKind::Identifier || is_jsx_keyword(kind)
+fn is_jsx_name_start(kind: Kind) -> bool {
+    kind == kind::IDENTIFIER || is_jsx_keyword(kind)
 }
 
-fn is_jsx_keyword(kind: TsSyntaxKind) -> bool {
+fn is_jsx_keyword(kind: Kind) -> bool {
     matches!(
         kind,
-        TsSyntaxKind::KeywordAbstract
-            | TsSyntaxKind::KeywordAs
-            | TsSyntaxKind::KeywordAsync
-            | TsSyntaxKind::KeywordAwait
-            | TsSyntaxKind::KeywordClass
-            | TsSyntaxKind::KeywordConst
-            | TsSyntaxKind::KeywordDefault
-            | TsSyntaxKind::KeywordExport
-            | TsSyntaxKind::KeywordFor
-            | TsSyntaxKind::KeywordFrom
-            | TsSyntaxKind::KeywordFunction
-            | TsSyntaxKind::KeywordGet
-            | TsSyntaxKind::KeywordIf
-            | TsSyntaxKind::KeywordImport
-            | TsSyntaxKind::KeywordIn
-            | TsSyntaxKind::KeywordInterface
-            | TsSyntaxKind::KeywordLet
-            | TsSyntaxKind::KeywordNew
-            | TsSyntaxKind::KeywordOf
-            | TsSyntaxKind::KeywordReadonly
-            | TsSyntaxKind::KeywordSet
-            | TsSyntaxKind::KeywordStatic
-            | TsSyntaxKind::KeywordThis
-            | TsSyntaxKind::KeywordType
+        kind::KEYWORD_ABSTRACT
+            | kind::KEYWORD_AS
+            | kind::KEYWORD_ASYNC
+            | kind::KEYWORD_AWAIT
+            | kind::KEYWORD_CLASS
+            | kind::KEYWORD_CONST
+            | kind::KEYWORD_DEFAULT
+            | kind::KEYWORD_EXPORT
+            | kind::KEYWORD_FOR
+            | kind::KEYWORD_FROM
+            | kind::KEYWORD_FUNCTION
+            | kind::KEYWORD_GET
+            | kind::KEYWORD_IF
+            | kind::KEYWORD_IMPORT
+            | kind::KEYWORD_IN
+            | kind::KEYWORD_INTERFACE
+            | kind::KEYWORD_LET
+            | kind::KEYWORD_NEW
+            | kind::KEYWORD_OF
+            | kind::KEYWORD_READONLY
+            | kind::KEYWORD_SET
+            | kind::KEYWORD_STATIC
+            | kind::KEYWORD_THIS
+            | kind::KEYWORD_TYPE
     )
 }
 
-fn is_jsx_name_part(kind: TsSyntaxKind) -> bool {
-    is_jsx_name_start(kind) || matches!(kind, TsSyntaxKind::NumericLiteral)
+fn is_jsx_name_part(kind: Kind) -> bool {
+    is_jsx_name_start(kind) || matches!(kind, kind::NUMERIC_LITERAL)
 }
 
-fn is_jsx_name_join(kind: TsSyntaxKind) -> bool {
-    matches!(
-        kind,
-        TsSyntaxKind::Dot | TsSyntaxKind::Colon | TsSyntaxKind::Minus
-    )
+fn is_jsx_name_join(kind: Kind) -> bool {
+    matches!(kind, kind::DOT | kind::COLON | kind::MINUS)
 }

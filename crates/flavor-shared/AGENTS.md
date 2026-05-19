@@ -8,12 +8,10 @@ plugin crates.
 - `src/state.rs` owns reusable typed config/state helpers for plugin
   implementations.
 - `src/product.rs` owns small helpers for producing `flavor-core` product facts.
-- `src/grammar_build.rs` owns optional build-script helpers behind the
-  `grammar-build` feature.
 
 Keep this crate out of the public ABI boundary. Do not move source text, spans,
 diagnostics, syntax tree primitives, product model types, report models, CLI
-scan behavior, or rule semantics here.
+scan behavior, grammar compilation helpers, or rule semantics here.
 
 ## Common Commands
 

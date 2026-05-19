@@ -36,22 +36,21 @@ management.
   injection.
 - `crates/flavor-shared/AGENTS.md`: first-party plugin implementation helpers
   that should not become public ABI.
-- `crates/flavor-plugin-filesystem/AGENTS.md`: filesystem/path-shape bundled
-  plugin identity and behavior.
+- `crates/flavor-plugin-filesystem/AGENTS.md`: filesystem/source path and shape
+  bundled plugin identity and behavior.
 - `crates/flavor-plugin-g4/AGENTS.md`: `.g4` source analysis plugin identity
   and behavior.
-- `crates/flavor-plugin-source-structure/AGENTS.md`: source file/tree-shape
-  bundled plugin identity and behavior.
 - `crates/flavor-plugin-rust/AGENTS.md`: Rust syntax/facts frontend and
   embedded Rust lint facts.
-- `crates/flavor-plugin-typescript/AGENTS.md`: TypeScript, JavaScript, and TSX lexer,
-  parser, AST, facts, visitor, and frontend state.
+- `crates/flavor-plugin-typescript/AGENTS.md`: TypeScript, JavaScript, and TSX
+  lexer, parser, raw tree facts, visitor, and frontend state.
 - `crates/flavor-plugin-vue/AGENTS.md`: Vue SFC descriptor, template/style
   facts, template parsing, and embedded expression validation.
 - `crates/flavor-plugin-svelte/AGENTS.md`: Svelte descriptor, markup parsing,
   facts, and embedded expression validation.
 - `crates/flavor-grammar/AGENTS.md`: grammar contract metadata, `.g4` source
-  indexing, raw AST schema derivation, and validation harnesses.
+  indexing, raw AST schema derivation, runtime kind lookup, parser backend
+  adapters, dynamic grammar tree views, and validation harnesses.
 
 When adding or removing a core subtree, update this index in the same change.
 Child `AGENTS.md` files should stay local: ownership, directory shape, commands,

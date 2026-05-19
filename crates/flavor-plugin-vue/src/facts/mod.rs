@@ -1,8 +1,9 @@
-use flavor_core::{LineIndex, RawSyntaxKind, Span, SyntaxNode, SyntaxSpanExt, SyntaxToken};
+use flavor_core::{LineIndex, Span};
+use flavor_grammar::{GrammarNode, GrammarToken, GrammarTree};
 
 use crate::{
     sfc::{VueSfcBlock, VueSfcDescriptor},
-    template::{TemplateAst, VueTemplateKind},
+    template::{kind, TemplateAst},
 };
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
@@ -58,6 +59,9 @@ pub enum VueTemplateDirectiveClass {
     Custom,
 }
 
+type VueNode = GrammarNode;
+type VueToken = GrammarToken;
+
 pub fn collect(descriptor: &VueSfcDescriptor, template: Option<&TemplateAst>) -> VueFacts {
     let mut facts = VueFacts {
         style_count: descriptor.styles.len(),
@@ -67,70 +71,59 @@ pub fn collect(descriptor: &VueSfcDescriptor, template: Option<&TemplateAst>) ->
     };
     if let Some(template) = template {
         let host = TemplateHost::new(descriptor.template.as_ref());
-        for node in template.syntax().descendants() {
-            match node.kind() {
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::StartTag) => {
+        let tree = GrammarTree::new(template.syntax().clone(), kind::schema());
+        let root = tree.root();
+        for node in root.descendants() {
+            match node.kind_name() {
+                Some("start_tag") => {
                     facts.template_element_count += 1;
                     if let Some(fact) = element_fact(&node, &host) {
                         facts.template_elements.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::Directive) => {
+                Some("directive") => {
                     facts.template_directive_count += 1;
                     if let Some(fact) = directive_fact(&node, &host) {
                         facts.template_directives.push(fact);
                     }
                 }
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::Interpolation) => {
+                Some("interpolation") => {
                     facts.template_interpolation_count += 1;
                     facts.template_expression_count += 1;
                     facts
                         .template_expressions
                         .push(expression_fact(&node, &host));
                 }
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::DirectiveExpression) => {
+                Some("directive_expression") => {
                     facts.template_directive_expression_count += 1;
                     facts.template_expression_count += 1;
                     facts
                         .template_expressions
                         .push(expression_fact(&node, &host));
                 }
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::DirectiveName) => {
-                    match classify_directive(&node.text().to_string()) {
-                        VueTemplateDirectiveClass::Bind => facts.template_bind_directive_count += 1,
-                        VueTemplateDirectiveClass::Event => {
-                            facts.template_event_directive_count += 1
-                        }
-                        VueTemplateDirectiveClass::Slot => facts.template_slot_directive_count += 1,
-                        VueTemplateDirectiveClass::Model => {
-                            facts.template_model_directive_count += 1
-                        }
-                        VueTemplateDirectiveClass::Control => {
-                            facts.template_control_directive_count += 1
-                        }
-                        VueTemplateDirectiveClass::Custom => {
-                            facts.template_custom_directive_count += 1
-                        }
+                Some("directive_name") => match classify_directive(&node.text()) {
+                    VueTemplateDirectiveClass::Bind => facts.template_bind_directive_count += 1,
+                    VueTemplateDirectiveClass::Event => facts.template_event_directive_count += 1,
+                    VueTemplateDirectiveClass::Slot => facts.template_slot_directive_count += 1,
+                    VueTemplateDirectiveClass::Model => facts.template_model_directive_count += 1,
+                    VueTemplateDirectiveClass::Control => {
+                        facts.template_control_directive_count += 1
                     }
-                }
+                    VueTemplateDirectiveClass::Custom => facts.template_custom_directive_count += 1,
+                },
                 _ => {}
             }
         }
-        for token in template.syntax().descendants_with_tokens() {
-            let Some(token) = token.into_token() else {
-                continue;
-            };
-            match token.kind() {
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::DirectiveArgument)
-                    && token.text().contains('[') =>
-                {
+        for token in root.tokens() {
+            match token.kind_name() {
+                Some("DIRECTIVE_ARGUMENT") if token.text().contains('[') => {
                     facts.template_dynamic_argument_count += 1;
                     facts.template_expression_count += 1;
                     facts
                         .template_expressions
                         .push(token_expression_fact(&token, &host));
                 }
-                kind if kind == RawSyntaxKind::from(VueTemplateKind::DirectiveModifier) => {
+                Some("DIRECTIVE_MODIFIER") => {
                     facts.template_modifier_count += 1;
                 }
                 _ => {}
@@ -169,21 +162,18 @@ impl<'a> TemplateHost<'a> {
     }
 }
 
-fn element_fact(node: &SyntaxNode, host: &TemplateHost<'_>) -> Option<VueTemplateElementFact> {
-    let span = node.source_span();
+fn element_fact(node: &VueNode, host: &TemplateHost<'_>) -> Option<VueTemplateElementFact> {
+    let span = node.span();
     Some(VueTemplateElementFact {
-        name: token_text(node, VueTemplateKind::TagName)?,
+        name: node.child_token_text("TAG_NAME")?,
         span: host.span(span),
         line: host.line(span.start),
     })
 }
 
-fn directive_fact(node: &SyntaxNode, host: &TemplateHost<'_>) -> Option<VueTemplateDirectiveFact> {
-    let name = node
-        .children()
-        .find(|child| child.kind() == RawSyntaxKind::from(VueTemplateKind::DirectiveName))
-        .map(|child| child.text().to_string())?;
-    let span = node.source_span();
+fn directive_fact(node: &VueNode, host: &TemplateHost<'_>) -> Option<VueTemplateDirectiveFact> {
+    let name = node.child_text("directive_name")?;
+    let span = node.span();
     Some(VueTemplateDirectiveFact {
         class: classify_directive(&name),
         name,
@@ -192,19 +182,16 @@ fn directive_fact(node: &SyntaxNode, host: &TemplateHost<'_>) -> Option<VueTempl
     })
 }
 
-fn expression_fact(node: &SyntaxNode, host: &TemplateHost<'_>) -> VueTemplateExpressionFact {
-    let span = node.source_span();
+fn expression_fact(node: &VueNode, host: &TemplateHost<'_>) -> VueTemplateExpressionFact {
+    let span = node.span();
     VueTemplateExpressionFact {
         span: host.span(span),
         line: host.line(span.start),
     }
 }
 
-fn token_expression_fact(
-    token: &SyntaxToken,
-    host: &TemplateHost<'_>,
-) -> VueTemplateExpressionFact {
-    let span = token.source_span();
+fn token_expression_fact(token: &VueToken, host: &TemplateHost<'_>) -> VueTemplateExpressionFact {
+    let span = token.span();
     VueTemplateExpressionFact {
         span: host.span(span),
         line: host.line(span.start),
@@ -228,11 +215,4 @@ fn classify_directive(name: &str) -> VueTemplateDirectiveClass {
     } else {
         VueTemplateDirectiveClass::Custom
     }
-}
-
-fn token_text(node: &SyntaxNode, kind: VueTemplateKind) -> Option<String> {
-    node.children_with_tokens()
-        .filter_map(|element| element.into_token())
-        .find(|token| token.kind() == RawSyntaxKind::from(kind))
-        .map(|token| token.text().to_string())
 }

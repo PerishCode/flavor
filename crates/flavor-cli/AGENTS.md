@@ -13,8 +13,8 @@ reports, and CLI-facing scan configuration.
   scan traversal, and include/exclude matching. Plugin crates do not own these
   concerns.
 - `src/plugins/` owns the first-party bundled plugin boundary for filesystem,
-  source-structure, language, naming, and framework checks. Keep it internal to
-  the CLI until the external plugin model exists.
+  language, naming, and framework checks. Keep it internal to the CLI until the
+  external plugin model exists.
 - `src/rules.rs`, `src/model.rs`, `src/output.rs`, and `src/naming/` own rule
   definitions, issue/report modeling, text/JSON output, and naming helpers used
   by bundled plugins.

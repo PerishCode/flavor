@@ -3,7 +3,6 @@ mod g4;
 pub(crate) mod helper;
 mod language;
 mod product;
-mod source_structure;
 
 use std::{
     collections::{BTreeSet, VecDeque},
@@ -292,10 +291,6 @@ static PLUGINS: &[FirstPartyPlugin] = &[
     FirstPartyPlugin {
         manifest: filesystem::MANIFEST,
         analyze: filesystem::analyze,
-    },
-    FirstPartyPlugin {
-        manifest: source_structure::MANIFEST,
-        analyze: source_structure::analyze,
     },
     FirstPartyPlugin {
         manifest: g4::MANIFEST,

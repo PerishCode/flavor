@@ -11,7 +11,6 @@ flavor-plugin-filesystem = { path = "../flavor-plugin-filesystem" }
 flavor-plugin-g4 = { path = "../flavor-plugin-g4" }
 flavor-plugin-rust = { path = "../flavor-plugin-rust" }
 flavor-plugin-svelte = { path = "../flavor-plugin-svelte" }
-flavor-plugin-source-structure = { path = "../flavor-plugin-source-structure" }
 flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
 flavor-plugin-vue = { path = "../flavor-plugin-vue" }
 serde = { version = "1", features = ["derive"] }

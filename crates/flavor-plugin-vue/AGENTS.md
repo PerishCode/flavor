@@ -6,21 +6,23 @@
 
 ## Directory Rules
 
-- `src/sfc/` owns Vue SFC descriptor parsing and block validation.
-- `src/template/` owns template AST, template parsing, names, and embedded
+- `src/lib.rs`, `src/model.rs`, `src/plugin.rs`, and `src/state/` own the
+  public analyzer facade, output model, first-party plugin delivery, and
+  injected state/config.
+- `src/sfc/` owns internal Vue SFC descriptor parsing and block validation.
+- `src/template/` owns internal template AST, template parsing, names, and embedded
   expression validation.
-- `src/template/kind.rs` includes the build-generated `VueTemplateKind` binding
-  derived from `grammars/vue/VueTemplate*.g4`.
+- `src/template/kind.rs` owns plugin-local string kind constants and schema
+  loading from `grammars/vue`; it is not a public API.
 - `src/style/` owns style-facing substrate.
-- `src/facts/` and `src/visit/` own derived Vue facts and traversal hooks.
-- `src/state/` owns `VuePluginConfig`, `TemplateConfig`, and
-  `VuePluginState`.
+- `src/facts/` consumes the grammar-owned dynamic tree view to derive Vue facts.
+  `src/visit/` owns traversal hooks.
 - `harness/cases/` contains representative Vue fixtures.
 - `tests/` covers SFC descriptors, template parsing, run output, and harness
   behavior.
 
 Do not add CLI scan/report behavior or product-specific Vue rules here. Return
-descriptor/template/facts/diagnostics for callers to interpret.
+model-level descriptor/template/facts/diagnostics for callers to interpret.
 
 ## Common Commands
 
@@ -35,7 +37,8 @@ cargo test --locked -p flavor-plugin-vue
 - Template parser changes should include parser tests or a harness fixture.
 - Keep the descriptor/template parsers as staged parser backends for this
   refactor; template raw CST node/token kinds must continue to come from the
-  Vue template G4 raw AST schema and schema-aware builder paths.
+  Vue template G4 raw AST schema and raw AST construction must go through
+  `flavor-grammar`.
 - When validating embedded expressions, keep TypeScript-specific parsing in
   `flavor-plugin-typescript` and map diagnostics back to Vue source offsets.
 

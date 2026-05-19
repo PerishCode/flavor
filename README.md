@@ -69,13 +69,13 @@ rule adjustment layer.
   ],
   "overrides": [
     {
-      "match": ["src/generated/**", "vendor/**"],
+      "match": ["api/contracts/**", "vendor/**"],
       "kind": "file",
       "priority": 10,
       "rules": {
         "core/naming/too-many-words": {
           "enabled": false,
-          "reason": "generated names mirror protocol contracts"
+          "reason": "external names mirror protocol contracts"
         },
         "core/source/too-long": {
           "payload": { "max_lines": 800 },
@@ -146,22 +146,19 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 
 ## Workspace
 
-The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-core` owns shared source text, span, diagnostic, product, and syntax tree primitives, `flavor-grammar` owns grammar contract metadata, `.g4` source indexes, raw AST schema derivation, and adapter rendering, `flavor-plugin-g4` brings `.g4` files into the normal plugin/product pipeline, `flavor-plugin-filesystem` and `flavor-plugin-source-structure` own file/tree shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
+The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-core` owns shared source text, span, diagnostic, product, and syntax tree primitives, `flavor-grammar` owns grammar contract metadata, `.g4` source indexes, raw AST schema bundles, runtime kind lookup, and backend adapter helpers, `flavor-plugin-g4` brings `.g4` files into the normal plugin/product pipeline, `flavor-plugin-filesystem` owns filesystem path/source shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
 
 Frontend contracts are anchored in `grammars/<bundle>/*.g4` plus
 `grammars/<bundle>/metadata.json`. The `.g4` files are the repo-visible
-grammar source of truth and drive the raw AST schema symbols. Rust,
-TypeScript, Vue template, and Svelte markup syntax-kind bindings are generated
-from those schemas; metadata holds flavor-specific entrypoints, fact payload
-contracts, raw AST node
+grammar source of truth and drive the runtime raw AST schema symbols. Metadata
+holds flavor-specific entrypoints, fact payload contracts, raw AST node
 bindings, diagnostics, spans, and recovery expectations.
-Generated syntax-kind bindings also expose node/token categories used by the
-schema-aware CST builder paths in the first-party syntax plugins.
 Runtime parser backends remain staged adapters for this refactor: Rust still
 uses tree-sitter, TypeScript keeps its plugin lexer/parser, and Vue/Svelte keep
 their descriptor/template/markup parsers. Those adapters emit rowan CSTs
-through G4-derived syntax kinds and schema-aware builders, so the raw AST output
-shape is governed by `.g4` schemas even while parser execution stays unchanged.
+through `flavor-grammar` `GrammarSpec`/`GrammarBundle` lookup and string kind
+shapes, so the raw AST output shape is governed by `.g4` schemas even while
+parser execution stays unchanged.
 
 ## Development
 

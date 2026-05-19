@@ -1,18 +1,18 @@
 # AGENTS
 
-`crates/flavor-plugin-rust/` owns Rust syntax and lint facts on top of
-`flavor-core`.
+`crates/flavor-plugin-rust/` owns the Rust plugin adapter, public Rust fact
+model, config/state, and internal Rust syntax analysis on top of `flavor-core`.
 
 ## Directory Rules
 
-- `src/lib.rs` owns the public plugin analysis entrypoint and output contract.
-- `build.rs` wires Rust `.g4` and `metadata.json` into `flavor-grammar` generated
-  syntax-kind and adapter bindings.
-- `src/raw_ast.rs` owns the current tree-sitter to G4-schema rowan CST adapter;
-  raw AST node/token mapping code should stay generated from `flavor-grammar`.
-- `src/facts.rs` owns Rust facts collected from the parser tree.
+- `src/lib.rs` owns the public crate facade and analysis entrypoint.
+- `src/plugin.rs` owns the flavor internal plugin adapter that satisfies host
+  grammar/product requests.
+- `src/model.rs` owns public Rust output and fact structs.
 - `src/state.rs` owns typed Rust plugin config/state.
-- `src/syntax_kind.rs` includes generated frontend syntax kind definitions.
+- `src/internal/` owns Rust grammar constants, grammar parse invocation, fact
+  collection, and repeated-pattern heuristics. Parser execution and raw AST
+  construction are delegated to `flavor-grammar`.
 - `tests/` covers Rust frontend facts and diagnostics.
 
 Do not add CLI scan/report behavior or consumer-specific Rust rules here.
@@ -26,9 +26,10 @@ cargo test --locked -p flavor-plugin-rust
 
 ## Standard Workflow
 
-- Keep parser implementation details behind flavor-owned facts.
-- Keep tree-sitter as the staged parser backend for this refactor; raw CST
-  shape must continue to come from G4-generated syntax kinds and adapter
-  bindings.
+- Keep parser execution behind `flavor-grammar`; the Rust plugin may provide
+  the tree-sitter Rust language handle but must not instantiate parser engines
+  or construct raw CSTs directly.
+- Raw CST shape must continue to come from the grammar-owned runtime schema and
+  raw AST adapter.
 - Preserve source-backed spans and deterministic diagnostics.
 - Add focused fact tests when rule-facing Rust syntax behavior moves.

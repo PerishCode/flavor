@@ -1,24 +1,17 @@
-pub mod descriptor;
-pub mod facts;
-pub mod markup;
-pub mod product;
+mod descriptor;
+mod facts;
+mod markup;
+pub mod model;
+pub mod plugin;
 pub mod state;
 
 use flavor_core::{Diagnostic, LineIndex, SourceText, Span};
 
-pub use descriptor::{SvelteBlock, SvelteDescriptor, SvelteMarkup};
-pub use facts::SvelteFacts;
-pub use markup::{SvelteMarkupAst, SvelteMarkupKind};
+pub use model::{
+    SvelteAnalysisOutput, SvelteBlock, SvelteDescriptor, SvelteDescriptorError, SvelteFacts,
+    SvelteMarkup, SvelteMarkupAst, SvelteMarkupNameFact,
+};
 pub use state::{SveltePluginConfig, SveltePluginState};
-
-#[derive(Debug, Clone)]
-pub struct SvelteAnalysisOutput {
-    pub source: SourceText,
-    pub descriptor: SvelteDescriptor,
-    pub markup: Option<SvelteMarkupAst>,
-    pub facts: SvelteFacts,
-    pub diagnostics: Vec<Diagnostic>,
-}
 
 #[derive(Debug, Clone)]
 pub struct SveltePluginAnalyzer {

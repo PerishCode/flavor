@@ -14,6 +14,6 @@ pub use report::{Diagnostic, DiagnosticSeverity, RecoverySet, SnapshotDump};
 pub use source::{LineIndex, Position, SourceText, Span};
 pub use state::{FlavorCoreConfig, FlavorCoreState};
 pub use syntax::{
-    FlavorLanguage, RawSyntaxKind, SyntaxBuilder, SyntaxElement, SyntaxKindSchema, SyntaxNode,
-    SyntaxSpanExt, SyntaxToken, Token, TokenCursor, Trivia, TriviaKind,
+    FlavorLanguage, RawSyntaxKind, SyntaxBuilder, SyntaxElement, SyntaxNode, SyntaxSpanExt,
+    SyntaxToken, Token, TokenCursor, Trivia, TriviaKind,
 };

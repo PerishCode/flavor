@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use crate::{valid_ident, GrammarError};
 
@@ -50,84 +50,6 @@ pub struct G4Binding {
 pub struct G4Reference {
     pub name: String,
     pub line: usize,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RawAstSchema {
-    pub grammar_id: String,
-    pub symbols: Vec<RawAstSymbol>,
-}
-
-impl RawAstSchema {
-    pub fn from_g4_sources(
-        grammar_id: &str,
-        start: u16,
-        sources: &[G4Source],
-    ) -> Result<Self, Vec<GrammarError>> {
-        let mut symbols = Vec::new();
-        let mut errors = Vec::new();
-        let mut seen = BTreeSet::new();
-        let mut next = start;
-        let mut source_symbols = sources
-            .iter()
-            .flat_map(|source| {
-                source
-                    .parser_rules
-                    .iter()
-                    .map(|rule| (rule, RawAstSymbolKind::Node))
-            })
-            .collect::<Vec<_>>();
-        source_symbols.extend(sources.iter().flat_map(|source| {
-            source
-                .lexer_tokens
-                .iter()
-                .map(|rule| (rule, RawAstSymbolKind::Token))
-        }));
-
-        let mut variants = BTreeMap::new();
-        for (rule, _) in &source_symbols {
-            *variants.entry(rust_variant(&rule.name)).or_insert(0usize) += 1;
-        }
-
-        for (rule, kind) in source_symbols {
-            push_raw_ast_symbol(
-                &mut symbols,
-                &mut seen,
-                &mut next,
-                rule,
-                kind,
-                &variants,
-                &mut errors,
-            );
-        }
-
-        if errors.is_empty() {
-            Ok(Self {
-                grammar_id: grammar_id.to_string(),
-                symbols,
-            })
-        } else {
-            Err(errors)
-        }
-    }
-
-    pub fn symbol(&self, name: &str) -> Option<&RawAstSymbol> {
-        self.symbols.iter().find(|symbol| symbol.name == name)
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RawAstSymbol {
-    pub name: String,
-    pub variant: String,
-    pub kind: RawAstSymbolKind,
-    pub raw_kind: u16,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum RawAstSymbolKind {
-    Node,
-    Token,
 }
 
 pub fn parse_g4_source(source: &str) -> Result<G4Source, Vec<GrammarError>> {
@@ -251,77 +173,6 @@ fn validate_unique_rules(label: &str, rules: &[G4Rule], errors: &mut Vec<Grammar
             });
         }
     }
-}
-
-fn push_raw_ast_symbol(
-    symbols: &mut Vec<RawAstSymbol>,
-    seen: &mut BTreeSet<String>,
-    next: &mut u16,
-    rule: &G4Rule,
-    kind: RawAstSymbolKind,
-    variants: &BTreeMap<String, usize>,
-    errors: &mut Vec<GrammarError>,
-) {
-    if !seen.insert(rule.name.clone()) {
-        errors.push(GrammarError {
-            line: rule.line,
-            message: format!("duplicate raw AST symbol `{}`", rule.name),
-        });
-        return;
-    }
-    let variant = raw_symbol_variant(&rule.name, kind, variants);
-    let Some(raw_kind) = reserve_raw_kind(next) else {
-        errors.push(GrammarError {
-            line: rule.line,
-            message: "raw AST kind allocation overflowed u16".to_string(),
-        });
-        return;
-    };
-    symbols.push(RawAstSymbol {
-        name: rule.name.clone(),
-        variant,
-        kind,
-        raw_kind,
-    });
-}
-
-fn reserve_raw_kind(next: &mut u16) -> Option<u16> {
-    let current = *next;
-    *next = next.checked_add(1)?;
-    Some(current)
-}
-
-fn rust_variant(name: &str) -> String {
-    let mut variant = String::new();
-    let mut upper = true;
-    for ch in name.chars() {
-        if ch == '_' || ch == '-' {
-            upper = true;
-            continue;
-        }
-        if upper {
-            variant.push(ch.to_ascii_uppercase());
-            upper = false;
-        } else {
-            variant.push(ch.to_ascii_lowercase());
-        }
-    }
-    variant
-}
-
-fn raw_symbol_variant(
-    name: &str,
-    kind: RawAstSymbolKind,
-    variants: &BTreeMap<String, usize>,
-) -> String {
-    let mut variant = rust_variant(name);
-    if variants.get(&variant).copied().unwrap_or_default() > 1 {
-        variant.push_str(match kind {
-            RawAstSymbolKind::Node => "Node",
-            RawAstSymbolKind::Token => "Token",
-        });
-    }
-    variant
 }
 
 fn split_line_comment(line: &str) -> (&str, Option<&str>) {

@@ -41,7 +41,7 @@ const TYPESCRIPT_CONTRACT: GrammarContractExpectation<'static> = GrammarContract
         },
         GrammarSectionExpectation {
             name: "recovery",
-            entries: &["legacy.cst", "tree_sitter.errors", "tree_sitter.missing"],
+            entries: &["parser.errors", "raw_ast.recovery"],
         },
     ],
 };
@@ -136,11 +136,7 @@ const TSX_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpecta
         },
         GrammarSectionExpectation {
             name: "recovery",
-            entries: &[
-                "rule.continuation",
-                "tree_sitter.errors",
-                "tree_sitter.missing",
-            ],
+            entries: &["parser.errors", "raw_ast.recovery", "rule.continuation"],
         },
     ],
 };
@@ -224,18 +220,17 @@ fn typescript_contract_facts() {
         .find(|import| import.source == "./types")
         .expect("type import fact");
     assert!(output
-        .source_file
-        .source()
+        .source
         .slice(type_import.span)
         .starts_with("import type"));
     assert_eq!(type_import.line, 1);
 
     let render = find_name(&output, TsNameKind::Function, "render", 3).expect("render fact");
-    assert_eq!(output.source_file.source().slice(render.span), "render");
+    assert_eq!(output.source.slice(render.span), "render");
     let save = find_name(&output, TsNameKind::Method, "save", 11).expect("save fact");
-    assert_eq!(output.source_file.source().slice(save.span), "save");
+    assert_eq!(output.source.slice(save.span), "save");
     let local = find_name(&output, TsNameKind::Binding, "local", 4).expect("local fact");
-    assert_eq!(output.source_file.source().slice(local.span), "local");
+    assert_eq!(output.source.slice(local.span), "local");
     assert!(find_name(&output, TsNameKind::Parameter, "input", 3).is_some());
     assert!(find_name(&output, TsNameKind::Parameter, "next", 11).is_some());
     let ready_branch = output
@@ -245,8 +240,7 @@ fn typescript_contract_facts() {
         .find(|branch| branch.line == 6 && branch.lines == 1)
         .expect("ready branch fact");
     assert!(output
-        .source_file
-        .source()
+        .source
         .slice(ready_branch.span)
         .starts_with("case 'ready'"));
 }
@@ -306,11 +300,7 @@ fn tsx_contract_facts() {
         .iter()
         .find(|element| element.name == "Panel.Root" && element.root.as_deref() == Some("Panel"))
         .expect("Panel.Root JSX element");
-    assert!(output
-        .source_file
-        .source()
-        .slice(panel.span)
-        .starts_with("<Panel.Root>"));
+    assert!(output.source.slice(panel.span).starts_with("<Panel.Root>"));
     let button = output
         .facts
         .jsx_elements
@@ -318,7 +308,7 @@ fn tsx_contract_facts() {
         .find(|element| element.intrinsic.as_deref() == Some("button"))
         .expect("button JSX element");
     assert!(button.self_closing);
-    assert_eq!(output.source_file.source().slice(button.span), "<button />");
+    assert_eq!(output.source.slice(button.span), "<button />");
 }
 
 fn find_name<'a>(

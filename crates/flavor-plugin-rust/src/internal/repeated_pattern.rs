@@ -1,27 +1,22 @@
 use std::collections::BTreeMap;
 
 use flavor_core::{RawSyntaxKind, SourceText, Span, SyntaxNode, SyntaxSpanExt};
+use flavor_grammar::RawAstSchema;
 
-use crate::{state::RustRepeatedTokenPatternConfig, syntax_kind::RustSyntaxKind};
+use crate::{
+    internal::grammar::{self as kind},
+    model::RustRepeatedTokenPatternFact,
+    state::RustRepeatedTokenPatternConfig,
+};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RustRepeatedTokenPatternFact {
-    pub span: Span,
-    pub line: usize,
-    pub occurrences: usize,
-    pub total_lines: usize,
-    pub token_count: usize,
-    pub node_kind: u16,
-    pub depth: usize,
-}
-
-pub fn collect_repeated_token_patterns(
+pub(crate) fn collect(
     syntax: &SyntaxNode,
     source: &SourceText,
     config: &RustRepeatedTokenPatternConfig,
 ) -> Vec<RustRepeatedTokenPatternFact> {
     let mut candidates = Vec::new();
-    summarize_node(syntax, source, config, 0, &mut candidates);
+    let schema = kind::schema();
+    summarize_node(syntax, &schema, source, config, 0, &mut candidates);
 
     let mut groups = BTreeMap::<GroupKey, GroupStats>::new();
     for candidate in candidates {
@@ -52,6 +47,7 @@ pub fn collect_repeated_token_patterns(
 
 fn summarize_node(
     node: &SyntaxNode,
+    schema: &RawAstSchema,
     source: &SourceText,
     config: &RustRepeatedTokenPatternConfig,
     depth: usize,
@@ -65,13 +61,14 @@ fn summarize_node(
     for element in node.children_with_tokens() {
         match element {
             flavor_core::SyntaxElement::Node(child) => {
-                let summary = summarize_node(&child, source, config, depth + 1, candidates);
+                let summary = summarize_node(&child, schema, source, config, depth + 1, candidates);
                 hash = hash_u64(hash, summary.hash);
                 token_count += summary.token_count;
                 node_count += summary.node_count;
             }
             flavor_core::SyntaxElement::Token(token) => {
-                let Some(token_hash) = normalized_token_hash(token.kind(), token.text()) else {
+                let Some(token_hash) = normalized_token_hash(schema, token.kind(), token.text())
+                else {
                     continue;
                 };
                 hash = hash_u64(hash, token_hash);
@@ -125,13 +122,13 @@ fn candidate_for(
     })
 }
 
-fn normalized_token_hash(kind: RawSyntaxKind, text: &str) -> Option<u64> {
-    match RustSyntaxKind::from_raw(kind) {
-        RustSyntaxKind::Ws => None,
-        RustSyntaxKind::Identifier => Some(hash_tag(1)),
-        RustSyntaxKind::Attribute | RustSyntaxKind::InnerAttribute => Some(hash_tag(2)),
-        RustSyntaxKind::RawText => normalized_raw_text_hash(text),
-        other => Some(hash_u16(hash_tag(3), other as u16)),
+fn normalized_token_hash(schema: &RawAstSchema, kind: RawSyntaxKind, text: &str) -> Option<u64> {
+    match schema.raw_kind_name(kind) {
+        Some(kind::WS) => None,
+        Some(kind::IDENTIFIER) => Some(hash_tag(1)),
+        Some(kind::ATTRIBUTE | kind::INNER_ATTRIBUTE) => Some(hash_tag(2)),
+        Some(kind::RAW_TEXT) => normalized_raw_text_hash(text),
+        _ => Some(hash_u16(hash_tag(3), kind.0)),
     }
 }
 

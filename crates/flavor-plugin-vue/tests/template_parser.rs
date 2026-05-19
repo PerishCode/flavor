@@ -1,31 +1,40 @@
 use flavor_core::{RawSyntaxKind, SourceText};
-use flavor_plugin_vue::{
-    run,
-    template::{parse_template, VueTemplateKind},
-    VuePluginConfig,
-};
+use flavor_plugin_vue::{run, VuePluginConfig};
 
-fn has_node(ast: &flavor_plugin_vue::TemplateAst, kind: VueTemplateKind) -> bool {
+#[path = "../src/template/ast.rs"]
+mod ast;
+#[path = "../src/template/kind.rs"]
+pub mod kind;
+#[path = "../src/template/names.rs"]
+mod names;
+#[path = "../src/template/parser.rs"]
+mod parser;
+
+use ast::TemplateAst;
+use kind::Kind;
+use parser::parse_template;
+
+fn has_node(ast: &TemplateAst, kind: Kind) -> bool {
     ast.syntax()
         .descendants()
-        .any(|node| node.kind() == RawSyntaxKind::from(kind))
+        .any(|node| node.kind() == kind::schema().raw_kind(kind))
 }
 
-fn has_token(ast: &flavor_plugin_vue::TemplateAst, kind: VueTemplateKind) -> bool {
+fn has_token(ast: &TemplateAst, kind: Kind) -> bool {
     ast.syntax()
         .descendants_with_tokens()
         .filter_map(|element| element.into_token())
-        .any(|token| token.kind() == RawSyntaxKind::from(kind))
+        .any(|token| token.kind() == kind::schema().raw_kind(kind))
 }
 
 fn is_core_trivia(kind: RawSyntaxKind) -> bool {
     matches!(kind.0, 1..=4)
 }
 
-fn assert_cst_matches_schema(ast: &flavor_plugin_vue::TemplateAst) {
+fn assert_cst_matches_schema(ast: &TemplateAst) {
     for node in ast.syntax().descendants() {
         assert!(
-            VueTemplateKind::raw_is_node(node.kind()),
+            kind::schema().raw_is_node(node.kind()),
             "node kind {:?} is not declared as a G4 node",
             node.kind()
         );
@@ -36,7 +45,7 @@ fn assert_cst_matches_schema(ast: &flavor_plugin_vue::TemplateAst) {
         .filter_map(|element| element.into_token())
     {
         assert!(
-            VueTemplateKind::raw_is_token(token.kind()) || is_core_trivia(token.kind()),
+            kind::schema().raw_is_token(token.kind()) || is_core_trivia(token.kind()),
             "token kind {:?} is not declared as a G4 token",
             token.kind()
         );
@@ -48,8 +57,8 @@ fn parses_template_text() {
     let ast = parse_template("<div>{{ message }}</div>");
 
     assert_eq!(ast.syntax().text().to_string(), "<div>{{ message }}</div>");
-    assert!(has_node(&ast, VueTemplateKind::StartTag));
-    assert!(has_node(&ast, VueTemplateKind::EndTag));
+    assert!(has_node(&ast, kind::START_TAG));
+    assert!(has_node(&ast, kind::END_TAG));
 }
 
 #[test]
@@ -87,22 +96,22 @@ fn preserves_attributes_and_directives() {
     let ast = parse_template(source);
 
     assert_eq!(ast.syntax().text().to_string(), source);
-    assert!(has_token(&ast, VueTemplateKind::AttributeValue));
-    assert!(has_node(&ast, VueTemplateKind::DirectiveName));
-    assert!(has_token(&ast, VueTemplateKind::DirectiveBase));
-    assert!(has_token(&ast, VueTemplateKind::DirectiveArgument));
-    assert!(has_token(&ast, VueTemplateKind::DirectiveModifier));
+    assert!(has_token(&ast, kind::ATTRIBUTE_VALUE));
+    assert!(has_node(&ast, kind::DIRECTIVE_NAME));
+    assert!(has_token(&ast, kind::DIRECTIVE_BASE));
+    assert!(has_token(&ast, kind::DIRECTIVE_ARGUMENT));
+    assert!(has_token(&ast, kind::DIRECTIVE_MODIFIER));
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(VueTemplateKind::DirectiveExpression))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::DIRECTIVE_EXPRESSION))
             .count(),
         3
     );
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(VueTemplateKind::Directive))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::DIRECTIVE))
             .count(),
         3
     );
@@ -118,7 +127,7 @@ fn parses_dynamic_directives() {
         ast.syntax()
             .descendants_with_tokens()
             .filter_map(|element| element.into_token())
-            .filter(|token| token.kind() == RawSyntaxKind::from(VueTemplateKind::DirectiveArgument))
+            .filter(|token| token.kind() == kind::schema().raw_kind(kind::DIRECTIVE_ARGUMENT))
             .count(),
         3
     );
@@ -126,7 +135,7 @@ fn parses_dynamic_directives() {
         ast.syntax()
             .descendants_with_tokens()
             .filter_map(|element| element.into_token())
-            .filter(|token| token.kind() == RawSyntaxKind::from(VueTemplateKind::DirectiveModifier))
+            .filter(|token| token.kind() == kind::schema().raw_kind(kind::DIRECTIVE_MODIFIER))
             .count(),
         2
     );
@@ -140,7 +149,7 @@ fn v_pre_keeps_raw() {
         ast.syntax().text().to_string(),
         "<div v-pre>{{ broken( }}</div>"
     );
-    assert!(!has_node(&ast, VueTemplateKind::Interpolation));
+    assert!(!has_node(&ast, kind::INTERPOLATION));
     assert!(ast.diagnostics().is_empty());
 }
 
@@ -153,7 +162,7 @@ fn builds_nested_elements() {
     assert_eq!(
         ast.syntax()
             .descendants()
-            .filter(|node| node.kind() == RawSyntaxKind::from(VueTemplateKind::Element))
+            .filter(|node| node.kind() == kind::schema().raw_kind(kind::ELEMENT))
             .count(),
         3
     );

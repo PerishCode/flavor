@@ -5,7 +5,7 @@ use crate::internal::grammar;
 
 pub(crate) fn parse(source: SourceText) -> GrammarParseOutput {
     parse_tree_sitter(
-        &grammar::bundle(),
+        grammar::bundle(),
         tree_sitter_rust::LANGUAGE.into(),
         source,
         TreeSitterParseConfig {

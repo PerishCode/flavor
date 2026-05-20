@@ -16,7 +16,7 @@ pub(crate) fn collect(
 ) -> Vec<RustRepeatedTokenPatternFact> {
     let mut candidates = Vec::new();
     let schema = kind::schema();
-    summarize_node(syntax, &schema, source, config, 0, &mut candidates);
+    summarize_node(syntax, schema, source, config, 0, &mut candidates);
 
     let mut groups = BTreeMap::<GroupKey, GroupStats>::new();
     for candidate in candidates {

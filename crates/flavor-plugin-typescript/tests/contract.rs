@@ -3,7 +3,10 @@ use flavor_grammar::{
     parse_contract, parse_contract_values, GrammarContractExpectation,
     GrammarEntryValueExpectation, GrammarSectionExpectation,
 };
-use flavor_plugin_typescript::{run, SourceMode, TsImportSpecifier, TsNameKind, TsPluginConfig};
+use flavor_plugin_typescript::{
+    run, SourceMode, TsFailureMechanism, TsFailureSurfaceConfig, TsImportSpecifier, TsNameKind,
+    TsPluginConfig, TsRawFailureKind, TsStructuredFailureKind,
+};
 
 const TYPESCRIPT_METADATA: &str = include_str!("../../../grammars/typescript/metadata.json");
 const TSX_METADATA: &str = include_str!("../../../grammars/typescript/metadata.json");
@@ -18,6 +21,8 @@ const TYPESCRIPT_CONTRACT: GrammarContractExpectation<'static> = GrammarContract
             name: "facts",
             entries: &[
                 "dispatch.branch",
+                "error.raw_failure",
+                "error.structured_failure",
                 "module.counts",
                 "module.import",
                 "name.binding",
@@ -106,6 +111,31 @@ const TYPESCRIPT_VALUES: &[GrammarEntryValueExpectation<'static>] = &[
         section: "facts",
         key: "dispatch.branch",
         contains: &["TsDispatchBranchFact", "payload.lines", "span", "line"],
+    },
+    GrammarEntryValueExpectation {
+        section: "facts",
+        key: "error.raw_failure",
+        contains: &[
+            "TsRawFailureFact",
+            "payload.kind",
+            "payload.mechanism",
+            "payload.constructor",
+            "payload.callee",
+            "span",
+            "line",
+        ],
+    },
+    GrammarEntryValueExpectation {
+        section: "facts",
+        key: "error.structured_failure",
+        contains: &[
+            "TsStructuredFailureFact",
+            "payload.kind",
+            "payload.mechanism",
+            "payload.callee",
+            "span",
+            "line",
+        ],
     },
 ];
 const TSX_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpectation {
@@ -262,6 +292,82 @@ fn typescript_contract_diagnostics() {
     let span = diagnostic.span.expect("diagnostic span");
     assert!(span.start <= span.end);
     assert!(span.end as usize <= "class Broken".len());
+}
+
+#[test]
+fn typescript_failure_surface_facts() {
+    parse_contract(TYPESCRIPT_METADATA, &TYPESCRIPT_CONTRACT).unwrap();
+
+    let output = run(
+        SourceText::new(
+            "failure.ts",
+            "function load(input: string) {\n\
+             ensure(input);\n\
+             throw new Error('missing');\n\
+             }\n\
+             function later(input: string) {\n\
+             return Promise.reject(new TypeError(input));\n\
+             }\n\
+             function callback(reject: (error: Error) => void) {\n\
+             reject(new RangeError('bad'));\n\
+             }\n\
+             function custom(input: string) {\n\
+             return DomainError.missing(input);\n\
+             }\n\
+             function stable(input: string) {\n\
+             throw new DomainError(input);\n\
+             }\n",
+        ),
+        TsPluginConfig {
+            failure_surface: TsFailureSurfaceConfig {
+                structured_guards: vec!["ensure".to_string()],
+                structured_factories: vec!["DomainError".to_string()],
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
+
+    assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+    assert_eq!(output.facts.raw_failures.len(), 3);
+    let raw = &output.facts.raw_failures[0];
+    assert_eq!(raw.kind, TsRawFailureKind::BuiltinError);
+    assert_eq!(raw.mechanism, TsFailureMechanism::Throw);
+    assert_eq!(raw.constructor.as_deref(), Some("Error"));
+    assert_eq!(raw.callee, None);
+    assert_eq!(raw.line, 3);
+    assert!(output.source.slice(raw.span).starts_with("throw new Error"));
+    assert!(output.facts.raw_failures.iter().any(|fact| {
+        fact.mechanism == TsFailureMechanism::Call
+            && fact.constructor.as_deref() == Some("TypeError")
+            && fact.callee.as_deref() == Some("Promise.reject")
+            && fact.line == 6
+    }));
+    assert!(output.facts.raw_failures.iter().any(|fact| {
+        fact.mechanism == TsFailureMechanism::Call
+            && fact.constructor.as_deref() == Some("RangeError")
+            && fact.callee.as_deref() == Some("reject")
+            && fact.line == 9
+    }));
+
+    assert!(output.facts.structured_failures.iter().any(|fact| {
+        fact.kind == TsStructuredFailureKind::Guard
+            && fact.mechanism == TsFailureMechanism::Call
+            && fact.callee == "ensure"
+            && fact.line == 2
+    }));
+    assert!(output.facts.structured_failures.iter().any(|fact| {
+        fact.kind == TsStructuredFailureKind::Factory
+            && fact.mechanism == TsFailureMechanism::Call
+            && fact.callee == "DomainError.missing"
+            && fact.line == 12
+    }));
+    assert!(output.facts.structured_failures.iter().any(|fact| {
+        fact.kind == TsStructuredFailureKind::Factory
+            && fact.mechanism == TsFailureMechanism::ThrowNew
+            && fact.callee == "DomainError"
+            && fact.line == 15
+    }));
 }
 
 #[test]

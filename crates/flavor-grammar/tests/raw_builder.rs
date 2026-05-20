@@ -10,7 +10,7 @@ fn source_token_preserves_trivia() {
         .leading
         .push(Trivia::new(TriviaKind::Whitespace, Span::new(0, 2)));
 
-    let mut builder = RawAstBuilder::new(schema.clone());
+    let mut builder = RawAstBuilder::new(&schema);
     builder.start_node("root");
     builder.source_token(&source, &token);
     builder.finish_node();

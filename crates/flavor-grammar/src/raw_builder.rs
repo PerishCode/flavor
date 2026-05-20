@@ -3,13 +3,13 @@ use flavor_core::{RawSyntaxKind, SourceText, SyntaxBuilder, SyntaxNode, Token};
 use crate::{GrammarKindName, RawAstSchema};
 
 #[derive(Debug)]
-pub struct RawAstBuilder {
+pub struct RawAstBuilder<'schema> {
     inner: SyntaxBuilder,
-    schema: RawAstSchema,
+    schema: &'schema RawAstSchema,
 }
 
-impl RawAstBuilder {
-    pub fn new(schema: RawAstSchema) -> Self {
+impl<'schema> RawAstBuilder<'schema> {
+    pub fn new(schema: &'schema RawAstSchema) -> Self {
         Self {
             inner: SyntaxBuilder::new(),
             schema,

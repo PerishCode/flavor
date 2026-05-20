@@ -3,7 +3,14 @@ use std::path::Path;
 use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
 use flavor_shared::product as shared_product;
 
-use crate::{run as run_ts, SourceMode, TsImportSpecifier, TsNameKind, TsPluginConfig};
+use crate::{
+    internal::grammar, run as run_ts, SourceMode, TsFailureSurfaceConfig, TsImportSpecifier,
+    TsNameKind, TsPluginConfig,
+};
+
+pub fn prewarm() {
+    let _ = grammar::bundle();
+}
 
 pub fn satisfy_source<F>(
     entrypoint: &F,
@@ -13,8 +20,26 @@ pub fn satisfy_source<F>(
 ) where
     F: Fn(&str) -> Option<&'static str>,
 {
+    satisfy_source_with_config(
+        entrypoint,
+        path,
+        source,
+        TsPluginConfig::default(),
+        products,
+    );
+}
+
+pub fn satisfy_source_with_config<F>(
+    entrypoint: &F,
+    path: &str,
+    source: &str,
+    config: TsPluginConfig,
+    products: &mut Vec<GrammarProduct>,
+) where
+    F: Fn(&str) -> Option<&'static str>,
+{
     let tsx = Path::new(path).extension().and_then(|value| value.to_str()) == Some("tsx");
-    satisfy_script(entrypoint, path, source, 0, tsx, products);
+    satisfy_script_with_config(entrypoint, path, source, 0, tsx, config, products);
 }
 
 pub fn satisfy_script<F>(
@@ -27,9 +52,36 @@ pub fn satisfy_script<F>(
 ) where
     F: Fn(&str) -> Option<&'static str>,
 {
+    satisfy_script_with_config(
+        entrypoint,
+        path,
+        source,
+        line_offset,
+        tsx,
+        ts_config(tsx, TsFailureSurfaceConfig::default()),
+        products,
+    );
+}
+
+pub fn satisfy_script_with_config<F>(
+    entrypoint: &F,
+    path: &str,
+    source: &str,
+    line_offset: usize,
+    tsx: bool,
+    mut config: TsPluginConfig,
+    products: &mut Vec<GrammarProduct>,
+) where
+    F: Fn(&str) -> Option<&'static str>,
+{
     let source_text = SourceText::new(path, source);
     let line_index = source_text.line_index();
-    let output = run_ts(source_text, ts_config(tsx));
+    config.source_mode = if tsx {
+        SourceMode::Tsx
+    } else {
+        SourceMode::TypeScript
+    };
+    let output = run_ts(source_text, config);
 
     if let Some(entrypoint) = entrypoint("typescript") {
         let diagnostics = diagnostics(output.diagnostics.clone(), &line_index, line_offset);
@@ -67,6 +119,29 @@ pub fn satisfy_script<F>(
             .span(fact.span)
             .line(fact.line + line_offset)
         }));
+        facts.extend(output.facts.raw_failures.iter().map(|fact| {
+            PendingFact::new(
+                "error.raw_failure",
+                FactPayload::new()
+                    .text("kind", fact.kind.label())
+                    .text("mechanism", fact.mechanism.label())
+                    .text("constructor", fact.constructor.clone().unwrap_or_default())
+                    .text("callee", fact.callee.clone().unwrap_or_default()),
+            )
+            .span(fact.span)
+            .line(fact.line + line_offset)
+        }));
+        facts.extend(output.facts.structured_failures.iter().map(|fact| {
+            PendingFact::new(
+                "error.structured_failure",
+                FactPayload::new()
+                    .text("kind", fact.kind.label())
+                    .text("mechanism", fact.mechanism.label())
+                    .text("callee", fact.callee.clone()),
+            )
+            .span(fact.span)
+            .line(fact.line + line_offset)
+        }));
         product(products, "typescript", entrypoint, diagnostics, facts);
     }
 
@@ -100,13 +175,14 @@ pub fn satisfy_script<F>(
     product(products, "tsx", entrypoint, Vec::new(), facts);
 }
 
-fn ts_config(tsx: bool) -> TsPluginConfig {
+fn ts_config(tsx: bool, failure_surface: TsFailureSurfaceConfig) -> TsPluginConfig {
     TsPluginConfig {
         source_mode: if tsx {
             SourceMode::Tsx
         } else {
             SourceMode::TypeScript
         },
+        failure_surface,
         ..Default::default()
     }
 }

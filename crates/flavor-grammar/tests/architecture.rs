@@ -31,7 +31,9 @@ fn string_kind_shapes() {
             source.contains(marker),
             "{path} should expose string kind constants"
         );
-        assert!(source.contains("pub fn schema() -> RawAstSchema"));
+        assert!(source.contains("use std::sync::OnceLock;"));
+        assert!(source.contains("pub fn schema() -> &'static RawAstSchema"));
+        assert!(source.contains("pub fn bundle() -> &'static GrammarBundle"));
         assert!(source.contains("pub const SPEC: GrammarSpec<'static>"));
         assert!(
             !source.contains("pub enum")

@@ -7,6 +7,8 @@ use crate::model::Severity;
 
 pub(crate) const NAMING_TOO_MANY_WORDS: &str = "core/naming/too-many-words";
 pub(crate) const DISPATCH_BRANCH_TOO_LONG: &str = "core/dispatch/branch-too-long";
+pub(crate) const ERROR_FAILURE_SURFACE_AGGREGATE: &str = "core/error/failure-surface-aggregate";
+pub(crate) const ERROR_FAILURE_SURFACE_MATURITY: &str = "core/error/failure-surface-maturity";
 pub(crate) const FS_CHILDREN_SHAPE: &str = "core/fs/children-shape";
 pub(crate) const FS_FORBIDDEN_EXTENSION: &str = "core/fs/forbidden-extension";
 pub(crate) const FS_NAME_SHAPE: &str = "core/fs/name-shape";
@@ -35,18 +37,33 @@ pub(crate) const PAYLOAD_FORBIDDEN: &str = "forbidden";
 pub(crate) const PAYLOAD_MAX_REPORTS: &str = "max_reports";
 pub(crate) const PAYLOAD_MAX_WORDS: &str = "max_words";
 pub(crate) const PAYLOAD_MAX_BRANCH_LINES: &str = "max_branch_lines";
+pub(crate) const PAYLOAD_MAX_AGGREGATE_DIRS: &str = "max_aggregate_dirs";
+pub(crate) const PAYLOAD_MAX_DIRECTORY_RAW_FAILURE_RATIO_PERCENT: &str =
+    "max_directory_raw_failure_ratio_percent";
+pub(crate) const PAYLOAD_MAX_RAW_FAILURES: &str = "max_raw_failures";
+pub(crate) const PAYLOAD_MAX_RAW_FAILURE_RATIO_PERCENT: &str = "max_raw_failure_ratio_percent";
 pub(crate) const PAYLOAD_MAX_BLOCKS: &str = "max_blocks";
 pub(crate) const PAYLOAD_MAX_CHILDREN: &str = "max_children";
+pub(crate) const PAYLOAD_MAX_EXAMPLE_FILES: &str = "max_example_files";
 pub(crate) const PAYLOAD_MAX_LINES: &str = "max_lines";
 pub(crate) const PAYLOAD_MAX_DEPTH: &str = "max_depth";
 pub(crate) const PAYLOAD_MAX_TOKENS: &str = "max_tokens";
 pub(crate) const PAYLOAD_MIN_LINES: &str = "min_lines";
+pub(crate) const PAYLOAD_MIN_DIRECTORY_RAW_FAILURES: &str = "min_directory_raw_failures";
+pub(crate) const PAYLOAD_MIN_DIRECTORY_RAW_FILES: &str = "min_directory_raw_files";
+pub(crate) const PAYLOAD_MIN_DIRECTORY_SCANNED_FILES: &str = "min_directory_scanned_files";
 pub(crate) const PAYLOAD_MIN_NODES: &str = "min_nodes";
 pub(crate) const PAYLOAD_MIN_OCCURRENCES: &str = "min_occurrences";
+pub(crate) const PAYLOAD_MIN_RAW_FAILURES: &str = "min_raw_failures";
+pub(crate) const PAYLOAD_MIN_RAW_FILES: &str = "min_raw_files";
+pub(crate) const PAYLOAD_MIN_SCANNED_FILES: &str = "min_scanned_files";
 pub(crate) const PAYLOAD_MIN_TOKENS: &str = "min_tokens";
 pub(crate) const PAYLOAD_MIN_TOTAL_LINES: &str = "min_total_lines";
 pub(crate) const PAYLOAD_PRIMITIVE_SOURCES: &str = "primitive_sources";
+pub(crate) const PAYLOAD_RAW_REJECT_CALLEES: &str = "raw_reject_callees";
 pub(crate) const PAYLOAD_REQUIRED: &str = "required";
+pub(crate) const PAYLOAD_STRUCTURED_FACTORIES: &str = "structured_factories";
+pub(crate) const PAYLOAD_STRUCTURED_GUARDS: &str = "structured_guards";
 pub(crate) const PAYLOAD_TOKEN_BUCKET_SIZE: &str = "token_bucket_size";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
@@ -87,6 +104,44 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             default_payload: payload([(PAYLOAD_MAX_BRANCH_LINES, 24)]),
             bad_flavor: "Dispatch may be carrying implementation bodies instead of routing quickly to named behavior.",
             action_hint: "Keep switch/match arms as handoff points; extract the branch body into a local concept when the branch grows a second-stage flow.",
+        }),
+        ERROR_FAILURE_SURFACE_AGGREGATE => Some(RuleDescriptor {
+            id: ERROR_FAILURE_SURFACE_AGGREGATE,
+            target: RuleTarget::Dir,
+            default_enabled: true,
+            default_severity: Severity::Warning,
+            default_payload: payload([
+                (PAYLOAD_MIN_SCANNED_FILES, 10),
+                (PAYLOAD_MIN_RAW_FAILURES, 12),
+                (PAYLOAD_MIN_RAW_FILES, 4),
+                (PAYLOAD_MAX_RAW_FAILURE_RATIO_PERCENT, 70),
+                (PAYLOAD_MIN_DIRECTORY_SCANNED_FILES, 6),
+                (PAYLOAD_MIN_DIRECTORY_RAW_FAILURES, 8),
+                (PAYLOAD_MIN_DIRECTORY_RAW_FILES, 3),
+                (PAYLOAD_MAX_DIRECTORY_RAW_FAILURE_RATIO_PERCENT, 70),
+                (PAYLOAD_MAX_AGGREGATE_DIRS, 3),
+                (PAYLOAD_MAX_EXAMPLE_FILES, 5),
+            ]),
+            bad_flavor: "Raw failure construction may be distributed widely enough to indicate project-level error modeling pressure.",
+            action_hint: "Consider defining observable error categories, codes, context propagation, and boundary-specific guard or factory helpers.",
+        }),
+        ERROR_FAILURE_SURFACE_MATURITY => Some(RuleDescriptor {
+            id: ERROR_FAILURE_SURFACE_MATURITY,
+            target: RuleTarget::File,
+            default_enabled: true,
+            default_severity: Severity::Warning,
+            default_payload: BTreeMap::from([
+                (PAYLOAD_MAX_RAW_FAILURES, Value::from(4)),
+                (PAYLOAD_MAX_RAW_FAILURE_RATIO_PERCENT, Value::from(60)),
+                (
+                    PAYLOAD_RAW_REJECT_CALLEES,
+                    Value::Array(vec![Value::from("Promise.reject"), Value::from("reject")]),
+                ),
+                (PAYLOAD_STRUCTURED_GUARDS, Value::Array(Vec::new())),
+                (PAYLOAD_STRUCTURED_FACTORIES, Value::Array(Vec::new())),
+            ]),
+            bad_flavor: "Raw failure construction may be becoming the local error protocol instead of flowing through a named error model.",
+            action_hint: "Consider whether this boundary needs stable error codes, categories, contextual causes, or configured guard/factory helpers before adding more raw failures.",
         }),
         FS_CHILDREN_SHAPE => Some(RuleDescriptor {
             id: FS_CHILDREN_SHAPE,
@@ -280,6 +335,8 @@ pub(crate) fn known_rule_ids() -> Vec<&'static str> {
     vec![
         NAMING_TOO_MANY_WORDS,
         DISPATCH_BRANCH_TOO_LONG,
+        ERROR_FAILURE_SURFACE_AGGREGATE,
+        ERROR_FAILURE_SURFACE_MATURITY,
         FS_CHILDREN_SHAPE,
         FS_FORBIDDEN_EXTENSION,
         FS_NAME_SHAPE,

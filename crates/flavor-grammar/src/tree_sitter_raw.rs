@@ -71,17 +71,17 @@ pub fn parse_tree_sitter(
 }
 
 #[derive(Debug, Clone)]
-pub struct TreeSitterRawAstAdapter {
-    schema: RawAstSchema,
+pub struct TreeSitterRawAstAdapter<'bundle> {
+    schema: &'bundle RawAstSchema,
     root_kind: String,
     whitespace_kind: String,
     fallback_kind: String,
     mappings: BackendKindMap,
 }
 
-impl TreeSitterRawAstAdapter {
+impl<'bundle> TreeSitterRawAstAdapter<'bundle> {
     pub fn new(
-        bundle: &GrammarBundle,
+        bundle: &'bundle GrammarBundle,
         backend: &str,
         root_kind: &str,
         whitespace_kind: &str,
@@ -116,7 +116,7 @@ impl TreeSitterRawAstAdapter {
             return Err(errors);
         }
         Ok(Self {
-            schema: schema.clone(),
+            schema,
             root_kind: root_kind.to_string(),
             whitespace_kind: whitespace_kind.to_string(),
             fallback_kind: fallback_kind.to_string(),
@@ -125,7 +125,7 @@ impl TreeSitterRawAstAdapter {
     }
 
     pub fn build(&self, root: tree_sitter::Node<'_>, source: &SourceText) -> SyntaxNode {
-        let mut builder = RawAstBuilder::new(self.schema.clone());
+        let mut builder = RawAstBuilder::new(self.schema);
         builder.start_node(self.root_kind.as_str());
         self.build_children_in(
             &mut builder,
@@ -139,7 +139,7 @@ impl TreeSitterRawAstAdapter {
     }
 
     pub fn build_error(&self, source: &SourceText) -> SyntaxNode {
-        let mut builder = RawAstBuilder::new(self.schema.clone());
+        let mut builder = RawAstBuilder::new(self.schema);
         builder.start_node(self.root_kind.as_str());
         if !source.as_str().is_empty() {
             builder.token(self.fallback_kind.as_str(), source.as_str());
@@ -150,7 +150,7 @@ impl TreeSitterRawAstAdapter {
 
     fn build_node(
         &self,
-        builder: &mut RawAstBuilder,
+        builder: &mut RawAstBuilder<'_>,
         node: tree_sitter::Node<'_>,
         kind: &str,
         source: &str,
@@ -162,7 +162,7 @@ impl TreeSitterRawAstAdapter {
 
     fn build_children_in(
         &self,
-        builder: &mut RawAstBuilder,
+        builder: &mut RawAstBuilder<'_>,
         node: tree_sitter::Node<'_>,
         source: &str,
         start: usize,
@@ -178,7 +178,12 @@ impl TreeSitterRawAstAdapter {
         self.push_gap(builder, source, position, end);
     }
 
-    fn build_child(&self, builder: &mut RawAstBuilder, node: tree_sitter::Node<'_>, source: &str) {
+    fn build_child(
+        &self,
+        builder: &mut RawAstBuilder<'_>,
+        node: tree_sitter::Node<'_>,
+        source: &str,
+    ) {
         if let Some(kind) = self.node_kind(node.kind()) {
             self.build_node(builder, node, kind, source);
         } else if let Some(kind) = self.token_kind(node.kind()) {
@@ -197,7 +202,7 @@ impl TreeSitterRawAstAdapter {
         }
     }
 
-    fn push_gap(&self, builder: &mut RawAstBuilder, source: &str, start: usize, end: usize) {
+    fn push_gap(&self, builder: &mut RawAstBuilder<'_>, source: &str, start: usize, end: usize) {
         if start >= end {
             return;
         }
@@ -208,7 +213,7 @@ impl TreeSitterRawAstAdapter {
 
     fn push_token(
         &self,
-        builder: &mut RawAstBuilder,
+        builder: &mut RawAstBuilder<'_>,
         source: &str,
         start: usize,
         end: usize,

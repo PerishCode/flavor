@@ -1,6 +1,6 @@
 [package]
 name = "flavor-cli"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 license = "MIT"
 description = "Personal check-only AST-backed code flavor lint CLI."
@@ -13,6 +13,7 @@ flavor-plugin-rust = { path = "../flavor-plugin-rust" }
 flavor-plugin-svelte = { path = "../flavor-plugin-svelte" }
 flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }
 flavor-plugin-vue = { path = "../flavor-plugin-vue" }
+rayon = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"

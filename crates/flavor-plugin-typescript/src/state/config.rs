@@ -3,6 +3,7 @@ pub struct TsPluginConfig {
     pub source_mode: SourceMode,
     pub jsx: JsxConfig,
     pub decorators: DecoratorsConfig,
+    pub failure_surface: TsFailureSurfaceConfig,
 }
 
 impl Default for TsPluginConfig {
@@ -11,6 +12,27 @@ impl Default for TsPluginConfig {
             source_mode: SourceMode::TypeScript,
             jsx: JsxConfig::default(),
             decorators: DecoratorsConfig::default(),
+            failure_surface: TsFailureSurfaceConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TsFailureSurfaceConfig {
+    pub structured_guards: Vec<String>,
+    pub structured_factories: Vec<String>,
+    pub raw_reject_callees: Vec<String>,
+}
+
+impl Default for TsFailureSurfaceConfig {
+    fn default() -> Self {
+        Self {
+            structured_guards: Vec::new(),
+            structured_factories: Vec::new(),
+            raw_reject_callees: ["Promise.reject", "reject"]
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
         }
     }
 }

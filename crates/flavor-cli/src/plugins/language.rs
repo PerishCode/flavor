@@ -1,24 +1,29 @@
+mod dispatch;
+mod failure;
 mod manifest;
+mod name;
 mod shape;
 
 pub(crate) use manifest::{RUST_MANIFEST, SVELTE_MANIFEST, TYPESCRIPT_MANIFEST, VUE_MANIFEST};
 
 use std::{collections::BTreeSet, path::Path};
 
+use dispatch::check_dispatch_branches;
+use failure::{check_failure_surface, failure_surface_signal};
+use name::check_name_facts;
 use shape::check_repeated_token_patterns;
 
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     model::{issue, Issue},
-    naming::check_name,
-    plugins::{AnalysisContext, PluginOutput, ProductSet, SourceFileScope},
+    plugins::{AnalysisContext, FailureSurfaceSignal, PluginOutput, ProductSet, SourceFileScope},
     rules::{
-        DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_ALLOWED_INTRINSICS,
-        PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_BRANCH_LINES, PAYLOAD_MAX_LINES, PAYLOAD_PRIMITIVE_SOURCES,
-        RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE, SHAPE_REPEATED_TOKEN_PATTERN,
-        SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
-        SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX, TSX_NO_INTRINSICS,
-        TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
+        DISPATCH_BRANCH_TOO_LONG, ERROR_FAILURE_SURFACE_MATURITY, NAMING_TOO_MANY_WORDS,
+        PAYLOAD_ALLOWED_INTRINSICS, PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_LINES,
+        PAYLOAD_PRIMITIVE_SOURCES, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
+        SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
+        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
+        TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
     },
 };
 use flavor_core::{Fact, ProductDiagnostic};
@@ -46,12 +51,6 @@ pub(crate) fn analyze_rust_source<'a>(context: &AnalysisContext<'a>) -> PluginOu
     check_name_facts(
         &context.products,
         "rust",
-        &[
-            "name.function",
-            "name.method",
-            "name.binding",
-            "name.parameter",
-        ],
         &name_rule,
         scope.path,
         &mut issues,
@@ -101,8 +100,15 @@ pub(crate) fn analyze_typescript_source<'a>(context: &AnalysisContext<'a>) -> Pl
     };
 
     let mut issues = Vec::new();
-    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
-    PluginOutput::issues(issues)
+    let mut failure_surfaces = Vec::new();
+    analyze_typescript_products(
+        context.config,
+        scope,
+        &context.products,
+        &mut issues,
+        &mut failure_surfaces,
+    );
+    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
 }
 
 pub(crate) fn analyze_vue_source<'a>(context: &AnalysisContext<'a>) -> PluginOutput<'a> {
@@ -120,8 +126,15 @@ pub(crate) fn analyze_vue_source<'a>(context: &AnalysisContext<'a>) -> PluginOut
         context.products.diagnostics("vue-sfc"),
         "Vue SFC",
     );
-    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
-    PluginOutput::issues(issues)
+    let mut failure_surfaces = Vec::new();
+    analyze_typescript_products(
+        context.config,
+        scope,
+        &context.products,
+        &mut issues,
+        &mut failure_surfaces,
+    );
+    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
 }
 
 pub(crate) fn analyze_svelte_source<'a>(context: &AnalysisContext<'a>) -> PluginOutput<'a> {
@@ -140,8 +153,15 @@ pub(crate) fn analyze_svelte_source<'a>(context: &AnalysisContext<'a>) -> Plugin
         "Svelte",
     );
     check_svelte_shape(context.config, scope, &context.products, &mut issues);
-    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
-    PluginOutput::issues(issues)
+    let mut failure_surfaces = Vec::new();
+    analyze_typescript_products(
+        context.config,
+        scope,
+        &context.products,
+        &mut issues,
+        &mut failure_surfaces,
+    );
+    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
 }
 
 fn analyze_typescript_products(
@@ -149,6 +169,7 @@ fn analyze_typescript_products(
     scope: SourceFileScope<'_>,
     products: &ProductSet,
     issues: &mut Vec<Issue>,
+    failure_surfaces: &mut Vec<FailureSurfaceSignal>,
 ) {
     let parse_rule = config.rule(scope.relative, NodeKind::File, TS_PARSE_ERROR);
     push_parse_issues(
@@ -161,19 +182,7 @@ fn analyze_typescript_products(
     check_tsx_rules(config, scope, products, issues);
 
     let name_rule = config.rule(scope.relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
-    check_name_facts(
-        products,
-        "typescript",
-        &[
-            "name.function",
-            "name.method",
-            "name.binding",
-            "name.parameter",
-        ],
-        &name_rule,
-        scope.path,
-        issues,
-    );
+    check_name_facts(products, "typescript", &name_rule, scope.path, issues);
 
     let dispatch_rule = config.rule(scope.relative, NodeKind::File, DISPATCH_BRANCH_TOO_LONG);
     check_dispatch_branches(
@@ -183,60 +192,25 @@ fn analyze_typescript_products(
         products.facts("typescript", "dispatch.branch"),
         "switch case",
     );
-}
 
-fn check_name_facts(
-    products: &ProductSet,
-    grammar_id: &'static str,
-    keys: &[&'static str],
-    rule: &RuleSettings,
-    path: &str,
-    issues: &mut Vec<Issue>,
-) {
-    for key in keys {
-        for fact in products.facts(grammar_id, key) {
-            let Some(name) = fact.text("name") else {
-                continue;
-            };
-            let Some(line) = fact.line else {
-                continue;
-            };
-            let kind = fact
-                .text("issue_kind")
-                .or_else(|| fact.text("kind"))
-                .unwrap_or("name");
-            check_name(issues, rule, path, line, kind, name);
-        }
-    }
-}
-
-fn check_dispatch_branches<'a>(
-    issues: &mut Vec<Issue>,
-    rule: &RuleSettings,
-    path: &str,
-    branches: impl Iterator<Item = &'a Fact>,
-    label: &str,
-) {
-    if !rule.enabled {
-        return;
-    }
-    let max_lines = rule.usize(PAYLOAD_MAX_BRANCH_LINES).unwrap_or(24);
-    for branch in branches {
-        let Some(lines) = branch.usize("lines") else {
-            continue;
-        };
-        let Some(line) = branch.line else {
-            continue;
-        };
-        if lines > max_lines {
-            issues.push(issue(
-                rule.severity,
-                rule.id,
-                path,
-                Some(line),
-                format!("{label} spans {lines} lines; max is {max_lines}"),
-            ));
-        }
+    let failure_rule = config.rule(
+        scope.relative,
+        NodeKind::File,
+        ERROR_FAILURE_SURFACE_MATURITY,
+    );
+    check_failure_surface(
+        issues,
+        &failure_rule,
+        scope.path,
+        products.facts("typescript", "error.raw_failure"),
+        products.facts("typescript", "error.structured_failure"),
+    );
+    if let Some(signal) = failure_surface_signal(
+        scope.path,
+        products.facts("typescript", "error.raw_failure"),
+        products.facts("typescript", "error.structured_failure"),
+    ) {
+        failure_surfaces.push(signal);
     }
 }
 

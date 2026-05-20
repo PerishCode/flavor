@@ -11,10 +11,11 @@ mod visit;
 use flavor_core::SourceText;
 
 pub use model::{
-    TsAnalysisOutput, TsDispatchBranchFact, TsFacts, TsImportFact, TsImportSpecifier, TsNameFact,
-    TsNameKind, TsTokenKind, TsxElementFact,
+    TsAnalysisOutput, TsDispatchBranchFact, TsFacts, TsFailureMechanism, TsImportFact,
+    TsImportSpecifier, TsNameFact, TsNameKind, TsRawFailureFact, TsRawFailureKind,
+    TsStructuredFailureFact, TsStructuredFailureKind, TsTokenKind, TsxElementFact,
 };
-pub use state::{SourceMode, TsPluginConfig, TsPluginState};
+pub use state::{SourceMode, TsFailureSurfaceConfig, TsPluginConfig, TsPluginState};
 
 #[derive(Debug, Clone)]
 pub struct TsPluginAnalyzer {

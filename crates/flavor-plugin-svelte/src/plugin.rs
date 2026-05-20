@@ -1,13 +1,40 @@
 use std::collections::BTreeMap;
 
 use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
-use flavor_plugin_typescript::plugin as typescript_plugin;
+use flavor_plugin_typescript::{
+    plugin as typescript_plugin, SourceMode, TsFailureSurfaceConfig, TsPluginConfig,
+};
 use flavor_shared::product as shared_product;
 
-use crate::{facts::SvelteMarkupNameFact, run as run_svelte, SvelteBlock, SveltePluginConfig};
+use crate::{
+    facts::SvelteMarkupNameFact, markup, run as run_svelte, SvelteBlock, SveltePluginConfig,
+};
+
+pub fn prewarm() {
+    let _ = markup::kind::bundle();
+    typescript_plugin::prewarm();
+}
 
 pub fn satisfy<F>(entrypoint: &F, path: &str, source: &str, products: &mut Vec<GrammarProduct>)
 where
+    F: Fn(&str) -> Option<&'static str>,
+{
+    satisfy_with_failure_surface(
+        entrypoint,
+        path,
+        source,
+        TsFailureSurfaceConfig::default(),
+        products,
+    );
+}
+
+pub fn satisfy_with_failure_surface<F>(
+    entrypoint: &F,
+    path: &str,
+    source: &str,
+    failure_surface: TsFailureSurfaceConfig,
+    products: &mut Vec<GrammarProduct>,
+) where
     F: Fn(&str) -> Option<&'static str>,
 {
     let source_text = SourceText::new(path, source);
@@ -50,7 +77,14 @@ where
             .into_iter()
             .chain(output.descriptor.script.clone())
         {
-            push_embedded_script(entrypoint, path, block, &mut facts, products);
+            push_embedded_script(
+                entrypoint,
+                path,
+                block,
+                &failure_surface,
+                &mut facts,
+                products,
+            );
         }
         product(products, "svelte", svelte_entrypoint, diagnostics, facts);
     }
@@ -83,6 +117,7 @@ fn push_embedded_script<F>(
     entrypoint: &F,
     path: &str,
     block: SvelteBlock,
+    failure_surface: &TsFailureSurfaceConfig,
     facts: &mut Vec<PendingFact>,
     products: &mut Vec<GrammarProduct>,
 ) where
@@ -102,12 +137,22 @@ fn push_embedded_script<F>(
         block.start_offset,
         block.start_line,
     ));
-    typescript_plugin::satisfy_script(
+    let config = TsPluginConfig {
+        source_mode: if tsx {
+            SourceMode::Tsx
+        } else {
+            SourceMode::TypeScript
+        },
+        failure_surface: failure_surface.clone(),
+        ..Default::default()
+    };
+    typescript_plugin::satisfy_script_with_config(
         entrypoint,
         path,
         &block.content,
         block.start_line,
         tsx,
+        config,
         products,
     );
 }

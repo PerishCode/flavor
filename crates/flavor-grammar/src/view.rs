@@ -37,24 +37,45 @@ impl<'a> TokenTextRun<'a> {
 
 #[derive(Debug, Clone)]
 pub struct GrammarContext {
-    schema: Arc<RawAstSchema>,
+    schema: GrammarSchema,
+}
+
+#[derive(Debug, Clone)]
+enum GrammarSchema {
+    Static(&'static RawAstSchema),
+    Shared(Arc<RawAstSchema>),
 }
 
 impl GrammarContext {
     pub fn new(schema: RawAstSchema) -> Self {
         Self {
-            schema: Arc::new(schema),
+            schema: GrammarSchema::Shared(Arc::new(schema)),
+        }
+    }
+
+    pub fn from_static(schema: &'static RawAstSchema) -> Self {
+        Self {
+            schema: GrammarSchema::Static(schema),
         }
     }
 
     pub fn schema(&self) -> &RawAstSchema {
-        self.schema.as_ref()
+        match &self.schema {
+            GrammarSchema::Static(schema) => schema,
+            GrammarSchema::Shared(schema) => schema.as_ref(),
+        }
     }
 }
 
 impl From<RawAstSchema> for GrammarContext {
     fn from(schema: RawAstSchema) -> Self {
         Self::new(schema)
+    }
+}
+
+impl From<&'static RawAstSchema> for GrammarContext {
+    fn from(schema: &'static RawAstSchema) -> Self {
+        Self::from_static(schema)
     }
 }
 

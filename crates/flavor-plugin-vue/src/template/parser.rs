@@ -22,7 +22,7 @@ pub fn parse_template(source: &str) -> TemplateAst {
 struct TemplateParser<'a> {
     source: &'a str,
     cursor: usize,
-    builder: RawAstBuilder,
+    builder: RawAstBuilder<'static>,
     diagnostics: Vec<Diagnostic>,
 }
 

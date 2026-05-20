@@ -439,7 +439,7 @@ fn core_include_patterns() -> Vec<String> {
         "apps/tauri/src-tauri/tests/**",
         "crates/*/src/**",
         "crates/*/tests/**",
-        "grammars/**",
+        "grammars/**/*.g4",
         "tools/*/src/**",
         "tools/*/tests/**",
     ]
@@ -475,7 +475,7 @@ pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) enum SourceKind {
     G4,
     Rust,

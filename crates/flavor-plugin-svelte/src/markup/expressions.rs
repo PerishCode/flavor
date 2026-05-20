@@ -16,7 +16,7 @@ pub fn validate_expressions(ast: &SvelteMarkupAst) -> Vec<Diagnostic> {
         let Some(token) = token.into_token() else {
             continue;
         };
-        for expression in token_expressions(&schema, &token) {
+        for expression in token_expressions(schema, &token) {
             diagnostics.extend(validate_expression(expression));
         }
     }

@@ -6,7 +6,7 @@ use flavor_grammar::{
 #[test]
 fn string_kind_view() {
     let schema = schema();
-    let mut builder = RawAstBuilder::new(schema.clone());
+    let mut builder = RawAstBuilder::new(&schema);
     builder.start_node("root");
     builder.start_node("item");
     builder.token("WS", "  ");
@@ -32,7 +32,7 @@ fn string_kind_view() {
 #[test]
 fn atomic_view_helpers() {
     let schema = schema();
-    let mut builder = RawAstBuilder::new(schema.clone());
+    let mut builder = RawAstBuilder::new(&schema);
     builder.start_node("root");
     builder.token("WS", " ");
     builder.token("PREFIX", "<");

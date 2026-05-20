@@ -1,7 +1,11 @@
 use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact, SourceText};
 use flavor_shared::product as shared_product;
 
-use crate::{run as run_rust, RustNameKind, RustPluginConfig};
+use crate::{internal::grammar, run as run_rust, RustNameKind, RustPluginConfig};
+
+pub fn prewarm() {
+    let _ = grammar::bundle();
+}
 
 pub fn satisfy<F>(entrypoint: &F, path: &str, source: &str, products: &mut Vec<GrammarProduct>)
 where

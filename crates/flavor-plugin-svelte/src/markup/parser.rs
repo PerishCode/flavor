@@ -18,7 +18,7 @@ pub fn parse_markup(source: &str) -> SvelteMarkupAst {
 pub(super) struct MarkupParser<'a> {
     pub(super) source: &'a str,
     pub(super) cursor: usize,
-    pub(super) builder: RawAstBuilder,
+    pub(super) builder: RawAstBuilder<'static>,
     diagnostics: Vec<Diagnostic>,
 }
 

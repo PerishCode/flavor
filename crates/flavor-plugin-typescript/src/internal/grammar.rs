@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::sync::OnceLock;
+
 use flavor_grammar::{GrammarBundle, GrammarSpec, RawAstSchema};
 
 pub type Kind = &'static str;
@@ -255,10 +257,11 @@ pub const SPEC: GrammarSpec<'static> = GrammarSpec::new(
     include_str!("../../../../grammars/typescript/metadata.json"),
 );
 
-pub fn bundle() -> GrammarBundle {
-    SPEC.bundle().expect("valid TypeScript grammar bundle")
+pub fn bundle() -> &'static GrammarBundle {
+    static BUNDLE: OnceLock<GrammarBundle> = OnceLock::new();
+    BUNDLE.get_or_init(|| SPEC.bundle().expect("valid TypeScript grammar bundle"))
 }
 
-pub fn schema() -> RawAstSchema {
-    SPEC.schema().expect("valid TypeScript grammar schema")
+pub fn schema() -> &'static RawAstSchema {
+    bundle().schema()
 }

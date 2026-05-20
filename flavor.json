@@ -1,6 +1,6 @@
 {
   "scan": {
-    "include": ["crates/*/src/**", "crates/*/tests/**", "grammars/**"],
+    "include": ["crates/*/src/**", "crates/*/tests/**", "grammars/**/*.g4"],
     "exclude": ["**/target/**"]
   },
   "overrides": []

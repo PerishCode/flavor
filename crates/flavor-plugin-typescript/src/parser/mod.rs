@@ -39,7 +39,7 @@ struct Parser<'a> {
     source: &'a SourceText,
     tokens: &'a [Token<Kind>],
     cursor: usize,
-    builder: RawAstBuilder,
+    builder: RawAstBuilder<'static>,
     diagnostics: Vec<Diagnostic>,
     jsx: bool,
 }

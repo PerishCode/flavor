@@ -2,8 +2,8 @@
 
 use flavor_core::SourceText;
 use flavor_grammar::{
-    parse_tree_sitter, GrammarSpec, GrammarTree, RawAstSchema, TreeSitterParseConfig,
-    TreeSitterRawAstAdapter,
+    parse_tree_sitter, GrammarBundle, GrammarSpec, GrammarTree, RawAstSchema,
+    TreeSitterParseConfig, TreeSitterRawAstAdapter,
 };
 use tree_sitter::Parser;
 
@@ -64,7 +64,9 @@ fn adapter_builds_tree() {
         .set_language(&tree_sitter_rust::LANGUAGE.into())
         .expect("rust tree-sitter grammar");
     let tree = parser.parse(source.as_str(), None).expect("tree");
-    let syntax = adapter().build(tree.root_node(), &source);
+    let bundle = spec().bundle().expect("valid bundle");
+    let adapter = adapter(&bundle);
+    let syntax = adapter.build(tree.root_node(), &source);
     let grammar = GrammarTree::new(syntax, schema());
     let function = grammar.root().child("function_item").expect("function");
     let name = function.token("IDENTIFIER").expect("identifier");
@@ -76,7 +78,9 @@ fn adapter_builds_tree() {
 #[test]
 fn adapter_error_tree() {
     let source = SourceText::new("sample.rs", "not rust");
-    let syntax = adapter().build_error(&source);
+    let bundle = spec().bundle().expect("valid bundle");
+    let adapter = adapter(&bundle);
+    let syntax = adapter.build_error(&source);
     let grammar = GrammarTree::new(syntax, schema());
     let root = grammar.root();
 
@@ -105,9 +109,8 @@ fn parser_builds_output() {
     );
 }
 
-fn adapter() -> TreeSitterRawAstAdapter {
-    let bundle = spec().bundle().expect("valid bundle");
-    TreeSitterRawAstAdapter::new(&bundle, "tree-sitter", "source_file", "WS", "RAW_TEXT")
+fn adapter(bundle: &GrammarBundle) -> TreeSitterRawAstAdapter<'_> {
+    TreeSitterRawAstAdapter::new(bundle, "tree-sitter", "source_file", "WS", "RAW_TEXT")
         .expect("valid adapter")
 }
 

@@ -18,6 +18,8 @@ pub struct TsFacts {
     pub names: Vec<TsNameFact>,
     pub dispatch_branches: Vec<TsDispatchBranchFact>,
     pub imports: Vec<TsImportFact>,
+    pub raw_failures: Vec<TsRawFailureFact>,
+    pub structured_failures: Vec<TsStructuredFailureFact>,
     pub jsx_elements: Vec<TsxElementFact>,
 }
 
@@ -69,6 +71,72 @@ pub enum TsImportSpecifier {
     Default(String),
     Named(String),
     Namespace(String),
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TsFailureMechanism {
+    Throw,
+    Call,
+    ThrowNew,
+}
+
+impl TsFailureMechanism {
+    pub fn label(self) -> &'static str {
+        match self {
+            TsFailureMechanism::Throw => "throw",
+            TsFailureMechanism::Call => "call",
+            TsFailureMechanism::ThrowNew => "throw-new",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TsRawFailureKind {
+    BuiltinError,
+    Literal,
+}
+
+impl TsRawFailureKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            TsRawFailureKind::BuiltinError => "builtin-error",
+            TsRawFailureKind::Literal => "literal",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TsRawFailureFact {
+    pub kind: TsRawFailureKind,
+    pub mechanism: TsFailureMechanism,
+    pub constructor: Option<String>,
+    pub callee: Option<String>,
+    pub span: Span,
+    pub line: usize,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TsStructuredFailureKind {
+    Guard,
+    Factory,
+}
+
+impl TsStructuredFailureKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            TsStructuredFailureKind::Guard => "guard",
+            TsStructuredFailureKind::Factory => "factory",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TsStructuredFailureFact {
+    pub kind: TsStructuredFailureKind,
+    pub mechanism: TsFailureMechanism,
+    pub callee: String,
+    pub span: Span,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

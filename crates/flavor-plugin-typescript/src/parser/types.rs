@@ -218,10 +218,13 @@ impl<'a> Parser<'a> {
                 | kind::NUMERIC_LITERAL
                 | kind::KEYWORD_GET
                 | kind::KEYWORD_SET
+                | kind::KEYWORD_MODULE
                 | kind::KEYWORD_NEW
+                | kind::KEYWORD_NAMESPACE
                 | kind::KEYWORD_SATISFIES
                 | kind::KEYWORD_KEYOF
                 | kind::KEYWORD_INFER
+                | kind::KEYWORD_TYPE
                 | kind::KEYWORD_TRUE
                 | kind::KEYWORD_FALSE
                 | kind::KEYWORD_NULL

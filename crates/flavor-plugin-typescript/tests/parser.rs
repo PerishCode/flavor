@@ -150,6 +150,23 @@ fn parses_binding_patterns() {
 }
 
 #[test]
+fn parses_contextual_names() {
+    let output = run(
+        SourceText::new(
+            "sample.ts",
+            r#"const type = stringField(value, "type"); const namespace = stringField(value, "namespace"); type Source = { type: "workspace" } | { namespace?: string; module?: string; type: "bundle" };"#,
+        ),
+        TsPluginConfig::default(),
+    );
+
+    assert!(has_node(&output, kind::VARIABLE_DECLARATION));
+    assert!(has_node(&output, kind::UNION_TYPE));
+    assert!(has_node(&output, kind::OBJECT_TYPE));
+    assert!(has_node(&output, kind::TYPE_MEMBER));
+    assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+}
+
+#[test]
 fn parses_decorated_class_nodes() {
     let output = run(
         SourceText::new(

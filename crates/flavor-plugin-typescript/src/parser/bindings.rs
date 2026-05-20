@@ -113,9 +113,12 @@ fn is_binding_name(kind: Kind) -> bool {
     matches!(
         kind,
         kind::IDENTIFIER
+            | kind::KEYWORD_MODULE
+            | kind::KEYWORD_NAMESPACE
             | kind::KEYWORD_SATISFIES
             | kind::KEYWORD_KEYOF
             | kind::KEYWORD_INFER
+            | kind::KEYWORD_TYPE
             | kind::KEYWORD_UNIQUE
     )
 }

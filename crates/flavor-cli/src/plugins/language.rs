@@ -1,15 +1,21 @@
 mod dispatch;
 mod failure;
+mod function;
 mod manifest;
 mod name;
+mod python;
+mod python_manifest;
 mod shape;
 
 pub(crate) use manifest::{RUST_MANIFEST, SVELTE_MANIFEST, TYPESCRIPT_MANIFEST, VUE_MANIFEST};
+pub(crate) use python::analyze_python_source;
+pub(crate) use python_manifest::PYTHON_MANIFEST;
 
 use std::{collections::BTreeSet, path::Path};
 
 use dispatch::check_dispatch_branches;
 use failure::{check_failure_surface, failure_surface_signal};
+use function::check_function_bodies;
 use name::check_name_facts;
 use shape::check_repeated_token_patterns;
 

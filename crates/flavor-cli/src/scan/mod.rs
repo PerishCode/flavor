@@ -178,6 +178,9 @@ enum SourceFileStatus {
 }
 
 fn prewarm_source_kinds(kinds: &BTreeSet<SourceKind>) {
+    if kinds.contains(&SourceKind::Python) {
+        flavor_plugin_python::plugin::prewarm();
+    }
     if kinds.contains(&SourceKind::Rust) {
         flavor_plugin_rust::plugin::prewarm();
     }

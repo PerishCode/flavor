@@ -468,6 +468,7 @@ pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
     match path.extension().and_then(|extension| extension.to_str()) {
         Some("rs") => Some(SourceKind::Rust),
         Some("g4") => Some(SourceKind::G4),
+        Some("py") => Some(SourceKind::Python),
         Some("svelte") => Some(SourceKind::Svelte),
         Some("ts" | "tsx") => Some(SourceKind::TypeScript),
         Some("vue") => Some(SourceKind::Vue),
@@ -478,6 +479,7 @@ pub(crate) fn source_file_kind(path: &Path) -> Option<SourceKind> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) enum SourceKind {
     G4,
+    Python,
     Rust,
     Svelte,
     TypeScript,

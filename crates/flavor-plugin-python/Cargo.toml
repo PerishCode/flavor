@@ -1,0 +1,11 @@
+[package]
+name = "flavor-plugin-python"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Python AST frontend for flavor."
+
+[dependencies]
+flavor-core = { path = "../flavor-core" }
+flavor-grammar = { path = "../flavor-grammar" }
+flavor-shared = { path = "../flavor-shared" }

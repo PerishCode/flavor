@@ -33,6 +33,12 @@ pub(super) fn satisfy(
             source.source,
             &mut products,
         ),
+        SourceKind::Python => flavor_plugin_python::plugin::satisfy(
+            &|grammar_id| entrypoint(manifest, grammar_id),
+            source.path,
+            source.source,
+            &mut products,
+        ),
         SourceKind::Rust => flavor_plugin_rust::plugin::satisfy_with_config(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,

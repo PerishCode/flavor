@@ -40,6 +40,8 @@ management.
   bundled plugin identity and behavior.
 - `crates/flavor-plugin-g4/AGENTS.md`: `.g4` source analysis plugin identity
   and behavior.
+- `crates/flavor-plugin-python/AGENTS.md`: Python syntax facts and code-shape
+  frontend behavior.
 - `crates/flavor-plugin-rust/AGENTS.md`: Rust syntax/facts frontend and
   embedded Rust lint facts.
 - `crates/flavor-plugin-typescript/AGENTS.md`: TypeScript, JavaScript, and TSX

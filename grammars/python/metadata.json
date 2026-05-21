@@ -1,0 +1,62 @@
+{
+  "bundle": "python",
+  "grammars": [
+    {
+      "directives": {
+        "entry": "program",
+        "owner": "crates/flavor-plugin-python"
+      },
+      "id": "python",
+      "sections": {
+        "diagnostics": {
+          "parse.error": "line-oriented parser diagnostic -> python/parse/error"
+        },
+        "facts": {
+          "dispatch.branch": "branch_statement header and indented block -> PythonDispatchBranchFact(span, line, lines) -> Fact(payload.lines, span, line)",
+          "function.body": "function_definition | async_function_definition full block -> PythonFunctionBodyFact(name, kind, span, line, lines) -> Fact(payload.name, payload.kind, payload.lines, span, line)",
+          "name.binding": "assignment_statement target identifier -> PythonNameFact(kind:binding, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.function": "function_definition.name outside class body -> PythonNameFact(kind:function, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.method": "function_definition.name inside class body -> PythonNameFact(kind:method, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",
+          "name.parameter": "parameter identifier -> PythonNameFact(kind:parameter, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)"
+        },
+        "nodes": {
+          "assignment_statement": "grammar:assignment_statement",
+          "async_function_definition": "grammar:async_function_definition",
+          "block": "grammar:block",
+          "branch_statement": "grammar:branch_statement",
+          "case_clause": "grammar:case_clause",
+          "class_definition": "grammar:class_definition",
+          "elif_clause": "grammar:elif_clause",
+          "else_clause": "grammar:else_clause",
+          "except_clause": "grammar:except_clause",
+          "finally_clause": "grammar:finally_clause",
+          "for_statement": "grammar:for_statement",
+          "function_definition": "grammar:function_definition",
+          "if_statement": "grammar:if_statement",
+          "match_statement": "grammar:match_statement",
+          "parameter": "grammar:parameter",
+          "parameter_list": "grammar:parameter_list",
+          "program": "grammar:program",
+          "source_file": "grammar:source_file",
+          "try_statement": "grammar:try_statement",
+          "while_statement": "grammar:while_statement",
+          "with_statement": "grammar:with_statement"
+        },
+        "recovery": {
+          "line.parser": "diagnostics are source-backed and facts may emit for recoverable line shapes",
+          "raw_ast.recovery": "unknown line ranges remain source-backed raw text"
+        },
+        "spans": {
+          "diagnostic.range": "line or header range",
+          "fact.line": "source node start line",
+          "node.line": "line index start + 1",
+          "node.range": "start byte..end byte"
+        }
+      },
+      "sources": {
+        "lexer": "PythonLexer.g4",
+        "parser": "PythonParser.g4"
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ description = "Personal check-only AST-backed code flavor lint CLI."
 flavor-core = { path = "../flavor-core" }
 flavor-plugin-filesystem = { path = "../flavor-plugin-filesystem" }
 flavor-plugin-g4 = { path = "../flavor-plugin-g4" }
+flavor-plugin-python = { path = "../flavor-plugin-python" }
 flavor-plugin-rust = { path = "../flavor-plugin-rust" }
 flavor-plugin-svelte = { path = "../flavor-plugin-svelte" }
 flavor-plugin-typescript = { path = "../flavor-plugin-typescript" }

@@ -5,6 +5,7 @@ members = [
     "crates/flavor-shared",
     "crates/flavor-plugin-filesystem",
     "crates/flavor-plugin-g4",
+    "crates/flavor-plugin-python",
     "crates/flavor-plugin-rust",
     "crates/flavor-plugin-svelte",
     "crates/flavor-plugin-typescript",

@@ -318,6 +318,10 @@ static PLUGINS: &[FirstPartyPlugin] = &[
         analyze: g4::analyze,
     },
     FirstPartyPlugin {
+        manifest: language::PYTHON_MANIFEST,
+        analyze: language::analyze_python_source,
+    },
+    FirstPartyPlugin {
         manifest: language::RUST_MANIFEST,
         analyze: language::analyze_rust_source,
     },

@@ -7,6 +7,7 @@ use crate::model::Severity;
 
 pub(crate) const NAMING_TOO_MANY_WORDS: &str = "core/naming/too-many-words";
 pub(crate) const DISPATCH_BRANCH_TOO_LONG: &str = "core/dispatch/branch-too-long";
+pub(crate) const FUNCTION_TOO_LONG: &str = "core/function/too-long";
 pub(crate) const ERROR_FAILURE_SURFACE_AGGREGATE: &str = "core/error/failure-surface-aggregate";
 pub(crate) const ERROR_FAILURE_SURFACE_MATURITY: &str = "core/error/failure-surface-maturity";
 pub(crate) const FS_CHILDREN_SHAPE: &str = "core/fs/children-shape";
@@ -18,6 +19,7 @@ pub(crate) const SOURCE_TOO_DEEP: &str = "core/source/too-deep";
 pub(crate) const G4_PARSE_ERROR: &str = "g4/parse/error";
 pub(crate) const SHAPE_REPEATED_TOKEN_PATTERN: &str = "shape/repeated-token-pattern";
 pub(crate) const RUST_TESTS_IN_SOURCE: &str = "rust/tests/in-source";
+pub(crate) const PYTHON_PARSE_ERROR: &str = "python/parse/error";
 pub(crate) const RUST_PARSE_ERROR: &str = "rust/parse/error";
 pub(crate) const SVELTE_COMPONENT_TOO_LONG: &str = "svelte/component/too-long";
 pub(crate) const SVELTE_PARSE_ERROR: &str = "svelte/parse/error";
@@ -104,6 +106,15 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             default_payload: payload([(PAYLOAD_MAX_BRANCH_LINES, 24)]),
             bad_flavor: "Dispatch may be carrying implementation bodies instead of routing quickly to named behavior.",
             action_hint: "Keep switch/match arms as handoff points; extract the branch body into a local concept when the branch grows a second-stage flow.",
+        }),
+        FUNCTION_TOO_LONG => Some(RuleDescriptor {
+            id: FUNCTION_TOO_LONG,
+            target: RuleTarget::File,
+            default_enabled: true,
+            default_severity: Severity::Warning,
+            default_payload: payload([(PAYLOAD_MAX_LINES, 80)]),
+            bad_flavor: "A function may be carrying multiple phases, policy choices, or report-building details in one local body.",
+            action_hint: "Look for named phases, model conversion, validation, or rendering boundaries before extracting generic helpers.",
         }),
         ERROR_FAILURE_SURFACE_AGGREGATE => Some(RuleDescriptor {
             id: ERROR_FAILURE_SURFACE_AGGREGATE,
@@ -237,6 +248,15 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             bad_flavor: "Production source may be carrying test-only modules, fixtures, or private-shape pressure.",
             action_hint: "Consider moving test cases into sibling tests paths and exposing only intentional test seams.",
         }),
+        PYTHON_PARSE_ERROR => Some(RuleDescriptor {
+            id: PYTHON_PARSE_ERROR,
+            target: RuleTarget::File,
+            default_enabled: true,
+            default_severity: Severity::Warning,
+            default_payload: BTreeMap::new(),
+            bad_flavor: "The Python source could not be parsed, so AST-backed script shape checks may be incomplete.",
+            action_hint: "Check syntax or parser coverage before treating downstream Python style results as complete.",
+        }),
         RUST_PARSE_ERROR => Some(RuleDescriptor {
             id: RUST_PARSE_ERROR,
             target: RuleTarget::File,
@@ -335,6 +355,7 @@ pub(crate) fn known_rule_ids() -> Vec<&'static str> {
     vec![
         NAMING_TOO_MANY_WORDS,
         DISPATCH_BRANCH_TOO_LONG,
+        FUNCTION_TOO_LONG,
         ERROR_FAILURE_SURFACE_AGGREGATE,
         ERROR_FAILURE_SURFACE_MATURITY,
         FS_CHILDREN_SHAPE,
@@ -346,6 +367,7 @@ pub(crate) fn known_rule_ids() -> Vec<&'static str> {
         G4_PARSE_ERROR,
         SHAPE_REPEATED_TOKEN_PATTERN,
         RUST_TESTS_IN_SOURCE,
+        PYTHON_PARSE_ERROR,
         RUST_PARSE_ERROR,
         SVELTE_COMPONENT_TOO_LONG,
         SVELTE_PARSE_ERROR,

@@ -84,6 +84,7 @@ dependencies = [
  "flavor-grammar",
  "flavor-plugin-filesystem",
  "flavor-plugin-g4",
+ "flavor-plugin-python",
  "flavor-plugin-rust",
  "flavor-plugin-svelte",
  "flavor-plugin-typescript",
@@ -123,6 +124,15 @@ dependencies = [
 
 [[package]]
 name = "flavor-plugin-g4"
+version = "0.1.0"
+dependencies = [
+ "flavor-core",
+ "flavor-grammar",
+ "flavor-shared",
+]
+
+[[package]]
+name = "flavor-plugin-python"
 version = "0.1.0"
 dependencies = [
  "flavor-core",

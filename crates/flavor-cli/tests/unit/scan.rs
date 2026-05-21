@@ -7,9 +7,9 @@ use crate::{
     config::GuardConfig,
     model::Report,
     rules::{
-        FS_TOO_MANY_CHILDREN, NAMING_TOO_MANY_WORDS, RUST_TESTS_IN_SOURCE, SOURCE_TOO_DEEP,
-        SOURCE_TOO_LONG, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
-        SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
+        FS_TOO_MANY_CHILDREN, FUNCTION_TOO_LONG, NAMING_TOO_MANY_WORDS, RUST_TESTS_IN_SOURCE,
+        SOURCE_TOO_DEEP, SOURCE_TOO_LONG, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
+        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
     },
     scan::run_scan,
 };
@@ -295,6 +295,11 @@ fn mixed_language_parity() {
     )
     .unwrap();
     fs::write(
+        source_dir.join("worker.py"),
+        "def python_operation_event_handler_name(input_value):\n    return input_value\n",
+    )
+    .unwrap();
+    fs::write(
         source_dir.join("App.vue"),
         "<script setup lang=\"ts\">\nconst controllerRuntimeResultValueText = 1;\n</script>",
     )
@@ -309,18 +314,55 @@ fn mixed_language_parity() {
     let result = run_scan(&config).unwrap();
     let report = Report::with_scan(config.root.clone(), result.stats, result.issues.clone());
 
-    assert_eq!(result.stats.scanned_files, 4);
+    assert_eq!(result.stats.scanned_files, 5);
     assert_eq!(report.exit_code(false), 1);
     assert!(result
         .issues
         .iter()
         .any(|issue| issue.rule == RUST_TESTS_IN_SOURCE && issue.path.ends_with("lib.rs")));
-    for path in ["client.ts", "App.vue", "Panel.svelte"] {
+    for path in ["client.ts", "worker.py", "App.vue", "Panel.svelte"] {
         assert!(result
             .issues
             .iter()
             .any(|issue| { issue.rule == NAMING_TOO_MANY_WORDS && issue.path.ends_with(path) }));
     }
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn scans_python_function_shape() {
+    let root = test_root("python-shape");
+    let source_dir = root.join("tools/demo/src");
+    fs::create_dir_all(&source_dir).unwrap();
+    fs::write(
+        source_dir.join("worker.py"),
+        "def work(input_value):\n    if input_value:\n        return input_value\n    return None\n",
+    )
+    .unwrap();
+
+    let config = config_from(
+        &root,
+        r#"{
+            "scan": { "include": ["tools/*/src/**"] },
+            "overrides": [
+                {
+                    "match": "tools/demo/src/*.py",
+                    "kind": "file",
+                    "rules": {
+                        "core/function/too-long": { "payload": { "max_lines": 2 } },
+                        "core/dispatch/branch-too-long": { "payload": { "max_branch_lines": 1 } }
+                    }
+                }
+            ]
+        }"#,
+    );
+    let issues = issues(&config);
+
+    assert!(issues.iter().any(|issue| issue.rule == FUNCTION_TOO_LONG));
+    assert!(issues
+        .iter()
+        .any(|issue| issue.rule == crate::rules::DISPATCH_BRANCH_TOO_LONG));
 
     let _ = fs::remove_dir_all(root);
 }

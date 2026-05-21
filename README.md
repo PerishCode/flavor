@@ -2,7 +2,7 @@
 
 Personal check-only code flavor lint CLI.
 
-`flavor` turns abstract code-shape preferences into executable checks over Rust, TypeScript, TSX, Vue, and Svelte source. Reports include bad-flavor notes and action hints. They are review pressure, not automatic repair recipes.
+`flavor` turns abstract code-shape preferences into executable checks over Python, Rust, TypeScript, TSX, Vue, and Svelte source. Reports include bad-flavor notes and action hints. They are review pressure, not automatic repair recipes.
 
 ## Install
 
@@ -146,7 +146,7 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 
 ## Workspace
 
-The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-core` owns shared source text, span, diagnostic, product, and syntax tree primitives, `flavor-grammar` owns grammar contract metadata, `.g4` source indexes, raw AST schema bundles, runtime kind lookup, and backend adapter helpers, `flavor-plugin-g4` brings `.g4` files into the normal plugin/product pipeline, `flavor-plugin-filesystem` owns filesystem path/source shape plugin identity, and the language plugin crates own Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
+The installable binary lives in `crates/flavor-cli`. First-party bundled plugins grow as sibling crates: `flavor-core` owns shared source text, span, diagnostic, product, and syntax tree primitives, `flavor-grammar` owns grammar contract metadata, `.g4` source indexes, raw AST schema bundles, runtime kind lookup, and backend adapter helpers, `flavor-plugin-g4` brings `.g4` files into the normal plugin/product pipeline, `flavor-plugin-filesystem` owns filesystem path/source shape plugin identity, and the language plugin crates own Python, Rust, TS/JS/TSX, Vue, and Svelte syntax facts. Plugin crates do not define config file names or report rendering.
 
 Frontend contracts are anchored in `grammars/<bundle>/*.g4` plus
 `grammars/<bundle>/metadata.json`. The `.g4` files are the repo-visible

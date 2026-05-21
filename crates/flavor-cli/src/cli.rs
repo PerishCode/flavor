@@ -170,7 +170,7 @@ Config:
                     flavor.json files via walk-up.
 
 Scope:
-  The check covers handwritten Rust, TypeScript, TSX, Vue, and Svelte source
+  The check covers handwritten Python, Rust, TypeScript, TSX, Vue, and Svelte source
   through scan.include / scan.exclude path patterns. Rule behavior is adjusted
   through named preferences and ordered overrides that match files or
   directories and set rule payload, severity, or enabled state. Preferences

@@ -72,7 +72,9 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::NAMESPACE_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start namespace body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_statement();
+                self.ensure_progress(start, "namespace body");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close namespace body");
         }
@@ -155,6 +157,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::NAMED_IMPORTS);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start named imports") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_import_specifier();
                 if self.at(kind::COMMA) {
                     self.bump();
@@ -162,6 +165,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected ',' or '}' in named imports");
                     break;
                 }
+                self.ensure_progress(start, "named imports");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close named imports");
         }
@@ -223,6 +227,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::NAMED_EXPORTS);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start named exports") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_export_specifier();
                 if self.at(kind::COMMA) {
                     self.bump();
@@ -230,6 +235,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected ',' or '}' in named exports");
                     break;
                 }
+                self.ensure_progress(start, "named exports");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close named exports");
         }
@@ -321,6 +327,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::ENUM_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start enum body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_enum_member();
                 if self.at(kind::COMMA) {
                     self.bump();
@@ -328,6 +335,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected ',' or '}' in enum body");
                     break;
                 }
+                self.ensure_progress(start, "enum body");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close enum body");
         }
@@ -355,6 +363,7 @@ impl<'a> Parser<'a> {
         if self.at(kind::IDENTIFIER) {
             self.bump();
             while self.at(kind::DOT) {
+                let start = self.cursor;
                 self.bump();
                 if self.at(kind::IDENTIFIER) {
                     self.bump();
@@ -362,6 +371,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected namespace segment");
                     break;
                 }
+                self.ensure_progress(start, "namespace name");
             }
         } else {
             self.error_here("expected namespace name");

@@ -33,7 +33,12 @@ const TYPESCRIPT_CONTRACT: GrammarContractExpectation<'static> = GrammarContract
         },
         GrammarSectionExpectation {
             name: "diagnostics",
-            entries: &["embedded.expression", "parse.error", "parse.missing"],
+            entries: &[
+                "embedded.expression",
+                "parse.error",
+                "parse.missing",
+                "parse.resource_limit",
+            ],
         },
         GrammarSectionExpectation {
             name: "spans",
@@ -158,7 +163,7 @@ const TSX_CONTRACT: GrammarContractExpectation<'static> = GrammarContractExpecta
         },
         GrammarSectionExpectation {
             name: "diagnostics",
-            entries: &["parse.error", "parse.missing"],
+            entries: &["parse.error", "parse.missing", "parse.resource_limit"],
         },
         GrammarSectionExpectation {
             name: "spans",

@@ -132,7 +132,9 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::SWITCH_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start switch body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_switch_case();
+                self.ensure_progress(start, "switch body");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close switch body");
         }
@@ -163,7 +165,9 @@ impl<'a> Parser<'a> {
             kind::CLOSE_BRACE,
             kind::END_OF_FILE,
         ]) {
+            let start = self.cursor;
             self.parse_statement();
+            self.ensure_progress(start, "switch case");
         }
         self.builder.finish_node();
     }

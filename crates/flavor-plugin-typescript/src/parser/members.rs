@@ -15,7 +15,12 @@ impl<'a> Parser<'a> {
             kind::PROPERTY_DECLARATION
         };
         self.builder.start_node(member_kind);
-        self.parse_member_name("expected class member name");
+        if !self.parse_member_name("expected class member name") {
+            self.recover_member();
+            self.builder.finish_node();
+            self.builder.finish_node();
+            return;
+        }
         if member_kind == kind::METHOD_DECLARATION {
             self.parse_member_type_params();
             self.parse_parameter_list();
@@ -44,7 +49,9 @@ impl<'a> Parser<'a> {
             return;
         }
         while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+            let start = self.cursor;
             self.parse_interface_member();
+            self.ensure_progress(start, "interface body");
         }
         self.expect(kind::CLOSE_BRACE, "expected '}' to close interface body");
         self.builder.finish_node();
@@ -116,7 +123,9 @@ impl<'a> Parser<'a> {
             kind::CLOSE_BRACE,
             kind::END_OF_FILE,
         ]) {
+            let start = self.cursor;
             self.bump();
+            self.ensure_progress(start, "class member recovery");
         }
         if self.at(kind::SEMICOLON) || self.at(kind::COMMA) {
             self.bump();
@@ -144,13 +153,33 @@ impl<'a> Parser<'a> {
         if matches!(
             self.current(),
             kind::IDENTIFIER
+                | kind::STRING_LITERAL
+                | kind::NUMERIC_LITERAL
+                | kind::KEYWORD_AS
+                | kind::KEYWORD_AWAIT
+                | kind::KEYWORD_CLASS
+                | kind::KEYWORD_DEFAULT
+                | kind::KEYWORD_DELETE
+                | kind::KEYWORD_ENUM
+                | kind::KEYWORD_FROM
+                | kind::KEYWORD_FUNCTION
                 | kind::KEYWORD_GET
+                | kind::KEYWORD_IMPORT
+                | kind::KEYWORD_INSTANCEOF
+                | kind::KEYWORD_INTERFACE
                 | kind::KEYWORD_SET
+                | kind::KEYWORD_LET
+                | kind::KEYWORD_MODULE
+                | kind::KEYWORD_NAMESPACE
                 | kind::KEYWORD_NEW
                 | kind::KEYWORD_SATISFIES
                 | kind::KEYWORD_KEYOF
                 | kind::KEYWORD_INFER
+                | kind::KEYWORD_STATIC
+                | kind::KEYWORD_TYPE
+                | kind::KEYWORD_TYPEOF
                 | kind::KEYWORD_UNIQUE
+                | kind::KEYWORD_VOID
                 | kind::KEYWORD_THIS
                 | kind::KEYWORD_SUPER
                 | kind::KEYWORD_TRUE

@@ -30,6 +30,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expression_tokens_until(&mut self, stops: &[Kind]) {
         while !self.at(kind::END_OF_FILE) && !self.at_any(stops) {
+            let start = self.cursor;
             match self.current() {
                 kind::LESS_THAN if self.jsx_enabled() && self.starts_jsx_open() => {
                     self.parse_jsx_element();
@@ -63,6 +64,7 @@ impl<'a> Parser<'a> {
                 kind::OPEN_PAREN => self.parse_parenthesized_expression(),
                 _ => self.bump(),
             }
+            self.ensure_progress(start, "expression");
         }
     }
 
@@ -179,6 +181,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::MEMBER_EXPRESSION);
         self.bump();
         while self.at(kind::DOT) || self.at(kind::QUESTION_DOT) {
+            let start = self.cursor;
             self.bump();
             if is_property_name(self.current()) {
                 self.bump();
@@ -200,6 +203,7 @@ impl<'a> Parser<'a> {
                 self.error_here("expected property name");
                 break;
             }
+            self.ensure_progress(start, "member expression");
         }
         self.builder.finish_node();
     }

@@ -443,6 +443,28 @@ fn parses_class_member_nodes() {
 }
 
 #[test]
+fn parses_special_class_methods() {
+    let output = run(
+        SourceText::new("sample.ts", "class Store { delete(id: string): void { this.records.delete(id); } \"delete\"(id: string): void { this.records.delete(id); } }"),
+        TsPluginConfig::default(),
+    );
+
+    assert!(has_node(&output, kind::METHOD_DECLARATION));
+    assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+}
+
+#[test]
+fn recovers_class_members() {
+    let output = run(
+        SourceText::new("sample.ts", "class Store { ?(): void {} ok(): void {} }"),
+        TsPluginConfig::default(),
+    );
+
+    assert!(has_node(&output, kind::CLASS_DECLARATION));
+    assert!(!output.diagnostics.is_empty());
+}
+
+#[test]
 fn parses_modifier_nodes() {
     let output = run(
         SourceText::new(

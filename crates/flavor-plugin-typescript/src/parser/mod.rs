@@ -17,6 +17,9 @@ use crate::{
     state::{SourceMode, TsPluginConfig},
 };
 
+const MIN_PARSE_STEPS: usize = 10_000;
+const PARSE_STEPS_PER_TOKEN: usize = 64;
+
 #[derive(Debug, Clone)]
 pub struct TsParseOutput {
     pub source_file: TsSourceFile,
@@ -42,6 +45,8 @@ struct Parser<'a> {
     builder: RawAstBuilder<'static>,
     diagnostics: Vec<Diagnostic>,
     jsx: bool,
+    steps_remaining: usize,
+    budget_exhausted: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -54,13 +59,17 @@ impl<'a> Parser<'a> {
             diagnostics: Vec::new(),
             jsx: matches!(config.source_mode, SourceMode::Jsx | SourceMode::Tsx)
                 && config.jsx.enabled,
+            steps_remaining: parse_step_budget(tokens.len()),
+            budget_exhausted: false,
         }
     }
 
     fn parse(mut self) -> (SyntaxNode, Vec<Diagnostic>) {
         self.builder.start_node(kind::SOURCE_FILE);
         while !self.at(kind::END_OF_FILE) {
+            let start = self.cursor;
             self.parse_statement();
+            self.ensure_progress(start, "source file");
         }
         self.builder.finish_node();
         (self.builder.finish(), self.diagnostics)
@@ -150,7 +159,9 @@ impl<'a> Parser<'a> {
         }
         self.builder.start_node(kind::MODIFIER_LIST);
         while is_modifier_kind(self.current()) {
+            let start = self.cursor;
             self.bump();
+            self.ensure_progress(start, "modifier list");
         }
         self.builder.finish_node();
     }
@@ -172,6 +183,34 @@ impl<'a> Parser<'a> {
         let token = &self.tokens[self.cursor];
         self.builder.source_token(self.source, token);
         self.cursor += 1;
+    }
+
+    fn ensure_progress(&mut self, start: usize, context: &str) {
+        if !self.spend_step(context) {
+            return;
+        }
+        if self.cursor != start || self.at(kind::END_OF_FILE) {
+            return;
+        }
+        self.error_here("parser made no progress; recovering by consuming one token");
+        self.bump();
+    }
+
+    fn spend_step(&mut self, context: &str) -> bool {
+        if self.steps_remaining > 0 {
+            self.steps_remaining -= 1;
+            return true;
+        }
+        if !self.budget_exhausted {
+            self.budget_exhausted = true;
+            self.diagnostics.push(Diagnostic::error_code(
+                self.current_span(),
+                "ts/parse/resource-limit",
+                format!("TypeScript parse resource limit exceeded while parsing {context}"),
+            ));
+        }
+        self.cursor = self.tokens.len().saturating_sub(1);
+        false
     }
 
     fn at(&self, kind: Kind) -> bool {
@@ -270,6 +309,12 @@ impl<'a> Parser<'a> {
             message.to_string(),
         ));
     }
+}
+
+fn parse_step_budget(token_count: usize) -> usize {
+    token_count
+        .saturating_mul(PARSE_STEPS_PER_TOKEN)
+        .saturating_add(MIN_PARSE_STEPS)
 }
 
 fn is_modifier_kind(kind: Kind) -> bool {

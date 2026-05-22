@@ -38,6 +38,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::OBJECT_BINDING_PATTERN);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start binding pattern") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_binding_element(kind::CLOSE_BRACE);
                 if self.at(kind::COMMA) {
                     self.bump();
@@ -45,6 +46,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected ',' or '}' in binding pattern");
                     break;
                 }
+                self.ensure_progress(start, "object binding pattern");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close binding pattern");
         }
@@ -55,8 +57,10 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::ARRAY_BINDING_PATTERN);
         if self.expect(kind::OPEN_BRACKET, "expected '[' to start binding pattern") {
             while !self.at_any(&[kind::CLOSE_BRACKET, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 if self.at(kind::COMMA) {
                     self.bump();
+                    self.ensure_progress(start, "array binding pattern");
                     continue;
                 }
                 self.parse_binding_element(kind::CLOSE_BRACKET);
@@ -66,6 +70,7 @@ impl<'a> Parser<'a> {
                     self.error_here("expected ',' or ']' in binding pattern");
                     break;
                 }
+                self.ensure_progress(start, "array binding pattern");
             }
             self.expect(kind::CLOSE_BRACKET, "expected ']' to close binding pattern");
         }

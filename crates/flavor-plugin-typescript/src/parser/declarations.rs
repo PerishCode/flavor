@@ -60,14 +60,17 @@ impl<'a> Parser<'a> {
         self.bump();
 
         loop {
+            let start = self.cursor;
             if self.at_any(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 break;
             }
             self.parse_variable_declaration();
             if self.at(kind::COMMA) {
                 self.bump();
+                self.ensure_progress(start, "variable declaration list");
                 continue;
             }
+            self.ensure_progress(start, "variable declaration list");
             break;
         }
 
@@ -146,6 +149,7 @@ impl<'a> Parser<'a> {
             return;
         }
         while !self.at_any(&[kind::CLOSE_PAREN, kind::END_OF_FILE]) {
+            let start = self.cursor;
             self.parse_parameter();
             if self.at(kind::COMMA) {
                 self.bump();
@@ -153,6 +157,7 @@ impl<'a> Parser<'a> {
                 self.error_here("expected ',' or ')' in parameter list");
                 break;
             }
+            self.ensure_progress(start, "parameter list");
         }
         self.expect(kind::CLOSE_PAREN, "expected ')' to close parameter list");
         self.builder.finish_node();
@@ -214,11 +219,13 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_decorator_list(&mut self) {
         self.builder.start_node(kind::DECORATOR_LIST);
         while self.at(kind::AT) {
+            let start = self.cursor;
             self.builder.start_node(kind::DECORATOR);
             self.bump();
             if self.at(kind::IDENTIFIER) {
                 self.bump();
                 while self.at(kind::DOT) {
+                    let start = self.cursor;
                     self.bump();
                     if self.at(kind::IDENTIFIER) {
                         self.bump();
@@ -226,6 +233,7 @@ impl<'a> Parser<'a> {
                         self.error_here("expected decorator property name");
                         break;
                     }
+                    self.ensure_progress(start, "decorator path");
                 }
             } else {
                 self.error_here("expected decorator name");
@@ -239,6 +247,7 @@ impl<'a> Parser<'a> {
                 );
             }
             self.builder.finish_node();
+            self.ensure_progress(start, "decorator list");
         }
         self.builder.finish_node();
     }
@@ -246,7 +255,9 @@ impl<'a> Parser<'a> {
     fn parse_heritage_clause(&mut self) {
         self.builder.start_node(kind::HERITAGE_CLAUSE);
         while !self.at_any(&[kind::OPEN_BRACE, kind::END_OF_FILE]) {
+            let start = self.cursor;
             self.bump();
+            self.ensure_progress(start, "heritage clause");
         }
         self.builder.finish_node();
     }

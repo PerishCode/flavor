@@ -10,7 +10,9 @@ impl<'a> Parser<'a> {
             return;
         }
         while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+            let start = self.cursor;
             self.parse_statement();
+            self.ensure_progress(start, "block");
         }
         self.expect(kind::CLOSE_BRACE, "expected '}' to close block");
         self.builder.finish_node();
@@ -23,7 +25,9 @@ impl<'a> Parser<'a> {
             return;
         }
         while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+            let start = self.cursor;
             self.parse_class_member();
+            self.ensure_progress(start, "class body");
         }
         self.expect(kind::CLOSE_BRACE, "expected '}' to close class body");
         self.builder.finish_node();
@@ -86,6 +90,7 @@ impl<'a> Parser<'a> {
         if self.expect(open, message) {
             let mut depth = 1usize;
             while depth > 0 && !self.at(kind::END_OF_FILE) {
+                let start = self.cursor;
                 if self.at(open) {
                     depth += 1;
                     self.bump();
@@ -95,6 +100,7 @@ impl<'a> Parser<'a> {
                 } else {
                     self.bump();
                 }
+                self.ensure_progress(start, "balanced node");
             }
             if depth > 0 {
                 self.error_at(self.current_span(), message);
@@ -109,6 +115,7 @@ impl<'a> Parser<'a> {
         let mut bracket_depth = 0usize;
         let mut angle_depth = 0usize;
         while !self.at(kind::END_OF_FILE) {
+            let start = self.cursor;
             if paren_depth == 0
                 && brace_depth == 0
                 && bracket_depth == 0
@@ -129,6 +136,7 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
             self.bump();
+            self.ensure_progress(start, "balanced token range");
         }
     }
 }

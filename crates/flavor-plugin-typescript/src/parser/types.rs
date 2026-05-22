@@ -18,14 +18,17 @@ impl<'a> Parser<'a> {
             self.builder.start_node(kind);
         }
         loop {
+            let start = self.cursor;
             let mut segment_stops = stops.to_vec();
             segment_stops.push(kind::PIPE);
             segment_stops.push(kind::AMPERSAND);
             self.parse_type_segment_until(&segment_stops);
             if self.at(kind::PIPE) || self.at(kind::AMPERSAND) {
                 self.bump();
+                self.ensure_progress(start, "type");
                 continue;
             }
+            self.ensure_progress(start, "type");
             break;
         }
         if kind.is_some() {
@@ -35,6 +38,7 @@ impl<'a> Parser<'a> {
 
     fn parse_type_segment_until(&mut self, stops: &[Kind]) {
         while !self.at(kind::END_OF_FILE) && !self.at_any(stops) {
+            let start = self.cursor;
             match self.current() {
                 kind if is_type_operator(kind) => self.parse_type_operator(stops),
                 kind::IDENTIFIER if self.is_indexed_type_start() => self.parse_indexed_type(),
@@ -56,6 +60,7 @@ impl<'a> Parser<'a> {
                 ),
                 _ => self.bump(),
             }
+            self.ensure_progress(start, "type segment");
         }
     }
 
@@ -84,12 +89,14 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::INDEXED_ACCESS_TYPE);
         self.parse_type_reference();
         while self.at(kind::OPEN_BRACKET) && !self.next_is(kind::CLOSE_BRACKET) {
+            let start = self.cursor;
             self.bump();
             self.parse_type(&[kind::CLOSE_BRACKET, kind::END_OF_FILE]);
             self.expect(
                 kind::CLOSE_BRACKET,
                 "expected ']' to close indexed access type",
             );
+            self.ensure_progress(start, "indexed access type");
         }
         self.builder.finish_node();
     }
@@ -98,8 +105,10 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::ARRAY_TYPE);
         self.parse_type_reference();
         while self.at(kind::OPEN_BRACKET) && self.token_kind_at(1) == kind::CLOSE_BRACKET {
+            let start = self.cursor;
             self.bump();
             self.bump();
+            self.ensure_progress(start, "array type");
         }
         self.builder.finish_node();
     }
@@ -148,7 +157,9 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::MAPPED_TYPE);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start mapped type") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_type_member();
+                self.ensure_progress(start, "mapped type");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close mapped type");
         }
@@ -159,7 +170,9 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::OBJECT_TYPE);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start object type") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
+                let start = self.cursor;
                 self.parse_type_member();
+                self.ensure_progress(start, "object type");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close object type");
         }

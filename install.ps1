@@ -48,16 +48,17 @@ function Require-PublicUrl {
     if ([string]::IsNullOrWhiteSpace($publicUrl)) {
         throw 'FLAVOR_RELEASES_PUBLIC_URL or --public-url is required'
     }
-    $script:publicUrl = $publicUrl.TrimEnd('/')
+    return $publicUrl.TrimEnd('/')
 }
 
 function Install-Flavor {
-    Require-PublicUrl
-    if ([string]::IsNullOrWhiteSpace($version)) {
-        $metadataUrl = "$publicUrl/$channel/latest/metadata.json"
+    $resolvedPublicUrl = Require-PublicUrl
+    $resolvedVersion = $version
+    if ([string]::IsNullOrWhiteSpace($resolvedVersion)) {
+        $metadataUrl = "$resolvedPublicUrl/$channel/latest/metadata.json"
         $metadata = Invoke-RestMethod -Uri $metadataUrl
-        $script:version = $metadata.releaseVersion
-        if ([string]::IsNullOrWhiteSpace($version)) {
+        $resolvedVersion = $metadata.releaseVersion
+        if ([string]::IsNullOrWhiteSpace($resolvedVersion)) {
             throw 'failed to resolve latest flavor version'
         }
     }
@@ -67,8 +68,8 @@ function Install-Flavor {
     New-Item -ItemType Directory -Path $tmpdir | Out-Null
     try {
         $archivePath = Join-Path $tmpdir $archive
-        Invoke-WebRequest -Uri "$publicUrl/$channel/versions/$version/$archive" -OutFile $archivePath
-        $versionRoot = Join-Path $installRoot $version
+        Invoke-WebRequest -Uri "$resolvedPublicUrl/$channel/versions/$resolvedVersion/$archive" -OutFile $archivePath
+        $versionRoot = Join-Path $installRoot $resolvedVersion
         New-Item -ItemType Directory -Force -Path $versionRoot | Out-Null
         Expand-Archive -LiteralPath $archivePath -DestinationPath $versionRoot -Force
         New-Item -ItemType Directory -Force -Path $localBinDir | Out-Null

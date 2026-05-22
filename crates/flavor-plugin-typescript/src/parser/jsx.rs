@@ -14,6 +14,7 @@ impl<'a> Parser<'a> {
             return;
         }
         while !self.at(kind::END_OF_FILE) {
+            let start = self.cursor;
             if self.starts_jsx_close() {
                 self.parse_jsx_closing();
                 self.builder.finish_node();
@@ -31,6 +32,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_jsx_text();
             }
+            self.ensure_progress(start, "JSX element");
         }
         self.error_at(
             self.current_span(),
@@ -51,6 +53,7 @@ impl<'a> Parser<'a> {
             return None;
         };
         while !self.at_any(&[kind::GREATER_THAN, kind::END_OF_FILE]) {
+            let start = self.cursor;
             if self.at(kind::SLASH) && self.next_is(kind::GREATER_THAN) {
                 self.bump();
                 self.bump();
@@ -58,6 +61,7 @@ impl<'a> Parser<'a> {
                 return Some(name);
             }
             self.parse_jsx_attribute();
+            self.ensure_progress(start, "JSX opening element");
         }
         if self.at(kind::GREATER_THAN) {
             self.bump();
@@ -122,7 +126,9 @@ impl<'a> Parser<'a> {
             && !self.starts_jsx_open()
             && !self.starts_jsx_close()
         {
+            let start = self.cursor;
             self.bump();
+            self.ensure_progress(start, "JSX text");
         }
         self.builder.finish_node();
     }
@@ -135,8 +141,10 @@ impl<'a> Parser<'a> {
         let start = self.current_span().start;
         self.bump();
         while is_jsx_name_join(self.current()) && is_jsx_name_part(self.token_kind_at(1)) {
+            let start = self.cursor;
             self.bump();
             self.bump();
+            self.ensure_progress(start, "JSX name");
         }
         let end = self.token_kind_at_back(1);
         debug_assert!(end != kind::END_OF_FILE);

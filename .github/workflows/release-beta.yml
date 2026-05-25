@@ -54,6 +54,8 @@ jobs:
   verify:
     needs: metadata
     runs-on: ubuntu-latest
+    env:
+      FLAVOR_RELEASES_PUBLIC_URL: ${{ vars.FLAVOR_RELEASES_PUBLIC_URL }}
     steps:
       - uses: actions/checkout@v6
         with:

@@ -1,10 +1,10 @@
 use std::{
     collections::BTreeMap,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
 
 use crate::{
@@ -15,6 +15,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct GuardConfig {
+    config_root: PathBuf,
     pub(crate) root: PathBuf,
     scan_include: Vec<PathPattern>,
     scan_exclude: Vec<PathPattern>,
@@ -45,50 +46,42 @@ impl RuleSettings {
     }
 }
 
-/// File name flavor walks ancestors of `--root` to find.
-pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "flavor.json";
+pub(crate) const DEFAULT_CONFIG_FILENAMES: &[&str] = &["flavor.toml", "flavor.yaml", "flavor.json"];
+pub(crate) const ENV_CONFIG: &str = "FLAVOR_CONFIG";
 
-/// Where the active `GuardConfig` came from.
-///
-/// `Explicit` and `Discovered` both point at a file on disk; the split lets
-/// callers tell the user when a config was picked up without being asked for,
-/// so a stray `flavor.json` somewhere above the scan root never silently
-/// changes behavior.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ConfigSource {
     Explicit(PathBuf),
+    Env(PathBuf),
     Discovered(PathBuf),
     BuiltIn,
 }
 
-/// Resolve which config to use.
-///
-/// Order:
-/// 1. `--config <path>` is honoured verbatim. The directory containing the
-///    explicit file becomes the project root for scan patterns (tsconfig-style).
-/// 2. Otherwise, walk ancestors of `start` looking for `flavor.json`. The
-///    nearest match wins; its directory becomes the project root.
-/// 3. Otherwise, fall back to the built-in defaults rooted at `start`.
-///
-/// `start` is the walk-up entry point (typically `--root`, defaulting to the
-/// current directory). It is canonicalized to make ancestor traversal robust
-/// against `.` / `..` segments.
 pub(crate) fn resolve(
     start: PathBuf,
     explicit: Option<PathBuf>,
 ) -> Result<(GuardConfig, ConfigSource), String> {
+    let scan_root = canonicalize_start(&start)?;
+
     if let Some(path) = explicit {
-        let root = config_parent(&path);
-        let config = GuardConfig::from_file(root, &path)?;
+        let config_root = config_parent(&path)?;
+        let config = GuardConfig::from_file(config_root, scan_root, &path)?;
         return Ok((config, ConfigSource::Explicit(path)));
     }
-    let start = canonicalize_start(&start)?;
-    if let Some(candidate) = walk_up_for_config(&start) {
-        let root = config_parent(&candidate);
-        let config = GuardConfig::from_file(root, &candidate)?;
+
+    if let Some(path) = env::var_os(ENV_CONFIG).map(PathBuf::from) {
+        let config_root = config_parent(&path)?;
+        let config = GuardConfig::from_file(config_root, scan_root, &path)?;
+        return Ok((config, ConfigSource::Env(path)));
+    }
+
+    if let Some(candidate) = walk_up_for_config(&scan_root) {
+        let config_root = config_parent(&candidate)?;
+        let config = GuardConfig::from_file(config_root, scan_root, &candidate)?;
         return Ok((config, ConfigSource::Discovered(candidate)));
     }
-    Ok((GuardConfig::core(start), ConfigSource::BuiltIn))
+
+    Ok((GuardConfig::core(scan_root), ConfigSource::BuiltIn))
 }
 
 fn canonicalize_start(start: &Path) -> Result<PathBuf, String> {
@@ -99,57 +92,73 @@ fn canonicalize_start(start: &Path) -> Result<PathBuf, String> {
 
 fn walk_up_for_config(start: &Path) -> Option<PathBuf> {
     for ancestor in start.ancestors() {
-        let candidate = ancestor.join(DEFAULT_CONFIG_FILENAME);
-        if candidate.is_file() {
-            return Some(candidate);
+        for filename in DEFAULT_CONFIG_FILENAMES {
+            let candidate = ancestor.join(filename);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
         }
     }
     None
 }
 
-/// Project root for a config file path: the directory containing it.
-///
-/// `Path::parent` returns `Some("")` for bare filenames like `flavor.json`,
-/// which downstream code reads as the empty path and fails to canonicalize.
-/// Treat both `None` and an empty parent as "the current directory".
-fn config_parent(config_path: &Path) -> PathBuf {
-    match config_path.parent() {
+fn config_parent(config_path: &Path) -> Result<PathBuf, String> {
+    let parent = match config_path.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
         _ => PathBuf::from("."),
-    }
+    };
+    parent.canonicalize().map_err(|error| {
+        format!(
+            "failed to resolve config root {}: {error}",
+            parent.display()
+        )
+    })
 }
 
 impl GuardConfig {
     pub(crate) fn core(root: PathBuf) -> Self {
         Self {
+            config_root: root.clone(),
             root,
-            scan_include: patterns(core_include_patterns()),
-            scan_exclude: patterns(core_exclude_patterns()),
+            scan_include: patterns(core_include_patterns()).expect("built-in includes are valid"),
+            scan_exclude: patterns(core_exclude_patterns()).expect("built-in excludes are valid"),
             overrides: Vec::new(),
             allow_empty_scan: false,
         }
     }
 
-    /// Whether the active config opted out of the "0 files matched" failure.
-    ///
-    /// A workspace-root `flavor.json` that intentionally excludes every
-    /// submodule (delegating real checks to per-submodule configs) sets this
-    /// so the 0-match warning + exit 1 from PR #6 stays quiet.
     pub(crate) fn allow_empty_scan(&self) -> bool {
         self.allow_empty_scan
     }
 
-    pub(crate) fn from_file(root: PathBuf, config_path: &Path) -> Result<Self, String> {
-        let source = fs::read_to_string(config_path)
-            .map_err(|error| format!("failed to read config {}: {error}", config_path.display()))?;
-        let file: GuardConfigFile = serde_json::from_str(&source).map_err(|error| {
-            format!("failed to parse config {}: {error}", config_path.display())
-        })?;
-        Self::from_config_file(root, file)
+    pub(crate) fn config_root(&self) -> &Path {
+        &self.config_root
     }
 
-    fn from_config_file(root: PathBuf, file: GuardConfigFile) -> Result<Self, String> {
-        let scan = file.scan;
+    pub(crate) fn from_file(
+        config_root: PathBuf,
+        scan_root: PathBuf,
+        config_path: &Path,
+    ) -> Result<Self, String> {
+        if !scan_root.starts_with(&config_root) {
+            return Err(format!(
+                "scan root {} must be inside config root {}",
+                scan_root.display(),
+                config_root.display()
+            ));
+        }
+
+        let source = fs::read_to_string(config_path)
+            .map_err(|error| format!("failed to read config {}: {error}", config_path.display()))?;
+        let file: GuardConfigFile = parse_config(config_path, &source)?;
+        Self::from_config_file(config_root, scan_root, file)
+    }
+
+    fn from_config_file(
+        config_root: PathBuf,
+        scan_root: PathBuf,
+        file: GuardConfigFile,
+    ) -> Result<Self, String> {
         let mut overrides = Vec::with_capacity(file.overrides.len());
         for (order, item) in file.overrides.into_iter().enumerate() {
             validate_rules(item.kind.unwrap_or(MatchKind::Any), &item.rules)?;
@@ -162,7 +171,7 @@ impl GuardConfig {
             let patterns = raw_patterns
                 .iter()
                 .map(|pattern| PathPattern::new(pattern))
-                .collect();
+                .collect::<Result<Vec<_>, _>>()?;
             overrides.push(RuleMatcher {
                 patterns,
                 kind: item.kind.unwrap_or(MatchKind::Any),
@@ -173,10 +182,21 @@ impl GuardConfig {
         }
         overrides.sort_by_key(|item| (item.priority, item.order));
 
+        let scan = file.scan.unwrap_or_default();
+        let scan_include = match scan.include {
+            Some(values) => required_patterns(values, "scan.include")?,
+            None => patterns(core_include_patterns())?,
+        };
+        let scan_exclude = match scan.exclude {
+            Some(values) => patterns(values)?,
+            None => patterns(core_exclude_patterns())?,
+        };
+
         Ok(Self {
-            root,
-            scan_include: required_patterns(scan.include, "scan.include")?,
-            scan_exclude: patterns(scan.exclude.unwrap_or_default()),
+            config_root,
+            root: scan_root,
+            scan_include,
+            scan_exclude,
             overrides,
             allow_empty_scan: file.allow_empty_scan,
         })
@@ -239,16 +259,18 @@ impl GuardConfig {
 
 #[derive(Debug, Deserialize)]
 struct GuardConfigFile {
-    scan: ScanConfigFile,
+    #[serde(default)]
+    scan: Option<ScanConfigFile>,
     #[serde(default)]
     overrides: Vec<OverrideConfigFile>,
-    #[serde(default, rename = "allowEmptyScan")]
+    #[serde(default)]
     allow_empty_scan: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 struct ScanConfigFile {
-    include: Vec<String>,
+    #[serde(default)]
+    include: Option<Vec<String>>,
     #[serde(default)]
     exclude: Option<Vec<String>>,
 }
@@ -264,9 +286,6 @@ struct OverrideConfigFile {
     rules: BTreeMap<String, RuleOverride>,
 }
 
-/// Accepts either a single `match: "<glob>"` or `match: ["<glob>", ...]` to
-/// scope one override entry over multiple paths without duplicating the
-/// surrounding `kind` / `priority` / `rules` block.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 enum MatchPatterns {
@@ -328,6 +347,40 @@ impl RuleMatcher {
     }
 }
 
+fn parse_config<T: DeserializeOwned>(config_path: &Path, source: &str) -> Result<T, String> {
+    match config_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+    {
+        Some("json") => serde_json::from_str(source).map_err(|error| {
+            format!(
+                "failed to parse JSON config {}: {error}",
+                config_path.display()
+            )
+        }),
+        Some("yaml") | Some("yml") => serde_yaml::from_str(source).map_err(|error| {
+            format!(
+                "failed to parse YAML config {}: {error}",
+                config_path.display()
+            )
+        }),
+        Some("toml") => toml::from_str(source).map_err(|error| {
+            format!(
+                "failed to parse TOML config {}: {error}",
+                config_path.display()
+            )
+        }),
+        Some(extension) => Err(format!(
+            "unsupported config extension '.{extension}' for {}",
+            config_path.display()
+        )),
+        None => Err(format!(
+            "config path {} has no supported extension",
+            config_path.display()
+        )),
+    }
+}
+
 fn validate_rules(kind: MatchKind, rules: &BTreeMap<String, RuleOverride>) -> Result<(), String> {
     for (rule_id, rule) in rules {
         let Some(descriptor) = rules::descriptor(rule_id) else {
@@ -371,10 +424,10 @@ fn required_patterns(values: Vec<String>, field: &str) -> Result<Vec<PathPattern
             "config field '{field}' must contain at least one pattern"
         ));
     }
-    Ok(patterns(values))
+    patterns(values)
 }
 
-fn patterns(values: Vec<String>) -> Vec<PathPattern> {
+fn patterns(values: Vec<String>) -> Result<Vec<PathPattern>, String> {
     values
         .into_iter()
         .map(|pattern| PathPattern::new(&pattern))
@@ -383,6 +436,13 @@ fn patterns(values: Vec<String>) -> Vec<PathPattern> {
 
 fn core_include_patterns() -> Vec<String> {
     [
+        "src/**",
+        "tests/**",
+        "test/**",
+        "lib/**",
+        "app/**",
+        "pages/**",
+        "components/**",
         "apps/*/src/**",
         "apps/*/tests/**",
         "apps/renderer/server/src/**",
@@ -391,6 +451,8 @@ fn core_include_patterns() -> Vec<String> {
         "apps/tauri/src-tauri/tests/**",
         "crates/*/src/**",
         "crates/*/tests/**",
+        "packages/*/src/**",
+        "packages/*/tests/**",
         "tools/*/src/**",
         "tools/*/tests/**",
     ]
@@ -401,12 +463,16 @@ fn core_include_patterns() -> Vec<String> {
 
 fn core_exclude_patterns() -> Vec<String> {
     [
+        ".git/**",
+        ".task/**",
+        ".tmp/**",
+        "**/.next/**",
+        "**/coverage/**",
         "**/node_modules/**",
         "**/target/**",
         "**/dist/**",
         "**/.vite/**",
         "**/.vite-temp/**",
-        ".tmp/**",
         "apps/tauri/src-tauri/gen/**",
         "packages/client/src/gen/**",
     ]
@@ -430,6 +496,3 @@ pub(crate) enum SourceKind {
     Svelte,
     TypeScript,
 }
-
-#[allow(dead_code)]
-fn _plugin_target_seam(_: RuleTarget) {}

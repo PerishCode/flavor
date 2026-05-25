@@ -63,6 +63,10 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Version guard
+        shell: pwsh
+        run: .github/scripts/guard/version.ps1 -ReleaseChannel beta
+
       - name: Format
         run: cargo fmt --all --check
 
@@ -73,7 +77,7 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Flavor self-check
-        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 
   build:
     needs: [metadata, verify]

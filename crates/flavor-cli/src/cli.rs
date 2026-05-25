@@ -121,19 +121,20 @@ Commands:
   version
 
 Config:
-  --config <path>  Load this JSON config. The file's directory becomes the
-                   project root for scan patterns.
-  (no --config)    Walk ancestors of --root (default: cwd) looking for a
-                   flavor.json. The nearest match wins; its directory
-                   becomes the project root. Falls back to built-in
-                   include/exclude patterns if none is found before the
-                   filesystem root.
+  --root <path>    Set the scan boundary. Config patterns remain relative to
+                   the discovered or explicit config directory.
+  --config <path>  Load this JSON, YAML, or TOML config.
+  FLAVOR_CONFIG    Load this config when --config is not present.
+  (no override)    Walk ancestors of --root (default: cwd) looking for
+                   flavor.toml, flavor.yaml, then flavor.json. Falls back to
+                   built-in include/exclude patterns if none is found before
+                   the filesystem root.
 
-  Optional flavor.json field:
-    allowEmptyScan  Suppress the "0 files matched" warning + exit 1.
+  Optional config field:
+    allow_empty_scan  Suppress the "0 files matched" warning + exit 1.
                     Reserved for workspace-root configs that intentionally
                     exclude every submodule and delegate to per-submodule
-                    flavor.json files via walk-up.
+                    configs via walk-up.
 
 Scope:
   The check covers handwritten Rust, TypeScript, TSX, Vue, and Svelte source

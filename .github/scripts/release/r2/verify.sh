@@ -24,6 +24,13 @@ if metadata["channel"] != os.environ["EXPECTED_CHANNEL"]:
     raise SystemExit(f"unexpected channel: {metadata['channel']}")
 if metadata["releaseVersion"] != os.environ["EXPECTED_RELEASE_VERSION"]:
     raise SystemExit(f"unexpected releaseVersion: {metadata['releaseVersion']}")
+tests = metadata.get("tests")
+if not isinstance(tests, dict):
+    raise SystemExit("missing tests metadata")
+if not isinstance(tests.get("hash"), str) or not tests["hash"].startswith("sha256:"):
+    raise SystemExit("missing tests.hash")
+if not isinstance(tests.get("scopes"), list) or not tests["scopes"]:
+    raise SystemExit("missing tests.scopes")
 if metadata["channel"] == "beta":
     if metadata.get("betaVersion") != os.environ["EXPECTED_RELEASE_VERSION"]:
         raise SystemExit(f"unexpected betaVersion: {metadata.get('betaVersion')}")

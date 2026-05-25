@@ -75,6 +75,14 @@ root = Path(env["RELEASE_ROOT"])
 public_url = env["PUBLIC_URL"]
 version_prefix = env["VERSION_PREFIX"]
 latest_prefix = env["LATEST_PREFIX"]
+repo_metadata = json.loads(Path("metadata.json").read_text(encoding="utf-8"))
+tests_metadata = repo_metadata.get("tests")
+if not isinstance(tests_metadata, dict):
+    raise SystemExit("root metadata.json must include tests")
+if not isinstance(tests_metadata.get("hash"), str) or not tests_metadata["hash"]:
+    raise SystemExit("root metadata.json tests.hash is required")
+if not isinstance(tests_metadata.get("scopes"), list) or not tests_metadata["scopes"]:
+    raise SystemExit("root metadata.json tests.scopes must be a non-empty array")
 
 def artifact(name, content_type):
     path = root / name
@@ -109,6 +117,10 @@ metadata = {
     "install": {
         "unix": f"{public_url}/{latest_prefix}/install.sh",
         "windows": f"{public_url}/{latest_prefix}/install.ps1",
+    },
+    "tests": {
+        "hash": tests_metadata["hash"],
+        "scopes": tests_metadata["scopes"],
     },
     "artifacts": {
         "linuxX64": artifact("flavor-x86_64-unknown-linux-gnu.tar.gz", "application/gzip"),

@@ -45,7 +45,7 @@ impl Report {
 
     /// Construct a report that opts out of the empty-scan failure.
     ///
-    /// Used when the active `flavor.json` declared `allowEmptyScan: true` —
+    /// Used when the active config declared `allow_empty_scan: true` —
     /// typically a workspace-root config that intentionally excludes every
     /// submodule and delegates real checks to per-submodule configs.
     pub(crate) fn with_scan_allow_empty(
@@ -86,7 +86,7 @@ impl Report {
     ///
     /// A 0-match scan is almost always a misconfigured include / exclude
     /// pattern or a wrong --root, and silently exiting 0 makes CI lie. The
-    /// `allowEmptyScan` opt-out is reserved for workspace-root configs that
+    /// `allow_empty_scan` opt-out is reserved for workspace-root configs that
     /// intentionally cover nothing (they exist as walk-up boundaries while
     /// per-submodule configs do the actual work).
     pub(crate) fn is_empty_scan(&self) -> bool {
@@ -97,7 +97,7 @@ impl Report {
     ///
     /// 1 if any deny issue fired, if `--strict-warnings` is set and warnings
     /// were emitted, or if the scan matched no files (unless the config opted
-    /// into allowEmptyScan). 0 otherwise.
+    /// into allow_empty_scan). 0 otherwise.
     pub(crate) fn exit_code(&self, strict_warnings: bool) -> i32 {
         if self.deny_count() > 0
             || (strict_warnings && self.warning_count() > 0)
@@ -111,7 +111,7 @@ impl Report {
 }
 
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub(crate) struct ScanStats {
     pub(crate) matched_files: usize,
     pub(crate) scanned_files: usize,

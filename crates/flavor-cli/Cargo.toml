@@ -1,6 +1,6 @@
 [package]
 name = "flavor-cli"
-version = "0.1.4"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Personal check-only AST-backed code flavor lint CLI."
@@ -9,14 +9,17 @@ description = "Personal check-only AST-backed code flavor lint CLI."
 flavor-compiler-core = { path = "../flavor-compiler-core" }
 flavor-compiler-svelte = { path = "../flavor-compiler-svelte" }
 flavor-compiler-vue = { path = "../flavor-compiler-vue" }
+globset = "0.4"
 proc-macro2 = { version = "1", features = ["span-locations"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
 swc_common = "21.0.1"
 swc_ecma_ast = "23.0.0"
 swc_ecma_parser = "39.0.2"
 swc_ecma_visit = "23.0.0"
 syn = { version = "2", features = ["full", "visit"] }
+toml = "0.8"
 walkdir = "2"
 
 [[bin]]

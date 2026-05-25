@@ -10,7 +10,7 @@ use crate::{
     config::{source_file_kind, GuardConfig, NodeKind, SourceKind},
     model::{issue, Issue, ScanStats},
     naming::{check_rust_names, check_svelte_names, check_ts_names},
-    path_match::relative_path,
+    path_match::{path_string, relative_path},
     rules::{
         FS_TOO_MANY_CHILDREN, PAYLOAD_MAX_CHILDREN, PAYLOAD_MAX_DEPTH, PAYLOAD_MAX_LINES,
         RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE, SOURCE_TOO_DEEP, SOURCE_TOO_LONG,
@@ -26,16 +26,17 @@ pub(crate) struct ScanResult {
 }
 
 pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
-    let root = canonical_root(&config.root)?;
+    let scan_root = canonical_root(&config.root)?;
+    let config_root = canonical_root(config.config_root())?;
     let mut issues = Vec::new();
     let mut stats = ScanStats::default();
     let mut child_counts = BTreeMap::<PathBuf, usize>::new();
 
-    let mut walk = WalkDir::new(&root).into_iter();
+    let mut walk = WalkDir::new(&scan_root).into_iter();
     while let Some(entry) = walk.next() {
         let entry = entry.map_err(|error| format!("failed to walk source tree: {error}"))?;
         let path = entry.path();
-        let relative = relative_path(&root, path)?;
+        let relative = relative_path(&config_root, path)?;
 
         if config.is_excluded(&relative) {
             stats.excluded_entries += 1;
@@ -209,10 +210,6 @@ fn check_source_file(
     }
 
     Ok(())
-}
-
-pub(crate) fn path_string(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
 }
 
 fn is_generated_source(path: &Path) -> Result<bool, String> {

@@ -9,7 +9,7 @@ use syn::{
 use crate::{
     config::RuleSettings,
     model::{issue, Issue},
-    scan::path_string,
+    path_match::path_string,
 };
 
 pub(crate) fn check_rust_test_home(

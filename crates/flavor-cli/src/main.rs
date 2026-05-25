@@ -44,7 +44,7 @@ fn run() -> Result<i32, String> {
         }
     };
     let (config, source) = config::resolve(options.root, options.config)?;
-    if let ConfigSource::Discovered(path) = &source {
+    if let ConfigSource::Discovered(path) | ConfigSource::Env(path) = &source {
         eprintln!("flavor: using config {}", path.display());
     }
     let allow_empty_scan = config.allow_empty_scan();

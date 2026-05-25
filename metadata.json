@@ -1,0 +1,8 @@
+{
+  "tests": {
+    "hash": "sha256:f89440d3a933b3c2e605f3107873eb57fd7132e156109ff52e82cc9162c81255",
+    "scopes": [
+      "crates/**/tests/**"
+    ]
+  }
+}

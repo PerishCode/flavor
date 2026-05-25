@@ -36,8 +36,8 @@ curl -fsSL https://releases.flavor.perish.uk/beta/latest/install.sh \
 ## Usage
 
 ```bash
-flavor check                       # auto-discovers flavor.json at --root
-flavor check --config flavor.json  # explicit path
+flavor check                       # auto-discovers flavor.toml/yaml/json at --root
+flavor check --config flavor.toml  # explicit path
 flavor check --format json
 flavor check --strict-warnings
 flavor rules                       # browse the built-in rule catalog
@@ -50,39 +50,32 @@ Run `flavor help` for the product boundary and `flavor rules` for the full rule 
 
 ## Config
 
-A `flavor.json` has two top-level keys: `scan` (required) and `overrides` (optional).
+A `flavor.toml`, `flavor.yaml`, or `flavor.json` config has two top-level keys: `scan` and `overrides`. When `scan.include` is omitted, flavor uses built-in source defaults.
 
-```json
-{
-  "scan": {
-    "include": ["src/**", "tests/**"],
-    "exclude": ["target/**", "node_modules/**"]
-  },
-  "overrides": [
-    {
-      "match": ["src/generated/**", "vendor/**"],
-      "kind": "file",
-      "priority": 10,
-      "rules": {
-        "core/naming/too-many-words": {
-          "enabled": false,
-          "reason": "generated names mirror protocol contracts"
-        },
-        "core/source/too-long": {
-          "payload": { "max_lines": 800 },
-          "severity": "warning"
-        }
-      }
-    }
-  ]
-}
+```toml
+[scan]
+include = ["src/**", "tests/**"]
+exclude = ["target/**", "node_modules/**"]
+
+[[overrides]]
+match = ["src/generated/**", "vendor/**"]
+kind = "file"
+priority = 10
+
+[overrides.rules."core/naming/too-many-words"]
+enabled = false
+reason = "generated names mirror protocol contracts"
+
+[overrides.rules."core/source/too-long"]
+severity = "warning"
+payload = { max_lines = 800 }
 ```
 
 ### `scan`
 
 | field     | type       | required | meaning                                                                                           |
 |-----------|------------|----------|---------------------------------------------------------------------------------------------------|
-| `include` | `string[]` | yes      | Glob patterns, relative to `--root`, that scope which files the check covers.                     |
+| `include` | `string[]` | no       | Glob patterns, relative to the config directory, that scope which files the check covers. Defaults to common source roots. |
 | `exclude` | `string[]` | no       | Glob patterns subtracted from `include` (e.g. `**/target/**`, `**/node_modules/**`, `**/*.d.ts`). |
 
 ### `overrides[*]`
@@ -112,8 +105,11 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 `flavor check` resolves the config in this order:
 
 1. The `--config <path>` argument if provided. Missing or malformed → error.
-2. `<root>/flavor.json` if it exists. flavor prints `flavor: using config <path>` on stderr so a stray file at the scan root never silently changes the check.
-3. Built-in defaults. In user repos these match nothing; the empty-scan warning will flag that.
+2. `FLAVOR_CONFIG` if set. Missing or malformed → error.
+3. Walk up from `--root` looking for `flavor.toml`, then `flavor.yaml`, then `flavor.json` in each directory. flavor prints `flavor: using config <path>` on stderr when discovery or `FLAVOR_CONFIG` chooses a config.
+4. Built-in defaults rooted at `--root`.
+
+`--root` is the scan boundary. Config patterns remain relative to the config file directory.
 
 ## Workspace
 

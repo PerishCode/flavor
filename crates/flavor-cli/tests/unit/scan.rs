@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    config::GuardConfig,
+    config::{resolve, GuardConfig},
     rules::{
         FS_TOO_MANY_CHILDREN, NAMING_TOO_MANY_WORDS, RUST_TESTS_IN_SOURCE, SOURCE_TOO_DEEP,
         SOURCE_TOO_LONG, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG,
@@ -230,7 +230,8 @@ fn empty_match_rejected() {
     )
     .unwrap();
 
-    let error = GuardConfig::from_file(root.clone(), &path).unwrap_err();
+    let root = root.canonicalize().unwrap_or(root);
+    let error = GuardConfig::from_file(root.clone(), root.clone(), &path).unwrap_err();
     assert!(
         error.contains("empty 'match'"),
         "expected empty-match error, got: {error}"
@@ -274,6 +275,27 @@ fn reports_scan_coverage() {
         .issues
         .iter()
         .any(|issue| issue.rule == NAMING_TOO_MANY_WORDS));
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn root_limits_scan() {
+    let root = test_root("scan-root-boundary");
+    fs::create_dir_all(root.join("crates/one/src")).unwrap();
+    fs::create_dir_all(root.join("crates/two/src")).unwrap();
+    fs::write(
+        root.join("flavor.toml"),
+        "[scan]\ninclude = [\"crates/*/src/**\"]\n",
+    )
+    .unwrap();
+    fs::write(root.join("crates/one/src/lib.rs"), "pub fn one() {}\n").unwrap();
+    fs::write(root.join("crates/two/src/lib.rs"), "pub fn two() {}\n").unwrap();
+
+    let (config, _) = resolve(root.join("crates/one"), None).unwrap();
+    let result = run_scan(&config).unwrap();
+
+    assert_eq!(result.stats.matched_files, 1);
 
     let _ = fs::remove_dir_all(root);
 }
@@ -402,7 +424,8 @@ fn test_config(root: &Path, include: &str) -> GuardConfig {
 fn config_from(root: &Path, source: &str) -> GuardConfig {
     let path = root.join("flavor.json");
     fs::write(&path, source).unwrap();
-    GuardConfig::from_file(root.to_path_buf(), &path).unwrap()
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    GuardConfig::from_file(root.clone(), root, &path).unwrap()
 }
 
 fn issues(config: &GuardConfig) -> Vec<crate::model::Issue> {

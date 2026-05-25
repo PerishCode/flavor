@@ -29,7 +29,7 @@ It owns AST-backed code-shape rules, path-scoped checks, report output, bad-flav
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 ```
 
 ## Contribution Loop

@@ -29,9 +29,9 @@ def usage() -> None:
 Commands:
   init                      create repo-local .local/secrets/cloudflare.env template
   check                     validate repo-local credentials and probe core account APIs
-  install-plan              print the desired install.* redirect rule shape
-  install-inspect           inspect current dynamic redirect ruleset for install.* rules
-  install-ensure-redirect   create/update exact-path redirects for install.* (use --dry-run first)
+  install-plan              print the desired install/uninstall redirect rule shape
+  install-inspect           inspect current dynamic redirect ruleset for install/uninstall rules
+  install-ensure-redirect   create/update exact-path install/uninstall redirects (use --dry-run first)
   api <method> <path>       authenticated Cloudflare API call using repo-local token
     [--query key=value]...  optional query params
     [--json <json>]         optional JSON body
@@ -130,7 +130,7 @@ def cmd_install_inspect(args: list[str]) -> int:
     print(f"ruleset name: {ruleset['name']}")
     matched = [rule for rule in ruleset.get("rules", []) if rule.get("ref") in {spec.ref for spec in INSTALL_RULE_SPECS}]
     if not matched:
-        print("install inspect: no install.* redirect rules found")
+        print("install inspect: no install/uninstall redirect rules found")
         return 0
     print("install rules:")
     print(json.dumps(matched, indent=2, sort_keys=True))

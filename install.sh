@@ -129,8 +129,31 @@ install_flavor() {
 }
 
 uninstall_flavor() {
-  rm -f "$LOCAL_BIN_DIR/flavor"
-  printf 'removed %s\n' "$LOCAL_BIN_DIR/flavor"
+  bin_path="$LOCAL_BIN_DIR/flavor"
+  if [ -n "$VERSION" ]; then
+    normalized_version="v$(printf '%s' "$VERSION" | sed 's/^v//')"
+    target="$INSTALL_ROOT/$VERSION/flavor"
+    normalized_target="$INSTALL_ROOT/$normalized_version/flavor"
+    if [ -L "$bin_path" ]; then
+      link_target=$(readlink "$bin_path" || true)
+      if [ "$link_target" = "$target" ] || [ "$link_target" = "$normalized_target" ]; then
+        rm -f "$bin_path"
+        printf 'removed %s\n' "$bin_path"
+      fi
+    fi
+    rm -rf "$INSTALL_ROOT/$VERSION"
+    if [ "$normalized_version" != "$VERSION" ]; then
+      rm -rf "$INSTALL_ROOT/$normalized_version"
+    fi
+    rmdir "$INSTALL_ROOT" 2>/dev/null || true
+    printf 'removed flavor %s from %s\n' "$VERSION" "$INSTALL_ROOT"
+    return
+  fi
+
+  rm -f "$bin_path"
+  rm -rf "$INSTALL_ROOT"
+  rmdir "$LOCAL_BIN_DIR" 2>/dev/null || true
+  printf 'removed flavor from %s and %s\n' "$INSTALL_ROOT" "$bin_path"
 }
 
 case "$COMMAND" in

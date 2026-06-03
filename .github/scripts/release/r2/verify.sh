@@ -36,10 +36,24 @@ expected_windows = (
     if metadata["channel"] == "stable"
     else f"{expected_public_url}/{metadata['channel']}/latest/install.ps1"
 )
+expected_uninstall_unix = (
+    f"{expected_public_url}/uninstall.sh"
+    if metadata["channel"] == "stable"
+    else f"{expected_public_url}/{metadata['channel']}/latest/uninstall.sh"
+)
+expected_uninstall_windows = (
+    f"{expected_public_url}/uninstall.ps1"
+    if metadata["channel"] == "stable"
+    else f"{expected_public_url}/{metadata['channel']}/latest/uninstall.ps1"
+)
 if metadata["install"]["unix"] != expected_unix:
     raise SystemExit(f"unexpected unix installer url: {metadata['install']['unix']}")
 if metadata["install"]["windows"] != expected_windows:
     raise SystemExit(f"unexpected windows installer url: {metadata['install']['windows']}")
+if metadata["uninstall"]["unix"] != expected_uninstall_unix:
+    raise SystemExit(f"unexpected unix uninstaller url: {metadata['uninstall']['unix']}")
+if metadata["uninstall"]["windows"] != expected_uninstall_windows:
+    raise SystemExit(f"unexpected windows uninstaller url: {metadata['uninstall']['windows']}")
 if metadata["channel"] == "beta":
     if metadata.get("betaVersion") != os.environ["EXPECTED_RELEASE_VERSION"]:
         raise SystemExit(f"unexpected betaVersion: {metadata.get('betaVersion')}")
@@ -65,6 +79,8 @@ for item in metadata["artifacts"].values():
     print(item["url"])
 print(metadata["install"]["unix"])
 print(metadata["install"]["windows"])
+print(metadata["uninstall"]["unix"])
+print(metadata["uninstall"]["windows"])
 PY
 ); do
   curl -fsSI "$url" >/dev/null

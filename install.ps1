@@ -81,8 +81,35 @@ function Install-Flavor {
 }
 
 function Uninstall-Flavor {
-    Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $localBinDir 'flavor.exe')
-    Write-Output "removed $(Join-Path $localBinDir 'flavor.exe')"
+    $binPath = Join-Path $localBinDir 'flavor.exe'
+    if (![string]::IsNullOrWhiteSpace($version)) {
+        $normalizedVersion = "v$($version.TrimStart('v'))"
+        if ([System.IO.File]::Exists($binPath)) {
+            try {
+                $output = & $binPath --version
+                if ($output -match 'v?([0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9]+)*)') {
+                    $installedVersion = "v$($Matches[1].TrimStart('v'))"
+                    if ($installedVersion -eq $normalizedVersion) {
+                        Remove-Item -Force -ErrorAction SilentlyContinue $binPath
+                        Write-Output "removed $binPath"
+                    }
+                }
+            }
+            catch {}
+        }
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $installRoot $version)
+        if ($version -ne $normalizedVersion) {
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $installRoot $normalizedVersion)
+        }
+        try { Remove-Item -Force -ErrorAction Stop $installRoot } catch [System.IO.IOException] {}
+        Write-Output "removed flavor $version from $installRoot"
+        return
+    }
+
+    Remove-Item -Force -ErrorAction SilentlyContinue $binPath
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installRoot
+    try { Remove-Item -Force -ErrorAction Stop $localBinDir } catch [System.IO.IOException] {}
+    Write-Output "removed flavor from $installRoot and $binPath"
 }
 
 switch ($command) {

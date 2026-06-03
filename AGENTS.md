@@ -31,8 +31,8 @@ management.
 - `scripts/init.py` is the idempotent post-clone initializer. It quick-fails on
   missing required tools or repository entrypoints, installs local hooks, and
   exits cleanly only when the checkout is ready for development.
-- `install.sh` and `install.ps1` are the public installation entrypoints at the
-  repository root.
+- `install.sh`, `install.ps1`, `uninstall.sh`, and `uninstall.ps1` are the
+  public install/uninstall entrypoints at the repository root.
 - Release and installer downloads use R2 metadata and artifacts as the source of
   truth.
 
@@ -225,8 +225,9 @@ diagnostics, and typed state/config injection where needed.
 
 ### Where Do Installer Changes Go?
 
-Public installation entrypoints live at the repository root as `install.sh` and
-`install.ps1`. Release and smoke scripts should reference those root files.
+Public install/uninstall entrypoints live at the repository root as
+`install.sh`, `install.ps1`, `uninstall.sh`, and `uninstall.ps1`. Release and
+smoke scripts should reference those root files.
 
 ### Where Do Workflow Helper Scripts Go?
 

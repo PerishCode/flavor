@@ -30,6 +30,24 @@ Install the latest beta:
 curl -fsSL https://flavor.perish.uk/install.sh | sh -s -- --channel beta
 ```
 
+Uninstall every installed version:
+
+```bash
+curl -fsSL https://flavor.perish.uk/uninstall.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://flavor.perish.uk/uninstall.ps1 | pwsh
+```
+
+Uninstall one version:
+
+```bash
+curl -fsSL https://flavor.perish.uk/uninstall.sh | sh -s -- --version v0.2.2
+```
+
 ## Usage
 
 ```bash

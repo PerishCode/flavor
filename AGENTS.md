@@ -16,9 +16,17 @@ management.
 - `.github/workflows/` contains CI and release workflows.
 - `.github/scripts/` contains workflow-only helper scripts. Keep workflow-only
   scripts there.
+- `cli.sh` is the repo-local operator entrypoint for support tasks that do not
+  belong in the installable `flavor` product binary. Keep it as a thin command
+  dispatcher, not a second product CLI.
 - `grammars/` contains the repo-visible `.g4` grammar source of truth plus
   `metadata.json` contract metadata. Parser backends, facts, diagnostics, and
   harnesses should align to these files.
+- `scripts/` contains both developer helpers (`scripts/dev/`) and the
+  repo-local uv-managed Python support command tree used by `cli.sh`.
+- `.local/` is repo-local private operator state (for example Cloudflare
+  secrets). It must stay gitignored and must not become a source of truth for
+  product behavior.
 - `scripts/init.py` is the idempotent post-clone initializer. It quick-fails on
   missing required tools or repository entrypoints, installs local hooks, and
   exits cleanly only when the checkout is ready for development.

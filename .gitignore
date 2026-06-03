@@ -1,6 +1,9 @@
 .DS_Store
+.local/
 .task/
 .tmp/
+__pycache__/
 dist/
+scripts/.venv/
 target/
 crates/*/target/

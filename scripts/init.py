@@ -21,6 +21,7 @@ REQUIRED_TOOLS = (
     "git",
     "python3",
     "cargo",
+    "uv",
     "sh",
     "bash",
     "sed",
@@ -30,6 +31,7 @@ REQUIRED_TOOLS = (
 REQUIRED_PATHS = (
     "Cargo.toml",
     "Cargo.lock",
+    "cli.sh",
     "flavor.json",
     "install.sh",
     "install.ps1",
@@ -37,6 +39,9 @@ REQUIRED_PATHS = (
     ".github/scripts/release/r2/publish.sh",
     ".github/scripts/release/smoke/smoke.sh",
     ".github/scripts/release/smoke/smoke.ps1",
+    "scripts/pyproject.toml",
+    "scripts/uv.lock",
+    "scripts/cli/cloudflare.py",
     "scripts/dev/antlr.py",
     "scripts/init.py",
 )
@@ -57,6 +62,7 @@ echo "==> flavor self-check"
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 
 echo "==> shell syntax"
+sh -n cli.sh
 sh -n install.sh
 bash -n .github/scripts/release/r2/publish.sh
 sh -n .github/scripts/release/smoke/smoke.sh
@@ -64,6 +70,10 @@ sh -n .github/scripts/release/smoke/smoke.sh
 echo "==> python syntax"
 python3 -m py_compile scripts/init.py
 python3 -m py_compile scripts/dev/antlr.py
+python3 -m py_compile scripts/cli/cloudflare.py
+python3 -m py_compile scripts/lib/cloudflare.py
+python3 -m py_compile scripts/lib/utils/cli.py
+python3 -m py_compile scripts/lib/utils/paths.py
 
 if command -v pwsh >/dev/null 2>&1; then
   echo "==> PowerShell syntax"

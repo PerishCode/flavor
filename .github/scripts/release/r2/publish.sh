@@ -61,11 +61,17 @@ done
 
 upload "$GITHUB_WORKSPACE/install.sh" "$version_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
 upload "$GITHUB_WORKSPACE/install.ps1" "$version_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
+upload "$GITHUB_WORKSPACE/uninstall.sh" "$version_prefix/uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
+upload "$GITHUB_WORKSPACE/uninstall.ps1" "$version_prefix/uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
 upload "$GITHUB_WORKSPACE/install.sh" "$latest_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
 upload "$GITHUB_WORKSPACE/install.ps1" "$latest_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+upload "$GITHUB_WORKSPACE/uninstall.sh" "$latest_prefix/uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
+upload "$GITHUB_WORKSPACE/uninstall.ps1" "$latest_prefix/uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
 if [ "$publish_root_installers" -eq 1 ]; then
   upload "$GITHUB_WORKSPACE/install.sh" "install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
   upload "$GITHUB_WORKSPACE/install.ps1" "install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+  upload "$GITHUB_WORKSPACE/uninstall.sh" "uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
+  upload "$GITHUB_WORKSPACE/uninstall.ps1" "uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
 fi
 
 PUBLIC_URL="$public_url" \
@@ -126,6 +132,18 @@ metadata = {
             f"{public_url}/install.ps1"
             if env["PUBLISH_ROOT_INSTALLERS"] == "1"
             else f"{public_url}/{latest_prefix}/install.ps1"
+        ),
+    },
+    "uninstall": {
+        "unix": (
+            f"{public_url}/uninstall.sh"
+            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
+            else f"{public_url}/{latest_prefix}/uninstall.sh"
+        ),
+        "windows": (
+            f"{public_url}/uninstall.ps1"
+            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
+            else f"{public_url}/{latest_prefix}/uninstall.ps1"
         ),
     },
     "artifacts": {

@@ -18,6 +18,8 @@ mkdir -p "$HOME" "$FLAVOR_INSTALL_ROOT" "$FLAVOR_LOCAL_BIN_DIR"
 sh "$ROOT/install.sh" install --channel "$CHANNEL" --version "$VERSION"
 "$FLAVOR_LOCAL_BIN_DIR/flavor" --version
 "$FLAVOR_LOCAL_BIN_DIR/flavor" check --root "$ROOT" --config "$ROOT/flavor.json"
+sh "$ROOT/uninstall.sh" --version "$VERSION"
+[ ! -e "$FLAVOR_INSTALL_ROOT/$VERSION" ] || { printf '%s\n' "version uninstall left $FLAVOR_INSTALL_ROOT/$VERSION" >&2; exit 1; }
 
 if [ "${SMOKE_LATEST:-}" = "1" ]; then
   rm -f "$FLAVOR_LOCAL_BIN_DIR/flavor"
@@ -25,4 +27,6 @@ if [ "${SMOKE_LATEST:-}" = "1" ]; then
   sh "$ROOT/install.sh" install --channel "$CHANNEL" --install-root "$FLAVOR_INSTALL_ROOT/latest-smoke"
   "$FLAVOR_LOCAL_BIN_DIR/flavor" --version
   "$FLAVOR_LOCAL_BIN_DIR/flavor" check --root "$ROOT" --config "$ROOT/flavor.json"
+  sh "$ROOT/uninstall.sh" --install-root "$FLAVOR_INSTALL_ROOT/latest-smoke"
+  [ ! -e "$FLAVOR_INSTALL_ROOT/latest-smoke" ] || { printf '%s\n' "full uninstall left $FLAVOR_INSTALL_ROOT/latest-smoke" >&2; exit 1; }
 fi

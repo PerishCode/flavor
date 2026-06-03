@@ -51,6 +51,16 @@ INSTALL_RULE_SPECS = (
         description="Redirect flavor install.ps1 to releases bucket asset",
         path="/install.ps1",
     ),
+    InstallRuleSpec(
+        ref="flavor_uninstall_sh_redirect",
+        description="Redirect flavor uninstall.sh to releases bucket asset",
+        path="/uninstall.sh",
+    ),
+    InstallRuleSpec(
+        ref="flavor_uninstall_ps1_redirect",
+        description="Redirect flavor uninstall.ps1 to releases bucket asset",
+        path="/uninstall.ps1",
+    ),
 )
 
 

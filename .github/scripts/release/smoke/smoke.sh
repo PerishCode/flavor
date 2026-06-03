@@ -6,7 +6,6 @@ VERSION=${1:-}
 CHANNEL=${2:-stable}
 
 [ -n "$VERSION" ] || { printf '%s\n' 'missing release version' >&2; exit 1; }
-[ -n "${FLAVOR_RELEASES_PUBLIC_URL:-}" ] || { printf '%s\n' 'FLAVOR_RELEASES_PUBLIC_URL is required' >&2; exit 1; }
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT INT TERM

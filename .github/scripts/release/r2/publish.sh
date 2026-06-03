@@ -13,6 +13,11 @@ public_url="${FLAVOR_RELEASES_PUBLIC_URL%/}"
 version_prefix="$RELEASE_CHANNEL/versions/$RELEASE_VERSION"
 latest_prefix="$RELEASE_CHANNEL/latest"
 metadata_path="$release_root/metadata.json"
+publish_root_installers=0
+
+if [ "$RELEASE_CHANNEL" = "stable" ]; then
+  publish_root_installers=1
+fi
 
 upload() {
   local file_path="$1"
@@ -58,12 +63,17 @@ upload "$GITHUB_WORKSPACE/install.sh" "$version_prefix/install.sh" "text/x-shell
 upload "$GITHUB_WORKSPACE/install.ps1" "$version_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
 upload "$GITHUB_WORKSPACE/install.sh" "$latest_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
 upload "$GITHUB_WORKSPACE/install.ps1" "$latest_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+if [ "$publish_root_installers" -eq 1 ]; then
+  upload "$GITHUB_WORKSPACE/install.sh" "install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
+  upload "$GITHUB_WORKSPACE/install.ps1" "install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+fi
 
 PUBLIC_URL="$public_url" \
 VERSION_PREFIX="$version_prefix" \
 LATEST_PREFIX="$latest_prefix" \
 RELEASE_ROOT="$release_root" \
 METADATA_PATH="$metadata_path" \
+PUBLISH_ROOT_INSTALLERS="$publish_root_installers" \
 python3 <<'PY'
 import json
 import os
@@ -107,8 +117,16 @@ metadata = {
         "latestPrefix": latest_prefix,
     },
     "install": {
-        "unix": f"{public_url}/{latest_prefix}/install.sh",
-        "windows": f"{public_url}/{latest_prefix}/install.ps1",
+        "unix": (
+            f"{public_url}/install.sh"
+            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
+            else f"{public_url}/{latest_prefix}/install.sh"
+        ),
+        "windows": (
+            f"{public_url}/install.ps1"
+            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
+            else f"{public_url}/{latest_prefix}/install.ps1"
+        ),
     },
     "artifacts": {
         "linuxX64": artifact("flavor-x86_64-unknown-linux-gnu.tar.gz", "application/gzip"),

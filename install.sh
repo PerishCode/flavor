@@ -6,7 +6,7 @@ COMMAND=${1:-install}
 
 CHANNEL=${FLAVOR_CHANNEL:-stable}
 VERSION=${FLAVOR_VERSION:-}
-PUBLIC_URL=${FLAVOR_RELEASES_PUBLIC_URL:-}
+PUBLIC_URL=${FLAVOR_RELEASES_PUBLIC_URL:-https://releases.flavor.perish.uk}
 INSTALL_ROOT=${FLAVOR_INSTALL_ROOT:-"$HOME/.local/share/flavor"}
 LOCAL_BIN_DIR=${FLAVOR_LOCAL_BIN_DIR:-"$HOME/.local/bin"}
 
@@ -62,12 +62,13 @@ while [ $# -gt 0 ]; do
 flavor installer
 
 Usage:
+  install.sh
   install.sh install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
   install.sh upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
   install.sh uninstall
 
 Environment:
-  FLAVOR_RELEASES_PUBLIC_URL
+  FLAVOR_RELEASES_PUBLIC_URL  # default: https://releases.flavor.perish.uk
   FLAVOR_CHANNEL
   FLAVOR_VERSION
   FLAVOR_INSTALL_ROOT
@@ -83,10 +84,6 @@ EOF
 done
 
 need_public_url() {
-  [ -n "$PUBLIC_URL" ] || {
-    echo "FLAVOR_RELEASES_PUBLIC_URL or --public-url is required" >&2
-    exit 1
-  }
   PUBLIC_URL=${PUBLIC_URL%/}
 }
 

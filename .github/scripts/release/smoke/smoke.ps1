@@ -4,10 +4,6 @@ $root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -
 $version = if ($args.Length -gt 0) { $args[0] } else { throw 'missing release version' }
 $channel = if ($args.Length -gt 1) { $args[1] } else { 'stable' }
 
-if ([string]::IsNullOrWhiteSpace($env:FLAVOR_RELEASES_PUBLIC_URL)) {
-    throw 'FLAVOR_RELEASES_PUBLIC_URL is required'
-}
-
 $tmpdir = Join-Path ([System.IO.Path]::GetTempPath()) ("flavor-smoke-" + [System.Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmpdir | Out-Null
 

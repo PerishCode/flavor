@@ -42,6 +42,8 @@ REQUIRED_PATHS = (
     "scripts/pyproject.toml",
     "scripts/uv.lock",
     "scripts/cli/cloudflare.py",
+    "scripts/cli/pr.py",
+    "scripts/cli/release.py",
     "scripts/dev/antlr.py",
     "scripts/init.py",
 )
@@ -71,6 +73,8 @@ echo "==> python syntax"
 python3 -m py_compile scripts/init.py
 python3 -m py_compile scripts/dev/antlr.py
 python3 -m py_compile scripts/cli/cloudflare.py
+python3 -m py_compile scripts/cli/pr.py
+python3 -m py_compile scripts/cli/release.py
 python3 -m py_compile scripts/lib/cloudflare.py
 python3 -m py_compile scripts/lib/utils/cli.py
 python3 -m py_compile scripts/lib/utils/paths.py

@@ -3,6 +3,9 @@
 .task/
 .tmp/
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
 dist/
 scripts/.venv/
 target/

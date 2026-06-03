@@ -18,7 +18,8 @@ management.
   scripts there.
 - `cli.sh` is the repo-local operator entrypoint for support tasks that do not
   belong in the installable `flavor` product binary. Keep it as a thin command
-  dispatcher, not a second product CLI.
+  dispatcher, not a second product CLI. Current support commands are
+  `:cloudflare`, `:pr`, and `:release`.
 - `grammars/` contains the repo-visible `.g4` grammar source of truth plus
   `metadata.json` contract metadata. Parser backends, facts, diagnostics, and
   harnesses should align to these files.

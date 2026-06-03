@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-commands="cloudflare"
+commands="cloudflare pr release"
 
 if [ "$#" -lt 1 ]; then
   echo "usage: ./cli.sh :<command> [args...]" >&2

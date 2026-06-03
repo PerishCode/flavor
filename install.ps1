@@ -5,7 +5,7 @@ $remaining = if ($args.Length -gt 1) { $args[1..($args.Length - 1)] } else { @()
 
 $channel = if ($env:FLAVOR_CHANNEL) { $env:FLAVOR_CHANNEL } else { 'stable' }
 $version = if ($env:FLAVOR_VERSION) { $env:FLAVOR_VERSION } else { '' }
-$publicUrl = if ($env:FLAVOR_RELEASES_PUBLIC_URL) { $env:FLAVOR_RELEASES_PUBLIC_URL } else { '' }
+$publicUrl = if ($env:FLAVOR_RELEASES_PUBLIC_URL) { $env:FLAVOR_RELEASES_PUBLIC_URL } else { 'https://releases.flavor.perish.uk' }
 $installRoot = if ($env:FLAVOR_INSTALL_ROOT) { $env:FLAVOR_INSTALL_ROOT } else { Join-Path $env:LOCALAPPDATA 'flavor' }
 $localBinDir = if ($env:FLAVOR_LOCAL_BIN_DIR) { $env:FLAVOR_LOCAL_BIN_DIR } else { Join-Path $env:USERPROFILE '.local\bin' }
 
@@ -27,12 +27,13 @@ for ($i = 0; $i -lt $remaining.Length; $i++) {
 flavor installer
 
 Usage:
+  install.ps1
   install.ps1 install [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
   install.ps1 upgrade [--channel stable|beta] [--version vX.Y.Z] [--public-url <url>]
   install.ps1 uninstall
 
 Environment:
-  FLAVOR_RELEASES_PUBLIC_URL
+  FLAVOR_RELEASES_PUBLIC_URL  # default: https://releases.flavor.perish.uk
   FLAVOR_CHANNEL
   FLAVOR_VERSION
   FLAVOR_INSTALL_ROOT
@@ -45,9 +46,6 @@ Environment:
 }
 
 function Require-PublicUrl {
-    if ([string]::IsNullOrWhiteSpace($publicUrl)) {
-        throw 'FLAVOR_RELEASES_PUBLIC_URL or --public-url is required'
-    }
     return $publicUrl.TrimEnd('/')
 }
 

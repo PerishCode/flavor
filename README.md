@@ -9,28 +9,25 @@ Personal check-only code flavor lint CLI.
 Unix:
 
 ```bash
-curl -fsSL https://releases.flavor.perish.uk/stable/latest/install.sh \
-  | sh -s -- install --public-url https://releases.flavor.perish.uk
+curl -fsSL https://flavor.perish.uk/install.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((irm "https://releases.flavor.perish.uk/stable/latest/install.ps1"))) install --public-url https://releases.flavor.perish.uk
+irm https://flavor.perish.uk/install.ps1 | pwsh
 ```
 
 Pin a version:
 
 ```bash
-curl -fsSL https://releases.flavor.perish.uk/stable/versions/v0.1.0/install.sh \
-  | sh -s -- install --version v0.1.0 --public-url https://releases.flavor.perish.uk
+curl -fsSL https://flavor.perish.uk/install.sh | sh -s -- --version v0.1.0
 ```
 
 Install the latest beta:
 
 ```bash
-curl -fsSL https://releases.flavor.perish.uk/beta/latest/install.sh \
-  | sh -s -- install --channel beta --public-url https://releases.flavor.perish.uk
+curl -fsSL https://flavor.perish.uk/install.sh | sh -s -- --channel beta
 ```
 
 ## Usage

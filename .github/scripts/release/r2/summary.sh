@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for name in GITHUB_STEP_SUMMARY RELEASE_CHANNEL RELEASE_VERSION R2_METADATA_URL R2_VERSION_METADATA_URL R2_VERSION_PREFIX; do
+for name in GITHUB_STEP_SUMMARY RELEASE_CHANNEL RELEASE_VERSION R2_METADATA_URL R2_VERSION_METADATA_URL R2_VERSION_PREFIX FLAVOR_RELEASES_PUBLIC_URL; do
   if [ -z "${!name:-}" ]; then
     echo "$name is required" >&2
     exit 1
@@ -28,6 +28,10 @@ done
   echo ""
   echo "### Links"
   echo ""
+  if [ "$RELEASE_CHANNEL" = "stable" ]; then
+    echo "- Stable unix installer: ${FLAVOR_RELEASES_PUBLIC_URL%/}/install.sh"
+    echo "- Stable windows installer: ${FLAVOR_RELEASES_PUBLIC_URL%/}/install.ps1"
+  fi
   echo "- Latest metadata: ${R2_METADATA_URL}"
   echo "- Version metadata: ${R2_VERSION_METADATA_URL}"
 } >> "$GITHUB_STEP_SUMMARY"

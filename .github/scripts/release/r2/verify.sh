@@ -14,6 +14,7 @@ curl -fsSL "$R2_METADATA_URL?run=${GITHUB_RUN_ID:-local}" -o "$metadata"
 DOWNLOADED_METADATA="$metadata" \
 EXPECTED_CHANNEL="$RELEASE_CHANNEL" \
 EXPECTED_RELEASE_VERSION="$RELEASE_VERSION" \
+EXPECTED_PUBLIC_URL="${FLAVOR_RELEASES_PUBLIC_URL%/}" \
 python3 <<'PY'
 import json
 import os
@@ -24,6 +25,21 @@ if metadata["channel"] != os.environ["EXPECTED_CHANNEL"]:
     raise SystemExit(f"unexpected channel: {metadata['channel']}")
 if metadata["releaseVersion"] != os.environ["EXPECTED_RELEASE_VERSION"]:
     raise SystemExit(f"unexpected releaseVersion: {metadata['releaseVersion']}")
+expected_public_url = os.environ["EXPECTED_PUBLIC_URL"]
+expected_unix = (
+    f"{expected_public_url}/install.sh"
+    if metadata["channel"] == "stable"
+    else f"{expected_public_url}/{metadata['channel']}/latest/install.sh"
+)
+expected_windows = (
+    f"{expected_public_url}/install.ps1"
+    if metadata["channel"] == "stable"
+    else f"{expected_public_url}/{metadata['channel']}/latest/install.ps1"
+)
+if metadata["install"]["unix"] != expected_unix:
+    raise SystemExit(f"unexpected unix installer url: {metadata['install']['unix']}")
+if metadata["install"]["windows"] != expected_windows:
+    raise SystemExit(f"unexpected windows installer url: {metadata['install']['windows']}")
 if metadata["channel"] == "beta":
     if metadata.get("betaVersion") != os.environ["EXPECTED_RELEASE_VERSION"]:
         raise SystemExit(f"unexpected betaVersion: {metadata.get('betaVersion')}")

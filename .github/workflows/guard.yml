@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   quality:
-    name: quality
+    name: guard (ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -38,7 +38,7 @@ jobs:
         run: cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 
   cross-platform-tests:
-    name: test (${{ matrix.os }})
+    name: guard (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:

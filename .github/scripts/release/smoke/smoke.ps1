@@ -11,10 +11,10 @@ try {
     $env:FLAVOR_INSTALL_ROOT = Join-Path $tmpdir 'install'
     $env:FLAVOR_LOCAL_BIN_DIR = Join-Path $tmpdir 'bin'
     New-Item -ItemType Directory -Force -Path $env:FLAVOR_INSTALL_ROOT, $env:FLAVOR_LOCAL_BIN_DIR | Out-Null
-    & (Join-Path $root 'install.ps1') install --channel $channel --version $version
+    & (Join-Path $root 'manage.ps1') install --channel $channel --version $version --retain=false
     & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') --version
     & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') check --root $root --config (Join-Path $root 'flavor.json')
-    & (Join-Path $root 'uninstall.ps1') --version $version
+    & (Join-Path $root 'manage.ps1') uninstall --version $version
     if (Test-Path (Join-Path $env:FLAVOR_INSTALL_ROOT $version)) {
         throw "version uninstall left $(Join-Path $env:FLAVOR_INSTALL_ROOT $version)"
     }
@@ -22,10 +22,10 @@ try {
     if ($env:SMOKE_LATEST -eq '1') {
         Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe')
         $env:FLAVOR_INSTALL_ROOT = Join-Path $tmpdir 'latest-smoke'
-        & (Join-Path $root 'install.ps1') install --channel $channel
+        & (Join-Path $root 'manage.ps1') install --channel $channel --retain=false
         & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') --version
         & (Join-Path $env:FLAVOR_LOCAL_BIN_DIR 'flavor.exe') check --root $root --config (Join-Path $root 'flavor.json')
-        & (Join-Path $root 'uninstall.ps1') --install-root $env:FLAVOR_INSTALL_ROOT
+        & (Join-Path $root 'manage.ps1') uninstall --install-root $env:FLAVOR_INSTALL_ROOT
         if (Test-Path $env:FLAVOR_INSTALL_ROOT) {
             throw "full uninstall left $env:FLAVOR_INSTALL_ROOT"
         }

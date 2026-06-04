@@ -17,10 +17,10 @@ TOKEN_FILE = SECRETS_DIR / "cloudflare.env"
 REQUIRED_KEYS = ("CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN")
 API_BASE = "https://api.cloudflare.com/client/v4"
 DEFAULT_ZONE_NAME = "perish.uk"
-DEFAULT_INSTALL_HOST = "flavor.perish.uk"
-DEFAULT_INSTALL_ORIGIN_HOST = "releases.flavor.perish.uk"
-DEFAULT_INSTALL_REDIRECT_PREFIX = "stable/latest"
-INSTALL_REDIRECT_STATUS_CODE = 302
+DEFAULT_MANAGE_HOST = "flavor.perish.uk"
+DEFAULT_MANAGE_ORIGIN_HOST = "releases.flavor.perish.uk"
+DEFAULT_MANAGE_REDIRECT_PREFIX = ""
+MANAGE_REDIRECT_STATUS_CODE = 302
 
 
 @dataclass(frozen=True)
@@ -28,38 +28,28 @@ class CloudflareConfig:
     account_id: str
     api_token: str
     zone_name: str
-    install_host: str
-    install_origin_host: str
-    install_redirect_prefix: str
+    manage_host: str
+    manage_origin_host: str
+    manage_redirect_prefix: str
 
 
 @dataclass(frozen=True)
-class InstallRuleSpec:
+class ManageRuleSpec:
     ref: str
     description: str
     path: str
 
 
-INSTALL_RULE_SPECS = (
-    InstallRuleSpec(
-        ref="flavor_install_sh_redirect",
-        description="Redirect flavor install.sh to releases bucket asset",
-        path="/install.sh",
+MANAGE_RULE_SPECS = (
+    ManageRuleSpec(
+        ref="flavor_manage_sh_redirect",
+        description="Redirect flavor manage.sh to releases bucket asset",
+        path="/manage.sh",
     ),
-    InstallRuleSpec(
-        ref="flavor_install_ps1_redirect",
-        description="Redirect flavor install.ps1 to releases bucket asset",
-        path="/install.ps1",
-    ),
-    InstallRuleSpec(
-        ref="flavor_uninstall_sh_redirect",
-        description="Redirect flavor uninstall.sh to releases bucket asset",
-        path="/uninstall.sh",
-    ),
-    InstallRuleSpec(
-        ref="flavor_uninstall_ps1_redirect",
-        description="Redirect flavor uninstall.ps1 to releases bucket asset",
-        path="/uninstall.ps1",
+    ManageRuleSpec(
+        ref="flavor_manage_ps1_redirect",
+        description="Redirect flavor manage.ps1 to releases bucket asset",
+        path="/manage.ps1",
     ),
 )
 
@@ -94,11 +84,11 @@ def load_config() -> CloudflareConfig:
         account_id=values["CLOUDFLARE_ACCOUNT_ID"],
         api_token=values["CLOUDFLARE_API_TOKEN"],
         zone_name=values.get("CLOUDFLARE_ZONE_NAME", DEFAULT_ZONE_NAME),
-        install_host=values.get("CLOUDFLARE_INSTALL_HOST", DEFAULT_INSTALL_HOST),
-        install_origin_host=values.get("CLOUDFLARE_INSTALL_ORIGIN_HOST", DEFAULT_INSTALL_ORIGIN_HOST),
-        install_redirect_prefix=values.get(
-            "CLOUDFLARE_INSTALL_REDIRECT_PREFIX",
-            DEFAULT_INSTALL_REDIRECT_PREFIX,
+        manage_host=values.get("CLOUDFLARE_MANAGE_HOST", DEFAULT_MANAGE_HOST),
+        manage_origin_host=values.get("CLOUDFLARE_MANAGE_ORIGIN_HOST", DEFAULT_MANAGE_ORIGIN_HOST),
+        manage_redirect_prefix=values.get(
+            "CLOUDFLARE_MANAGE_REDIRECT_PREFIX",
+            DEFAULT_MANAGE_REDIRECT_PREFIX,
         ).strip("/"),
     )
 
@@ -115,9 +105,9 @@ def write_template() -> bool:
                 "CLOUDFLARE_ACCOUNT_ID=",
                 "CLOUDFLARE_API_TOKEN=",
                 f"CLOUDFLARE_ZONE_NAME={DEFAULT_ZONE_NAME}",
-                f"CLOUDFLARE_INSTALL_HOST={DEFAULT_INSTALL_HOST}",
-                f"CLOUDFLARE_INSTALL_ORIGIN_HOST={DEFAULT_INSTALL_ORIGIN_HOST}",
-                f"CLOUDFLARE_INSTALL_REDIRECT_PREFIX={DEFAULT_INSTALL_REDIRECT_PREFIX}",
+                f"CLOUDFLARE_MANAGE_HOST={DEFAULT_MANAGE_HOST}",
+                f"CLOUDFLARE_MANAGE_ORIGIN_HOST={DEFAULT_MANAGE_ORIGIN_HOST}",
+                f"CLOUDFLARE_MANAGE_REDIRECT_PREFIX={DEFAULT_MANAGE_REDIRECT_PREFIX}",
                 "",
             ]
         ),
@@ -170,15 +160,15 @@ def api_request(
     return payload
 
 
-def install_redirect_url(config: CloudflareConfig, spec: InstallRuleSpec) -> str:
-    if not config.install_redirect_prefix:
-        return f"https://{config.install_origin_host}{spec.path}"
-    return f"https://{config.install_origin_host}/{config.install_redirect_prefix}{spec.path}"
+def manage_redirect_url(config: CloudflareConfig, spec: ManageRuleSpec) -> str:
+    if not config.manage_redirect_prefix:
+        return f"https://{config.manage_origin_host}{spec.path}"
+    return f"https://{config.manage_origin_host}/{config.manage_redirect_prefix}{spec.path}"
 
 
-def install_rule_definition(config: CloudflareConfig, spec: InstallRuleSpec) -> dict[str, Any]:
+def manage_rule_definition(config: CloudflareConfig, spec: ManageRuleSpec) -> dict[str, Any]:
     expression = (
-        f'(http.host eq "{config.install_host}" and http.request.uri.path eq "{spec.path}")'
+        f'(http.host eq "{config.manage_host}" and http.request.uri.path eq "{spec.path}")'
     )
     return {
         "ref": spec.ref,
@@ -189,9 +179,9 @@ def install_rule_definition(config: CloudflareConfig, spec: InstallRuleSpec) -> 
         "action_parameters": {
             "from_value": {
                 "target_url": {
-                    "value": install_redirect_url(config, spec),
+                    "value": manage_redirect_url(config, spec),
                 },
-                "status_code": INSTALL_REDIRECT_STATUS_CODE,
+                "status_code": MANAGE_REDIRECT_STATUS_CODE,
                 "preserve_query_string": False,
             },
         },

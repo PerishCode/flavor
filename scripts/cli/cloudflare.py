@@ -4,7 +4,7 @@ import argparse
 import json
 
 from lib.cloudflare import (
-    INSTALL_RULE_SPECS,
+    MANAGE_RULE_SPECS,
     TOKEN_FILE,
     add_rule,
     api_request,
@@ -12,7 +12,7 @@ from lib.cloudflare import (
     ensure_local_layout,
     find_phase_ruleset,
     get_ruleset,
-    install_rule_definition,
+    manage_rule_definition,
     load_config,
     masked,
     resolve_zone_id,
@@ -29,9 +29,9 @@ def usage() -> None:
 Commands:
   init                      create repo-local .local/secrets/cloudflare.env template
   check                     validate repo-local credentials and probe core account APIs
-  install-plan              print the desired install/uninstall redirect rule shape
-  install-inspect           inspect current dynamic redirect ruleset for install/uninstall rules
-  install-ensure-redirect   create/update exact-path install/uninstall redirects (use --dry-run first)
+  manage-plan               print the desired manage redirect rule shape
+  manage-inspect            inspect current dynamic redirect ruleset for manage rules
+  manage-ensure-redirect    create/update exact-path manage redirects (use --dry-run first)
   api <method> <path>       authenticated Cloudflare API call using repo-local token
     [--query key=value]...  optional query params
     [--json <json>]         optional JSON body
@@ -85,7 +85,7 @@ def cmd_check(args: list[str]) -> int:
         print(f"account name: {account['result']['name']}")
     elif account_error:
         print("account probe: skipped (token is not authorized for account details)")
-    print(f"install zone: {config.zone_name} ({zone_id})")
+    print(f"manage zone: {config.zone_name} ({zone_id})")
     print(f"zone rulesets: {len(rulesets.get('result', []))}")
     print("zones:")
     for zone in zones.get("result", []):
@@ -99,59 +99,59 @@ def cmd_check(args: list[str]) -> int:
     return 0
 
 
-def cmd_install_plan(args: list[str]) -> int:
+def cmd_manage_plan(args: list[str]) -> int:
     if args:
-        raise RuntimeError("install-plan does not accept arguments")
+        raise RuntimeError("manage-plan does not accept arguments")
     config = load_config()
-    print("install redirect plan")
+    print("manage redirect plan")
     print(f"zone: {config.zone_name}")
-    print(f"request host: {config.install_host}")
-    print(f"redirect host: {config.install_origin_host}")
+    print(f"request host: {config.manage_host}")
+    print(f"redirect host: {config.manage_origin_host}")
     print("phase: http_request_dynamic_redirect")
     print("rules:")
-    for spec in INSTALL_RULE_SPECS:
-        rule = install_rule_definition(config, spec)
+    for spec in MANAGE_RULE_SPECS:
+        rule = manage_rule_definition(config, spec)
         print(json.dumps(rule, indent=2, sort_keys=True))
     return 0
 
 
-def cmd_install_inspect(args: list[str]) -> int:
+def cmd_manage_inspect(args: list[str]) -> int:
     if args:
-        raise RuntimeError("install-inspect does not accept arguments")
+        raise RuntimeError("manage-inspect does not accept arguments")
     config = load_config()
     zone_id = resolve_zone_id(config)
     ruleset = find_phase_ruleset(config, zone_id, phase="http_request_dynamic_redirect")
     if ruleset is None:
-        print("install inspect: no http_request_dynamic_redirect zone ruleset found")
+        print("manage inspect: no http_request_dynamic_redirect zone ruleset found")
         return 0
     ruleset = get_ruleset(config, zone_id, ruleset["id"])
     print(f"zone id: {zone_id}")
     print(f"ruleset id: {ruleset['id']}")
     print(f"ruleset name: {ruleset['name']}")
-    matched = [rule for rule in ruleset.get("rules", []) if rule.get("ref") in {spec.ref for spec in INSTALL_RULE_SPECS}]
+    matched = [rule for rule in ruleset.get("rules", []) if rule.get("ref") in {spec.ref for spec in MANAGE_RULE_SPECS}]
     if not matched:
-        print("install inspect: no install/uninstall redirect rules found")
+        print("manage inspect: no manage redirect rules found")
         return 0
-    print("install rules:")
+    print("manage rules:")
     print(json.dumps(matched, indent=2, sort_keys=True))
     return 0
 
 
-def cmd_install_ensure_redirect(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="./cli.sh :cloudflare install-ensure-redirect", add_help=False)
+def cmd_manage_ensure_redirect(args: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="./cli.sh :cloudflare manage-ensure-redirect", add_help=False)
     parser.add_argument("--dry-run", action="store_true")
     parsed = parser.parse_args(args)
 
     config = load_config()
     zone_id = resolve_zone_id(config)
-    planned_rules = [install_rule_definition(config, spec) for spec in INSTALL_RULE_SPECS]
+    planned_rules = [manage_rule_definition(config, spec) for spec in MANAGE_RULE_SPECS]
 
     if parsed.dry_run:
         payload = {
             "zone": config.zone_name,
             "zone_id": zone_id,
-            "request_host": config.install_host,
-            "redirect_host": config.install_origin_host,
+            "request_host": config.manage_host,
+            "redirect_host": config.manage_origin_host,
             "phase": "http_request_dynamic_redirect",
             "planned_rules": planned_rules,
         }
@@ -180,7 +180,7 @@ def cmd_install_ensure_redirect(args: list[str]) -> int:
         update_rule(config, zone_id, ruleset["id"], current["id"], planned_rule)
         changed.append(f"updated {planned_rule['ref']}")
 
-    print("install ensure redirect: ok")
+    print("manage ensure redirect: ok")
     for item in changed:
         print(f"  - {item}")
     return 0
@@ -223,9 +223,9 @@ def cmd_api(args: list[str]) -> int:
 COMMANDS = {
     "init": cmd_init,
     "check": cmd_check,
-    "install-plan": cmd_install_plan,
-    "install-inspect": cmd_install_inspect,
-    "install-ensure-redirect": cmd_install_ensure_redirect,
+    "manage-plan": cmd_manage_plan,
+    "manage-inspect": cmd_manage_inspect,
+    "manage-ensure-redirect": cmd_manage_ensure_redirect,
     "api": cmd_api,
 }
 

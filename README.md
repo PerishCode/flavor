@@ -9,43 +9,49 @@ Personal check-only code flavor lint CLI.
 Unix:
 
 ```bash
-curl -fsSL https://flavor.perish.uk/install.sh | sh
+curl -fsSL https://flavor.perish.uk/manage.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://flavor.perish.uk/install.ps1 | pwsh
+irm https://flavor.perish.uk/manage.ps1 | pwsh
 ```
 
 Pin a version:
 
 ```bash
-curl -fsSL https://flavor.perish.uk/install.sh | sh -s -- --version v0.1.0
+curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- install --version v0.1.0
 ```
 
 Install the latest beta:
 
 ```bash
-curl -fsSL https://flavor.perish.uk/install.sh | sh -s -- --channel beta
+curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- install --channel beta
+```
+
+Keep older installed versions instead of prompting or pruning:
+
+```bash
+curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- install --retain=true
 ```
 
 Uninstall every installed version:
 
 ```bash
-curl -fsSL https://flavor.perish.uk/uninstall.sh | sh
+curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- uninstall
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://flavor.perish.uk/uninstall.ps1 | pwsh
+& ([scriptblock]::Create((irm https://flavor.perish.uk/manage.ps1))) uninstall
 ```
 
 Uninstall one version:
 
 ```bash
-curl -fsSL https://flavor.perish.uk/uninstall.sh | sh -s -- --version v0.2.2
+curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- uninstall --version v0.2.2
 ```
 
 ## Usage

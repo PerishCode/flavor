@@ -33,10 +33,8 @@ REQUIRED_PATHS = (
     "Cargo.lock",
     "cli.sh",
     "flavor.json",
-    "install.sh",
-    "install.ps1",
-    "uninstall.sh",
-    "uninstall.ps1",
+    "manage.sh",
+    "manage.ps1",
     ".github/workflows/guard.yml",
     ".github/scripts/release/r2/publish.sh",
     ".github/scripts/release/smoke/smoke.sh",
@@ -67,8 +65,7 @@ cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 
 echo "==> shell syntax"
 sh -n cli.sh
-sh -n install.sh
-sh -n uninstall.sh
+sh -n manage.sh
 bash -n .github/scripts/release/r2/publish.sh
 sh -n .github/scripts/release/smoke/smoke.sh
 
@@ -91,7 +88,7 @@ foreach ($path in $args) {{
   [scriptblock]::Create((Get-Content -Raw $path)) | Out-Null
 }}
 ' \\
-    install.ps1 uninstall.ps1 .github/scripts/release/smoke/smoke.ps1
+    manage.ps1 .github/scripts/release/smoke/smoke.ps1
 else
   echo "==> PowerShell syntax"
   echo "skip: pwsh not found"

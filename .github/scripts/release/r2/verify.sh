@@ -26,34 +26,12 @@ if metadata["channel"] != os.environ["EXPECTED_CHANNEL"]:
 if metadata["releaseVersion"] != os.environ["EXPECTED_RELEASE_VERSION"]:
     raise SystemExit(f"unexpected releaseVersion: {metadata['releaseVersion']}")
 expected_public_url = os.environ["EXPECTED_PUBLIC_URL"]
-expected_unix = (
-    f"{expected_public_url}/install.sh"
-    if metadata["channel"] == "stable"
-    else f"{expected_public_url}/{metadata['channel']}/latest/install.sh"
-)
-expected_windows = (
-    f"{expected_public_url}/install.ps1"
-    if metadata["channel"] == "stable"
-    else f"{expected_public_url}/{metadata['channel']}/latest/install.ps1"
-)
-expected_uninstall_unix = (
-    f"{expected_public_url}/uninstall.sh"
-    if metadata["channel"] == "stable"
-    else f"{expected_public_url}/{metadata['channel']}/latest/uninstall.sh"
-)
-expected_uninstall_windows = (
-    f"{expected_public_url}/uninstall.ps1"
-    if metadata["channel"] == "stable"
-    else f"{expected_public_url}/{metadata['channel']}/latest/uninstall.ps1"
-)
-if metadata["install"]["unix"] != expected_unix:
-    raise SystemExit(f"unexpected unix installer url: {metadata['install']['unix']}")
-if metadata["install"]["windows"] != expected_windows:
-    raise SystemExit(f"unexpected windows installer url: {metadata['install']['windows']}")
-if metadata["uninstall"]["unix"] != expected_uninstall_unix:
-    raise SystemExit(f"unexpected unix uninstaller url: {metadata['uninstall']['unix']}")
-if metadata["uninstall"]["windows"] != expected_uninstall_windows:
-    raise SystemExit(f"unexpected windows uninstaller url: {metadata['uninstall']['windows']}")
+expected_manage_unix = f"{expected_public_url}/manage.sh"
+expected_manage_windows = f"{expected_public_url}/manage.ps1"
+if metadata["manage"]["unix"] != expected_manage_unix:
+    raise SystemExit(f"unexpected unix manager url: {metadata['manage']['unix']}")
+if metadata["manage"]["windows"] != expected_manage_windows:
+    raise SystemExit(f"unexpected windows manager url: {metadata['manage']['windows']}")
 if metadata["channel"] == "beta":
     if metadata.get("betaVersion") != os.environ["EXPECTED_RELEASE_VERSION"]:
         raise SystemExit(f"unexpected betaVersion: {metadata.get('betaVersion')}")
@@ -77,10 +55,8 @@ from pathlib import Path
 metadata = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 for item in metadata["artifacts"].values():
     print(item["url"])
-print(metadata["install"]["unix"])
-print(metadata["install"]["windows"])
-print(metadata["uninstall"]["unix"])
-print(metadata["uninstall"]["windows"])
+print(metadata["manage"]["unix"])
+print(metadata["manage"]["windows"])
 PY
 ); do
   curl -fsSI "$url" >/dev/null

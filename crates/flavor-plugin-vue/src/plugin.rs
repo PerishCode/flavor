@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use flavor_core::{diagnostics, product, GrammarProduct, PendingFact, SourceText};
-use flavor_plugin_typescript::{
-    plugin as typescript_plugin, SourceMode, TsFailureSurfaceConfig, TsPluginConfig,
-};
+use flavor_plugin_typescript::{plugin as typescript_plugin, SourceMode, TsPluginConfig};
 use flavor_shared::product as shared_product;
 
 use crate::{run as run_vue, sfc::VueSfcBlock, template, VuePluginConfig};
@@ -17,24 +15,6 @@ pub fn satisfy<F>(entrypoint: &F, path: &str, source: &str, products: &mut Vec<G
 where
     F: Fn(&str) -> Option<&'static str>,
 {
-    satisfy_with_failure_surface(
-        entrypoint,
-        path,
-        source,
-        TsFailureSurfaceConfig::default(),
-        products,
-    );
-}
-
-pub fn satisfy_with_failure_surface<F>(
-    entrypoint: &F,
-    path: &str,
-    source: &str,
-    failure_surface: TsFailureSurfaceConfig,
-    products: &mut Vec<GrammarProduct>,
-) where
-    F: Fn(&str) -> Option<&'static str>,
-{
     let Some(vue_entrypoint) = entrypoint("vue-sfc") else {
         return;
     };
@@ -46,25 +26,11 @@ pub fn satisfy_with_failure_surface<F>(
     let mut facts = Vec::new();
     if let Some(block) = output.descriptor.script {
         push_block_fact("descriptor.script", &block, &mut facts);
-        push_embedded_script(
-            entrypoint,
-            path,
-            block,
-            &failure_surface,
-            &mut facts,
-            products,
-        );
+        push_embedded_script(entrypoint, path, block, &mut facts, products);
     }
     if let Some(block) = output.descriptor.script_setup {
         push_block_fact("descriptor.script_setup", &block, &mut facts);
-        push_embedded_script(
-            entrypoint,
-            path,
-            block,
-            &failure_surface,
-            &mut facts,
-            products,
-        );
+        push_embedded_script(entrypoint, path, block, &mut facts, products);
     }
     product(products, "vue-sfc", vue_entrypoint, diagnostics, facts);
 }
@@ -82,7 +48,6 @@ fn push_embedded_script<F>(
     entrypoint: &F,
     path: &str,
     block: VueSfcBlock,
-    failure_surface: &TsFailureSurfaceConfig,
     facts: &mut Vec<PendingFact>,
     products: &mut Vec<GrammarProduct>,
 ) where
@@ -108,7 +73,6 @@ fn push_embedded_script<F>(
         } else {
             SourceMode::TypeScript
         },
-        failure_surface: failure_surface.clone(),
         ..Default::default()
     };
     typescript_plugin::satisfy_script_with_config(

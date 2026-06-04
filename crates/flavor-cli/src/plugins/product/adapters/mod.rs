@@ -1,15 +1,14 @@
 use flavor_core::GrammarProduct;
 use flavor_plugin_rust::{RustPluginConfig, RustRepeatedTokenPatternConfig};
-use flavor_plugin_typescript::{TsFailureSurfaceConfig, TsPluginConfig};
+use flavor_plugin_typescript::TsPluginConfig;
 
 use crate::{
     config::{GuardConfig, NodeKind, SourceKind},
     plugins::{PluginManifest, Scope},
     rules::{
-        ERROR_FAILURE_SURFACE_MATURITY, PAYLOAD_MAX_LINES, PAYLOAD_MAX_REPORTS, PAYLOAD_MAX_TOKENS,
-        PAYLOAD_MIN_LINES, PAYLOAD_MIN_NODES, PAYLOAD_MIN_OCCURRENCES, PAYLOAD_MIN_TOKENS,
-        PAYLOAD_MIN_TOTAL_LINES, PAYLOAD_RAW_REJECT_CALLEES, PAYLOAD_STRUCTURED_FACTORIES,
-        PAYLOAD_STRUCTURED_GUARDS, PAYLOAD_TOKEN_BUCKET_SIZE, SHAPE_REPEATED_TOKEN_PATTERN,
+        PAYLOAD_MAX_LINES, PAYLOAD_MAX_REPORTS, PAYLOAD_MAX_TOKENS, PAYLOAD_MIN_LINES,
+        PAYLOAD_MIN_NODES, PAYLOAD_MIN_OCCURRENCES, PAYLOAD_MIN_TOKENS, PAYLOAD_MIN_TOTAL_LINES,
+        PAYLOAD_TOKEN_BUCKET_SIZE, SHAPE_REPEATED_TOKEN_PATTERN,
     },
 };
 
@@ -53,18 +52,16 @@ pub(super) fn satisfy(
             typescript_config(config, &source),
             &mut products,
         ),
-        SourceKind::Vue => flavor_plugin_vue::plugin::satisfy_with_failure_surface(
+        SourceKind::Vue => flavor_plugin_vue::plugin::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
-            typescript_config(config, &source).failure_surface,
             &mut products,
         ),
-        SourceKind::Svelte => flavor_plugin_svelte::plugin::satisfy_with_failure_surface(
+        SourceKind::Svelte => flavor_plugin_svelte::plugin::satisfy(
             &|grammar_id| entrypoint(manifest, grammar_id),
             source.path,
             source.source,
-            typescript_config(config, &source).failure_surface,
             &mut products,
         ),
     }
@@ -73,28 +70,10 @@ pub(super) fn satisfy(
 }
 
 fn typescript_config(
-    config: &GuardConfig,
-    source: &crate::plugins::SourceFileScope<'_>,
+    _config: &GuardConfig,
+    _source: &crate::plugins::SourceFileScope<'_>,
 ) -> TsPluginConfig {
-    let rule = config.rule(
-        source.relative,
-        NodeKind::File,
-        ERROR_FAILURE_SURFACE_MATURITY,
-    );
-    TsPluginConfig {
-        failure_surface: TsFailureSurfaceConfig {
-            structured_guards: rule
-                .string_list(PAYLOAD_STRUCTURED_GUARDS)
-                .unwrap_or_default(),
-            structured_factories: rule
-                .string_list(PAYLOAD_STRUCTURED_FACTORIES)
-                .unwrap_or_default(),
-            raw_reject_callees: rule
-                .string_list(PAYLOAD_RAW_REJECT_CALLEES)
-                .unwrap_or_else(|| TsFailureSurfaceConfig::default().raw_reject_callees),
-        },
-        ..Default::default()
-    }
+    TsPluginConfig::default()
 }
 
 fn rust_config(

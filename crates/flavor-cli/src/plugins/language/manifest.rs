@@ -2,8 +2,7 @@ use crate::{
     config::SourceKind,
     plugins::{FactUse, GrammarUse, PluginManifest, ScopeDecl, ScopeKind},
     rules::{
-        DISPATCH_BRANCH_TOO_LONG, ERROR_FAILURE_SURFACE_AGGREGATE, ERROR_FAILURE_SURFACE_MATURITY,
-        NAMING_TOO_MANY_WORDS, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
+        DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
         SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
         SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
         TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
@@ -84,8 +83,6 @@ const RUST_FACTS: &[FactUse] = &[
 
 const TYPESCRIPT_RULES: &[&str] = &[
     DISPATCH_BRANCH_TOO_LONG,
-    ERROR_FAILURE_SURFACE_AGGREGATE,
-    ERROR_FAILURE_SURFACE_MATURITY,
     NAMING_TOO_MANY_WORDS,
     TS_PARSE_ERROR,
     TSX_NO_INTRINSICS,
@@ -129,29 +126,6 @@ const TYPESCRIPT_FACTS: &[FactUse] = &[
         &["payload.lines", "span", "line"],
     ),
     fact(
-        "typescript",
-        "error.raw_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.constructor",
-            "payload.callee",
-            "span",
-            "line",
-        ],
-    ),
-    fact(
-        "typescript",
-        "error.structured_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.callee",
-            "span",
-            "line",
-        ],
-    ),
-    fact(
         "tsx",
         "jsx.element",
         &[
@@ -175,8 +149,6 @@ const TYPESCRIPT_FACTS: &[FactUse] = &[
 
 const VUE_RULES: &[&str] = &[
     DISPATCH_BRANCH_TOO_LONG,
-    ERROR_FAILURE_SURFACE_AGGREGATE,
-    ERROR_FAILURE_SURFACE_MATURITY,
     NAMING_TOO_MANY_WORDS,
     TS_PARSE_ERROR,
     TSX_NO_INTRINSICS,
@@ -230,29 +202,6 @@ const VUE_FACTS: &[FactUse] = &[
         &["payload.lines", "span", "line"],
     ),
     fact(
-        "typescript",
-        "error.raw_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.constructor",
-            "payload.callee",
-            "span",
-            "line",
-        ],
-    ),
-    fact(
-        "typescript",
-        "error.structured_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.callee",
-            "span",
-            "line",
-        ],
-    ),
-    fact(
         "tsx",
         "jsx.element",
         &[
@@ -276,8 +225,6 @@ const VUE_FACTS: &[FactUse] = &[
 
 const SVELTE_RULES: &[&str] = &[
     DISPATCH_BRANCH_TOO_LONG,
-    ERROR_FAILURE_SURFACE_AGGREGATE,
-    ERROR_FAILURE_SURFACE_MATURITY,
     NAMING_TOO_MANY_WORDS,
     SVELTE_COMPONENT_TOO_LONG,
     SVELTE_PARSE_ERROR,
@@ -357,29 +304,6 @@ const SVELTE_FACTS: &[FactUse] = &[
         "typescript",
         "dispatch.branch",
         &["payload.lines", "span", "line"],
-    ),
-    fact(
-        "typescript",
-        "error.raw_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.constructor",
-            "payload.callee",
-            "span",
-            "line",
-        ],
-    ),
-    fact(
-        "typescript",
-        "error.structured_failure",
-        &[
-            "payload.kind",
-            "payload.mechanism",
-            "payload.callee",
-            "span",
-            "line",
-        ],
     ),
     fact(
         "tsx",

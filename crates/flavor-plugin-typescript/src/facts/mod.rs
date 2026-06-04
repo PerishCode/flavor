@@ -1,23 +1,13 @@
-mod failure;
-
 use flavor_core::{LineIndex, SourceText, Span, Token};
 use flavor_grammar::{GrammarNode, GrammarToken, GrammarTree, TokenTextRun};
-
-use failure::{
-    callee_name, constructor_name, is_builtin_error_constructor, matches_configured_callee,
-    raw_error_argument_constructor, structured_failure_kind, throw_new_expression,
-    RAW_FAILURE_LITERAL_TOKENS,
-};
 
 use crate::{
     ast::TsSourceFile,
     internal::grammar::{self as kind, Kind},
     model::{
-        TsDispatchBranchFact, TsFacts, TsFailureMechanism, TsImportFact, TsImportSpecifier,
-        TsNameFact, TsNameKind, TsRawFailureFact, TsRawFailureKind, TsStructuredFailureFact,
+        TsDispatchBranchFact, TsFacts, TsImportFact, TsImportSpecifier, TsNameFact, TsNameKind,
         TsxElementFact,
     },
-    state::{TsFailureSurfaceConfig, TsPluginConfig},
 };
 
 type TsNode = GrammarNode;
@@ -49,12 +39,11 @@ const SPECIFIER_TOKENS: &[&str] = &[
     "KEYWORD_INFER",
     "KEYWORD_UNIQUE",
 ];
-pub(crate) fn collect(source_file: &TsSourceFile, config: &TsPluginConfig) -> TsFacts {
+pub(crate) fn collect(source_file: &TsSourceFile) -> TsFacts {
     let tree = GrammarTree::new(source_file.syntax().clone(), kind::schema());
     let mut collector = Collector {
         source: source_file.source(),
         line_index: source_file.source().line_index(),
-        failure_surface: &config.failure_surface,
         facts: legacy_counts(source_file.tokens()),
     };
     collector.collect_node(tree.root());
@@ -76,7 +65,6 @@ fn legacy_counts(tokens: &[Token<Kind>]) -> TsFacts {
 struct Collector<'a> {
     source: &'a SourceText,
     line_index: LineIndex,
-    failure_surface: &'a TsFailureSurfaceConfig,
     facts: TsFacts,
 }
 
@@ -97,8 +85,6 @@ impl Collector<'_> {
             }
             Some("switch_case") => self.collect_branch(&node),
             Some("import_statement" | "import_declaration") => self.collect_import(&node),
-            Some("throw_statement") => self.collect_throw_failure(&node),
-            Some("call_expression") => self.collect_call_failure(&node),
             Some("jsx_opening_element" | "jsx_self_closing_element") => {
                 self.collect_jsx_element(&node);
             }
@@ -145,91 +131,6 @@ impl Collector<'_> {
             return;
         };
         self.facts.imports.push(import);
-    }
-
-    fn collect_throw_failure(&mut self, node: &TsNode) {
-        let Some(expression) = node.child("expression") else {
-            return;
-        };
-        let span = node.trimmed_span(self.source);
-        if let Some(new_expression) = throw_new_expression(&expression) {
-            let Some(constructor) = constructor_name(&new_expression) else {
-                return;
-            };
-            if let Some(kind) = structured_failure_kind(&constructor, self.failure_surface) {
-                self.facts
-                    .structured_failures
-                    .push(TsStructuredFailureFact {
-                        kind,
-                        mechanism: TsFailureMechanism::ThrowNew,
-                        callee: constructor,
-                        span,
-                        line: self.line_for(span),
-                    });
-                return;
-            }
-            if is_builtin_error_constructor(&constructor) {
-                self.facts.raw_failures.push(TsRawFailureFact {
-                    kind: TsRawFailureKind::BuiltinError,
-                    mechanism: TsFailureMechanism::Throw,
-                    constructor: Some(constructor),
-                    callee: None,
-                    span,
-                    line: self.line_for(span),
-                });
-            }
-            return;
-        }
-
-        if expression
-            .child_tokens_any(RAW_FAILURE_LITERAL_TOKENS)
-            .next()
-            .is_some()
-        {
-            self.facts.raw_failures.push(TsRawFailureFact {
-                kind: TsRawFailureKind::Literal,
-                mechanism: TsFailureMechanism::Throw,
-                constructor: None,
-                callee: None,
-                span,
-                line: self.line_for(span),
-            });
-        }
-    }
-
-    fn collect_call_failure(&mut self, node: &TsNode) {
-        let Some(callee) = callee_name(node) else {
-            return;
-        };
-        if let Some(kind) = structured_failure_kind(&callee, self.failure_surface) {
-            let span = node.trimmed_span(self.source);
-            self.facts
-                .structured_failures
-                .push(TsStructuredFailureFact {
-                    kind,
-                    mechanism: TsFailureMechanism::Call,
-                    callee,
-                    span,
-                    line: self.line_for(span),
-                });
-            return;
-        }
-
-        if !matches_configured_callee(&callee, &self.failure_surface.raw_reject_callees) {
-            return;
-        }
-        let Some(constructor) = raw_error_argument_constructor(node) else {
-            return;
-        };
-        let span = node.trimmed_span(self.source);
-        self.facts.raw_failures.push(TsRawFailureFact {
-            kind: TsRawFailureKind::BuiltinError,
-            mechanism: TsFailureMechanism::Call,
-            constructor: Some(constructor),
-            callee: Some(callee),
-            span,
-            line: self.line_for(span),
-        });
     }
 
     fn import_fact(&self, node: &TsNode) -> Option<TsImportFact> {

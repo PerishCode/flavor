@@ -4,8 +4,7 @@ use flavor_core::{diagnostics, product, FactPayload, GrammarProduct, PendingFact
 use flavor_shared::product as shared_product;
 
 use crate::{
-    internal::grammar, run as run_ts, SourceMode, TsFailureSurfaceConfig, TsImportSpecifier,
-    TsNameKind, TsPluginConfig,
+    internal::grammar, run as run_ts, SourceMode, TsImportSpecifier, TsNameKind, TsPluginConfig,
 };
 
 pub fn prewarm() {
@@ -58,7 +57,7 @@ pub fn satisfy_script<F>(
         source,
         line_offset,
         tsx,
-        ts_config(tsx, TsFailureSurfaceConfig::default()),
+        ts_config(tsx),
         products,
     );
 }
@@ -119,29 +118,6 @@ pub fn satisfy_script_with_config<F>(
             .span(fact.span)
             .line(fact.line + line_offset)
         }));
-        facts.extend(output.facts.raw_failures.iter().map(|fact| {
-            PendingFact::new(
-                "error.raw_failure",
-                FactPayload::new()
-                    .text("kind", fact.kind.label())
-                    .text("mechanism", fact.mechanism.label())
-                    .text("constructor", fact.constructor.clone().unwrap_or_default())
-                    .text("callee", fact.callee.clone().unwrap_or_default()),
-            )
-            .span(fact.span)
-            .line(fact.line + line_offset)
-        }));
-        facts.extend(output.facts.structured_failures.iter().map(|fact| {
-            PendingFact::new(
-                "error.structured_failure",
-                FactPayload::new()
-                    .text("kind", fact.kind.label())
-                    .text("mechanism", fact.mechanism.label())
-                    .text("callee", fact.callee.clone()),
-            )
-            .span(fact.span)
-            .line(fact.line + line_offset)
-        }));
         product(products, "typescript", entrypoint, diagnostics, facts);
     }
 
@@ -175,14 +151,13 @@ pub fn satisfy_script_with_config<F>(
     product(products, "tsx", entrypoint, Vec::new(), facts);
 }
 
-fn ts_config(tsx: bool, failure_surface: TsFailureSurfaceConfig) -> TsPluginConfig {
+fn ts_config(tsx: bool) -> TsPluginConfig {
     TsPluginConfig {
         source_mode: if tsx {
             SourceMode::Tsx
         } else {
             SourceMode::TypeScript
         },
-        failure_surface,
         ..Default::default()
     }
 }

@@ -73,7 +73,7 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Flavor self-check
-        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 
   build:
     needs: [metadata, verify]

@@ -1,12 +1,12 @@
 use std::{
     collections::BTreeMap,
-    fs,
     path::{Path, PathBuf},
 };
 
 use serde::Deserialize;
 use serde_json::Value;
 
+mod formats;
 mod preferences;
 
 use crate::{
@@ -14,6 +14,7 @@ use crate::{
     path_match::PathPattern,
     rules::{self, RuleTarget},
 };
+use formats::{parse_config_file, CONFIG_FILENAMES};
 
 #[derive(Debug, Clone)]
 pub(crate) struct GuardConfig {
@@ -68,14 +69,14 @@ impl RuleSettings {
     }
 }
 
-/// File name flavor walks ancestors of `--root` to find.
+/// Primary file name flavor walks ancestors of `--root` to find.
 pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "flavor.json";
 
 /// Where the active `GuardConfig` came from.
 ///
 /// `Explicit` and `Discovered` both point at a file on disk; the split lets
 /// callers tell the user when a config was picked up without being asked for,
-/// so a stray `flavor.json` somewhere above the scan root never silently
+/// so a stray `flavor.*` somewhere above the scan root never silently
 /// changes behavior.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ConfigSource {
@@ -89,8 +90,9 @@ pub(crate) enum ConfigSource {
 /// Order:
 /// 1. `--config <path>` is honoured verbatim. The directory containing the
 ///    explicit file becomes the project root for scan patterns (tsconfig-style).
-/// 2. Otherwise, walk ancestors of `start` looking for `flavor.json`. The
-///    nearest match wins; its directory becomes the project root.
+/// 2. Otherwise, walk ancestors of `start` looking for `flavor.toml`,
+///    `flavor.yaml`, `flavor.yml`, or `flavor.json`. The nearest match wins;
+///    format priority within a directory follows `CONFIG_FILENAMES`.
 /// 3. Otherwise, fall back to the built-in defaults rooted at `start`.
 ///
 /// `start` is the walk-up entry point (typically `--root`, defaulting to the
@@ -122,9 +124,11 @@ fn canonicalize_start(start: &Path) -> Result<PathBuf, String> {
 
 fn walk_up_for_config(start: &Path) -> Option<PathBuf> {
     for ancestor in start.ancestors() {
-        let candidate = ancestor.join(DEFAULT_CONFIG_FILENAME);
-        if candidate.is_file() {
-            return Some(candidate);
+        for name in CONFIG_FILENAMES {
+            let candidate = ancestor.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
         }
     }
     None
@@ -156,7 +160,7 @@ impl GuardConfig {
 
     /// Whether the active config opted out of the "0 files matched" failure.
     ///
-    /// A workspace-root `flavor.json` that intentionally excludes every
+    /// A workspace-root `flavor.*` that intentionally excludes every
     /// submodule (delegating real checks to per-submodule configs) sets this
     /// so the 0-match warning + exit 1 from PR #6 stays quiet.
     pub(crate) fn allow_empty_scan(&self) -> bool {
@@ -164,11 +168,7 @@ impl GuardConfig {
     }
 
     pub(crate) fn from_file(root: PathBuf, config_path: &Path) -> Result<Self, String> {
-        let source = fs::read_to_string(config_path)
-            .map_err(|error| format!("failed to read config {}: {error}", config_path.display()))?;
-        let file: GuardConfigFile = serde_json::from_str(&source).map_err(|error| {
-            format!("failed to parse config {}: {error}", config_path.display())
-        })?;
+        let file = parse_config_file(config_path)?;
         Self::from_config_file(root, file)
     }
 
@@ -264,7 +264,7 @@ impl GuardConfig {
 }
 
 #[derive(Debug, Deserialize)]
-struct GuardConfigFile {
+pub(super) struct GuardConfigFile {
     scan: ScanConfigFile,
     #[serde(default)]
     preferences: Vec<preferences::PreferenceConfigFile>,

@@ -32,7 +32,7 @@ REQUIRED_TOOLS = (
 REQUIRED_PATHS = (
     "Cargo.toml",
     "Cargo.lock",
-    "flavor.json",
+    "flavor.toml",
     "manage.sh",
     "manage.ps1",
     "runseal.toml",
@@ -66,7 +66,7 @@ echo "==> cargo check"
 cargo check --locked --workspace
 
 echo "==> flavor self-check"
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 
 echo "==> shell syntax"
 sh -n .runseal/lib/python-module

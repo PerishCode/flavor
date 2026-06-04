@@ -30,7 +30,7 @@ repository orchestration, or runtime management here.
 ```bash
 cargo test --locked -p flavor-cli --test unit
 cargo run --locked -p flavor-cli -- rules
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 ```
 
 ## Standard Workflow

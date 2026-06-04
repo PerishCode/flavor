@@ -13,10 +13,10 @@ public_url="${FLAVOR_RELEASES_PUBLIC_URL%/}"
 version_prefix="$RELEASE_CHANNEL/versions/$RELEASE_VERSION"
 latest_prefix="$RELEASE_CHANNEL/latest"
 metadata_path="$release_root/metadata.json"
-publish_root_installers=0
+publish_root_manage=0
 
 if [ "$RELEASE_CHANNEL" = "stable" ]; then
-  publish_root_installers=1
+  publish_root_manage=1
 fi
 
 upload() {
@@ -59,19 +59,9 @@ for file_path in "$release_root"/flavor-*.tar.gz "$release_root"/flavor-*.zip "$
   upload "$file_path" "$version_prefix/$name" "$(artifact_content_type "$name")" "public, max-age=31536000, immutable"
 done
 
-upload "$GITHUB_WORKSPACE/install.sh" "$version_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/install.ps1" "$version_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/uninstall.sh" "$version_prefix/uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/uninstall.ps1" "$version_prefix/uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=31536000, immutable"
-upload "$GITHUB_WORKSPACE/install.sh" "$latest_prefix/install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
-upload "$GITHUB_WORKSPACE/install.ps1" "$latest_prefix/install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
-upload "$GITHUB_WORKSPACE/uninstall.sh" "$latest_prefix/uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
-upload "$GITHUB_WORKSPACE/uninstall.ps1" "$latest_prefix/uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
-if [ "$publish_root_installers" -eq 1 ]; then
-  upload "$GITHUB_WORKSPACE/install.sh" "install.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
-  upload "$GITHUB_WORKSPACE/install.ps1" "install.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
-  upload "$GITHUB_WORKSPACE/uninstall.sh" "uninstall.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
-  upload "$GITHUB_WORKSPACE/uninstall.ps1" "uninstall.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
+if [ "$publish_root_manage" -eq 1 ]; then
+  upload "$GITHUB_WORKSPACE/manage.sh" "manage.sh" "text/x-shellscript; charset=utf-8" "public, max-age=60, must-revalidate"
+  upload "$GITHUB_WORKSPACE/manage.ps1" "manage.ps1" "text/plain; charset=utf-8" "public, max-age=60, must-revalidate"
 fi
 
 PUBLIC_URL="$public_url" \
@@ -79,7 +69,7 @@ VERSION_PREFIX="$version_prefix" \
 LATEST_PREFIX="$latest_prefix" \
 RELEASE_ROOT="$release_root" \
 METADATA_PATH="$metadata_path" \
-PUBLISH_ROOT_INSTALLERS="$publish_root_installers" \
+PUBLISH_ROOT_MANAGE="$publish_root_manage" \
 python3 <<'PY'
 import json
 import os
@@ -122,29 +112,9 @@ metadata = {
         "versionPrefix": version_prefix,
         "latestPrefix": latest_prefix,
     },
-    "install": {
-        "unix": (
-            f"{public_url}/install.sh"
-            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
-            else f"{public_url}/{latest_prefix}/install.sh"
-        ),
-        "windows": (
-            f"{public_url}/install.ps1"
-            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
-            else f"{public_url}/{latest_prefix}/install.ps1"
-        ),
-    },
-    "uninstall": {
-        "unix": (
-            f"{public_url}/uninstall.sh"
-            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
-            else f"{public_url}/{latest_prefix}/uninstall.sh"
-        ),
-        "windows": (
-            f"{public_url}/uninstall.ps1"
-            if env["PUBLISH_ROOT_INSTALLERS"] == "1"
-            else f"{public_url}/{latest_prefix}/uninstall.ps1"
-        ),
+    "manage": {
+        "unix": f"{public_url}/manage.sh",
+        "windows": f"{public_url}/manage.ps1",
     },
     "artifacts": {
         "linuxX64": artifact("flavor-x86_64-unknown-linux-gnu.tar.gz", "application/gzip"),

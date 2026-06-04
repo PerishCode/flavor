@@ -22,21 +22,45 @@ def main() -> int:
     image = args.image or f"flavor-antlr:{args.antlr_version}"
 
     require_docker()
-    ensure_image(
-        root,
-        image,
-        antlr_version=args.antlr_version,
-        antlr_sha256=args.antlr_sha256,
-        rebuild=args.rebuild_image,
-        require_image=args.require_image,
-    )
+    if args.command == "init":
+        ensure_image(
+            root,
+            image,
+            antlr_version=args.antlr_version,
+            antlr_sha256=args.antlr_sha256,
+            rebuild=args.rebuild_image,
+        )
+        print(f"antlr Docker image ready: {image}")
+        return 0
 
+    require_image(image, args.antlr_version)
     return check_grammars(root, image, args.g4_files)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog="runseal :antlr", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser(
+        "init",
+        help="build the local ANTLR Docker image",
+        description=(
+            "Build the local ANTLR Docker image used by `runseal :antlr check`. "
+            "The image downloads a pinned ANTLR complete jar and verifies its "
+            "SHA256 digest during build."
+        ),
+    )
+    add_image_args(init)
+    init.add_argument(
+        "--antlr-sha256",
+        default=os.environ.get("ANTLR_SHA256", DEFAULT_ANTLR_SHA256),
+        help="expected SHA256 of the ANTLR complete jar",
+    )
+    init.add_argument(
+        "--rebuild-image",
+        action="store_true",
+        help="rebuild the Docker image even if it already exists",
+    )
 
     check = subparsers.add_parser(
         "check",
@@ -53,36 +77,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         nargs="*",
         help="optional .g4 files under grammars/",
     )
-    check.add_argument(
+    add_image_args(check)
+
+    return parser.parse_args(argv)
+
+
+def add_image_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
         "--antlr-version",
         default=os.environ.get("ANTLR_VERSION", DEFAULT_ANTLR_VERSION),
-        help=f"ANTLR version to download into the Docker image (default: {DEFAULT_ANTLR_VERSION})",
+        help=f"ANTLR version for the Docker image tag (default: {DEFAULT_ANTLR_VERSION})",
     )
-    check.add_argument(
-        "--antlr-sha256",
-        default=os.environ.get("ANTLR_SHA256", DEFAULT_ANTLR_SHA256),
-        help="expected SHA256 of the ANTLR complete jar",
-    )
-    check.add_argument(
+    parser.add_argument(
         "--image",
         default=os.environ.get("ANTLR_IMAGE"),
-        help="Docker image tag to build/use (default: flavor-antlr:<version>)",
+        help="Docker image tag to use (default: flavor-antlr:<version>)",
     )
-    check.add_argument(
-        "--rebuild-image",
-        action="store_true",
-        help="rebuild the Docker image even if it already exists",
-    )
-    check.add_argument(
-        "--require-image",
-        action="store_true",
-        help="do not build the Docker image; fail if it is missing",
-    )
-
-    args = parser.parse_args(argv)
-    if args.rebuild_image and args.require_image:
-        raise SystemExit("--rebuild-image and --require-image cannot be combined")
-    return args
 
 
 def repo_root() -> Path:
@@ -117,13 +127,23 @@ def ensure_image(
     antlr_version: str,
     antlr_sha256: str,
     rebuild: bool,
-    require_image: bool,
 ) -> None:
     if not rebuild and image_exists(image):
         return
-    if require_image:
-        raise SystemExit(f"Docker image {image!r} is missing")
     build_image(root, image, antlr_version, antlr_sha256)
+
+
+def require_image(image: str, antlr_version: str) -> None:
+    if image_exists(image):
+        return
+    command = ["runseal :antlr init"]
+    if antlr_version != DEFAULT_ANTLR_VERSION:
+        command.append(f"--antlr-version {antlr_version}")
+    if image != f"flavor-antlr:{antlr_version}":
+        command.append(f"--image {image}")
+    raise SystemExit(
+        f"Docker image {image!r} is missing; run `{' '.join(command)}` before `runseal :antlr check`"
+    )
 
 
 def image_exists(image: str) -> bool:
@@ -136,8 +156,7 @@ def image_exists(image: str) -> bool:
 
 
 def build_image(root: Path, image: str, antlr_version: str, antlr_sha256: str) -> None:
-    dockerfile = root / "scripts" / "dev" / "antlr.Dockerfile"
-    context_dir = root / "scripts" / "dev"
+    dockerfile = root / "Dockerfile.antlr4"
     run_checked(
         [
             "docker",
@@ -150,7 +169,7 @@ def build_image(root: Path, image: str, antlr_version: str, antlr_sha256: str) -
             image,
             "-f",
             str(dockerfile),
-            str(context_dir),
+            str(root),
         ],
         label=f"building {image}",
         attempts=3,

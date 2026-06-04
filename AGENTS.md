@@ -18,13 +18,13 @@ management.
   scripts there.
 - `runseal.toml` and `.runseal/wrappers/` are the repo-local operator entrypoints
   for support tasks that do not belong in the installable `flavor` product
-  binary. Current support commands are `runseal :cloudflare`, `runseal :pr`,
-  and `runseal :release`.
+  binary. Current support commands are `runseal :antlr`, `runseal :cloudflare`,
+  `runseal :pr`, and `runseal :release`.
 - `grammars/` contains the repo-visible `.g4` grammar source of truth plus
   `metadata.json` contract metadata. Parser backends, facts, diagnostics, and
   harnesses should align to these files.
-- `scripts/` contains both developer helpers (`scripts/dev/`) and the
-  repo-local uv-managed Python support command tree used by runseal wrappers.
+- `scripts/` contains the repo-local uv-managed Python support command tree
+  used by runseal wrappers.
 - `.local/` is repo-local private operator state (for example Cloudflare
   secrets). It must stay gitignored and must not become a source of truth for
   product behavior.
@@ -86,7 +86,8 @@ cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
-python3 scripts/dev/antlr.py check
+runseal :antlr init
+runseal :antlr check
 runseal :pr --help
 ```
 
@@ -94,9 +95,10 @@ runseal :pr --help
 `runseal` so repo-local support commands have one entrypoint shape. Use
 `--force` only when intentionally replacing existing non-init hooks; the script
 backs them up first.
-`python3 scripts/dev/antlr.py check` is an optional Dockerized ANTLR validation
-helper. It lazily builds its Docker image when needed, checks `.g4` files under
-`grammars/` in ANTLR dependency mode, and does not generate Java artifacts.
+`runseal :antlr init` builds the pinned local ANTLR Docker image.
+`runseal :antlr check` is an optional Dockerized ANTLR validation helper. It
+requires the image prepared by init, checks `.g4` files under `grammars/` in
+ANTLR dependency mode, and does not generate Java artifacts.
 
 ## Standard Workflow
 
@@ -233,8 +235,8 @@ and `manage.ps1`. Release and smoke scripts should reference those root files.
 ### Where Do Workflow Helper Scripts Go?
 
 Workflow-only helpers belong under `.github/scripts/`. The repository
-initialization entrypoint is `scripts/init.py`; additional local developer
-harness helpers, if added, belong under `scripts/dev/`.
+initialization entrypoint is `scripts/init.py`; additional local support
+commands, if added, should use runseal wrappers plus `scripts/cli/`.
 
 ### Does Init Replace Existing Hooks?
 

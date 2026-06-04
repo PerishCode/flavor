@@ -192,6 +192,19 @@ cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 python3 scripts/dev/antlr.py check         # optional Dockerized G4 validation
 ```
 
+Repo-local operator commands use runseal wrappers rather than the installable
+`flavor` binary:
+
+```bash
+runseal :cloudflare <command> [args]
+runseal :pr [options]
+runseal :release --channel=stable|beta [options]
+runseal @wrappers
+```
+
+`python3 scripts/init.py` checks that `runseal` is installed before installing
+hooks.
+
 ## Scope
 
 `flavor` does not format, rewrite, run services, manage repositories, or inspect product semantics.

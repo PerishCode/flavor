@@ -24,7 +24,7 @@ from lib.utils.cli import CliError, dispatch
 
 def usage() -> None:
     print(
-        """Usage: ./cli.sh :cloudflare <command> [args]
+        """Usage: runseal :cloudflare <command> [args]
 
 Commands:
   init                      create repo-local .local/secrets/cloudflare.env template
@@ -138,7 +138,7 @@ def cmd_manage_inspect(args: list[str]) -> int:
 
 
 def cmd_manage_ensure_redirect(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="./cli.sh :cloudflare manage-ensure-redirect", add_help=False)
+    parser = argparse.ArgumentParser(prog="runseal :cloudflare manage-ensure-redirect", add_help=False)
     parser.add_argument("--dry-run", action="store_true")
     parsed = parser.parse_args(args)
 
@@ -187,7 +187,7 @@ def cmd_manage_ensure_redirect(args: list[str]) -> int:
 
 
 def cmd_api(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="./cli.sh :cloudflare api", add_help=False)
+    parser = argparse.ArgumentParser(prog="runseal :cloudflare api", add_help=False)
     parser.add_argument("method")
     parser.add_argument("path")
     parser.add_argument("--query", action="append", default=[])

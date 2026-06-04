@@ -16,15 +16,15 @@ management.
 - `.github/workflows/` contains CI and release workflows.
 - `.github/scripts/` contains workflow-only helper scripts. Keep workflow-only
   scripts there.
-- `cli.sh` is the repo-local operator entrypoint for support tasks that do not
-  belong in the installable `flavor` product binary. Keep it as a thin command
-  dispatcher, not a second product CLI. Current support commands are
-  `:cloudflare`, `:pr`, and `:release`.
+- `runseal.toml` and `.runseal/wrappers/` are the repo-local operator entrypoints
+  for support tasks that do not belong in the installable `flavor` product
+  binary. Current support commands are `runseal :cloudflare`, `runseal :pr`,
+  and `runseal :release`.
 - `grammars/` contains the repo-visible `.g4` grammar source of truth plus
   `metadata.json` contract metadata. Parser backends, facts, diagnostics, and
   harnesses should align to these files.
 - `scripts/` contains both developer helpers (`scripts/dev/`) and the
-  repo-local uv-managed Python support command tree used by `cli.sh`.
+  repo-local uv-managed Python support command tree used by runseal wrappers.
 - `.local/` is repo-local private operator state (for example Cloudflare
   secrets). It must stay gitignored and must not become a source of truth for
   product behavior.
@@ -87,11 +87,13 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 python3 scripts/dev/antlr.py check
+runseal :pr --help
 ```
 
-`python3 scripts/init.py` is the default post-clone command. Use `--force` only
-when intentionally replacing existing non-init hooks; the script backs them up
-first.
+`python3 scripts/init.py` is the default post-clone command. It requires
+`runseal` so repo-local support commands have one entrypoint shape. Use
+`--force` only when intentionally replacing existing non-init hooks; the script
+backs them up first.
 `python3 scripts/dev/antlr.py check` is an optional Dockerized ANTLR validation
 helper. It lazily builds its Docker image when needed, checks `.g4` files under
 `grammars/` in ANTLR dependency mode, and does not generate Java artifacts.

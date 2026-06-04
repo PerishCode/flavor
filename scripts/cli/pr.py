@@ -10,7 +10,7 @@ from lib.utils.cli import CliError, run_checked
 
 def usage() -> None:
     print(
-        """Usage: ./cli.sh :pr [options]
+        """Usage: runseal :pr [options]
 
 Create or update the GitHub PR for the current branch.
 
@@ -97,7 +97,7 @@ def create_pr(branch: str, base: str, title: str | None, body_file: str | None) 
 
 
 def cmd_default(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="./cli.sh :pr", add_help=False)
+    parser = argparse.ArgumentParser(prog="runseal :pr", add_help=False)
     parser.add_argument("--base", default="main")
     parser.add_argument("--title")
     parser.add_argument("--body-file")

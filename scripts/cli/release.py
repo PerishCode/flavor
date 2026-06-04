@@ -18,7 +18,7 @@ CHANNEL_WORKFLOWS = {
 
 def usage() -> None:
     print(
-        """Usage: ./cli.sh :release --channel=stable|beta [options]
+        """Usage: runseal :release --channel=stable|beta [options]
 
 Trigger a release workflow.
 
@@ -69,7 +69,7 @@ def latest_run_id(workflow: str, ref: str) -> str:
 
 
 def cmd_default(args: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="./cli.sh :release", add_help=False)
+    parser = argparse.ArgumentParser(prog="runseal :release", add_help=False)
     parser.add_argument("--channel", choices=sorted(CHANNEL_WORKFLOWS))
     parser.add_argument("--ref", default="main")
     parser.add_argument("--version", default="")

@@ -62,8 +62,6 @@
         },
         "facts": {
           "dispatch.branch": "switch_case full range -> TsDispatchBranchFact(span, line, lines) -> Fact(payload.lines, span, line)",
-          "error.raw_failure": "throw_statement with built-in Error constructor or literal, or configured reject call with direct built-in Error construction -> TsRawFailureFact(kind, mechanism, constructor, callee, span, line) -> Fact(payload.kind, payload.mechanism, payload.constructor, payload.callee, span, line)",
-          "error.structured_failure": "configured guard/factory call or throw-new -> TsStructuredFailureFact(kind, mechanism, callee, span, line) -> Fact(payload.kind, payload.mechanism, payload.callee, span, line)",
           "module.counts": "import and export tokens -> TsFacts counts",
           "module.import": "import_statement.source and import_clause -> TsImportFact(source, specifiers, span, line) -> Fact(payload.source, payload.type_only, payload.default_imports, payload.named_imports, payload.namespace_imports, span, line)",
           "name.binding": "variable_declarator.name identifiers -> TsNameFact(kind:binding, span, line) -> Fact(payload.name, payload.kind, payload.issue_kind, span, line)",

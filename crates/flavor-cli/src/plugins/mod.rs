@@ -269,7 +269,6 @@ pub(crate) struct AnalysisContext<'a> {
 pub(crate) struct PluginOutput<'a> {
     pub(crate) issues: Vec<Issue>,
     pub(crate) child_scopes: Vec<Scope<'a>>,
-    pub(crate) failure_surfaces: Vec<FailureSurfaceSignal>,
 }
 
 impl<'a> PluginOutput<'a> {
@@ -277,28 +276,8 @@ impl<'a> PluginOutput<'a> {
         Self {
             issues,
             child_scopes: Vec::new(),
-            failure_surfaces: Vec::new(),
         }
     }
-
-    pub(crate) fn with_failure_surfaces(
-        issues: Vec<Issue>,
-        failure_surfaces: Vec<FailureSurfaceSignal>,
-    ) -> Self {
-        Self {
-            issues,
-            child_scopes: Vec::new(),
-            failure_surfaces,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct FailureSurfaceSignal {
-    pub(crate) path: String,
-    pub(crate) raw_count: usize,
-    pub(crate) structured_count: usize,
-    pub(crate) examples: Vec<String>,
 }
 
 type PluginAnalyzer = for<'a> fn(&AnalysisContext<'a>) -> PluginOutput<'a>;
@@ -359,17 +338,6 @@ impl PluginHost {
         initial_scope: Scope<'a>,
         issues: &mut Vec<Issue>,
     ) {
-        let mut failure_surfaces = Vec::new();
-        self.run_scope_with_signals(config, initial_scope, issues, &mut failure_surfaces);
-    }
-
-    pub(crate) fn run_scope_with_signals<'a>(
-        &self,
-        config: &'a GuardConfig,
-        initial_scope: Scope<'a>,
-        issues: &mut Vec<Issue>,
-        failure_surfaces: &mut Vec<FailureSurfaceSignal>,
-    ) {
         let mut queue = VecDeque::from([initial_scope]);
         while let Some(scope) = queue.pop_front() {
             for plugin in self.plugins_for(scope) {
@@ -380,7 +348,6 @@ impl PluginHost {
                 };
                 let output = (plugin.analyze)(&context);
                 issues.extend(output.issues);
-                failure_surfaces.extend(output.failure_surfaces);
                 queue.extend(output.child_scopes);
             }
         }

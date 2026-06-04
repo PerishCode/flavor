@@ -1,5 +1,4 @@
 mod dispatch;
-mod failure;
 mod function;
 mod manifest;
 mod name;
@@ -14,7 +13,6 @@ pub(crate) use python_manifest::PYTHON_MANIFEST;
 use std::{collections::BTreeSet, path::Path};
 
 use dispatch::check_dispatch_branches;
-use failure::{check_failure_surface, failure_surface_signal};
 use function::check_function_bodies;
 use name::check_name_facts;
 use shape::check_repeated_token_patterns;
@@ -22,14 +20,14 @@ use shape::check_repeated_token_patterns;
 use crate::{
     config::{GuardConfig, NodeKind, RuleSettings},
     model::{issue, Issue},
-    plugins::{AnalysisContext, FailureSurfaceSignal, PluginOutput, ProductSet, SourceFileScope},
+    plugins::{AnalysisContext, PluginOutput, ProductSet, SourceFileScope},
     rules::{
-        DISPATCH_BRANCH_TOO_LONG, ERROR_FAILURE_SURFACE_MATURITY, NAMING_TOO_MANY_WORDS,
-        PAYLOAD_ALLOWED_INTRINSICS, PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_LINES,
-        PAYLOAD_PRIMITIVE_SOURCES, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
-        SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
-        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
-        TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
+        DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_ALLOWED_INTRINSICS,
+        PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_LINES, PAYLOAD_PRIMITIVE_SOURCES, RUST_PARSE_ERROR,
+        RUST_TESTS_IN_SOURCE, SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG,
+        SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG,
+        SVELTE_TEMPLATE_TOO_COMPLEX, TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR,
+        VUE_PARSE_ERROR,
     },
 };
 use flavor_core::{Fact, ProductDiagnostic};
@@ -106,15 +104,8 @@ pub(crate) fn analyze_typescript_source<'a>(context: &AnalysisContext<'a>) -> Pl
     };
 
     let mut issues = Vec::new();
-    let mut failure_surfaces = Vec::new();
-    analyze_typescript_products(
-        context.config,
-        scope,
-        &context.products,
-        &mut issues,
-        &mut failure_surfaces,
-    );
-    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
+    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
+    PluginOutput::issues(issues)
 }
 
 pub(crate) fn analyze_vue_source<'a>(context: &AnalysisContext<'a>) -> PluginOutput<'a> {
@@ -132,15 +123,8 @@ pub(crate) fn analyze_vue_source<'a>(context: &AnalysisContext<'a>) -> PluginOut
         context.products.diagnostics("vue-sfc"),
         "Vue SFC",
     );
-    let mut failure_surfaces = Vec::new();
-    analyze_typescript_products(
-        context.config,
-        scope,
-        &context.products,
-        &mut issues,
-        &mut failure_surfaces,
-    );
-    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
+    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
+    PluginOutput::issues(issues)
 }
 
 pub(crate) fn analyze_svelte_source<'a>(context: &AnalysisContext<'a>) -> PluginOutput<'a> {
@@ -159,15 +143,8 @@ pub(crate) fn analyze_svelte_source<'a>(context: &AnalysisContext<'a>) -> Plugin
         "Svelte",
     );
     check_svelte_shape(context.config, scope, &context.products, &mut issues);
-    let mut failure_surfaces = Vec::new();
-    analyze_typescript_products(
-        context.config,
-        scope,
-        &context.products,
-        &mut issues,
-        &mut failure_surfaces,
-    );
-    PluginOutput::with_failure_surfaces(issues, failure_surfaces)
+    analyze_typescript_products(context.config, scope, &context.products, &mut issues);
+    PluginOutput::issues(issues)
 }
 
 fn analyze_typescript_products(
@@ -175,7 +152,6 @@ fn analyze_typescript_products(
     scope: SourceFileScope<'_>,
     products: &ProductSet,
     issues: &mut Vec<Issue>,
-    failure_surfaces: &mut Vec<FailureSurfaceSignal>,
 ) {
     let parse_rule = config.rule(scope.relative, NodeKind::File, TS_PARSE_ERROR);
     push_parse_issues(
@@ -198,26 +174,6 @@ fn analyze_typescript_products(
         products.facts("typescript", "dispatch.branch"),
         "switch case",
     );
-
-    let failure_rule = config.rule(
-        scope.relative,
-        NodeKind::File,
-        ERROR_FAILURE_SURFACE_MATURITY,
-    );
-    check_failure_surface(
-        issues,
-        &failure_rule,
-        scope.path,
-        products.facts("typescript", "error.raw_failure"),
-        products.facts("typescript", "error.structured_failure"),
-    );
-    if let Some(signal) = failure_surface_signal(
-        scope.path,
-        products.facts("typescript", "error.raw_failure"),
-        products.facts("typescript", "error.structured_failure"),
-    ) {
-        failure_surfaces.push(signal);
-    }
 }
 
 fn check_rust_tests<'a>(

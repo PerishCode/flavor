@@ -1,5 +1,3 @@
-mod aggregate;
-
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -10,13 +8,11 @@ use rayon::prelude::*;
 use tracing::debug;
 use walkdir::WalkDir;
 
-use aggregate::check_failure_surface_aggregate;
-
 use crate::{
     config::{source_file_kind, GuardConfig, SourceKind},
     model::{Issue, ScanStats},
     path_match::{path_string, relative_path},
-    plugins::{FailureSurfaceSignal, PluginHost, Scope},
+    plugins::{PluginHost, Scope},
 };
 
 const GENERATED_MARKERS: &[&str] = &[
@@ -55,14 +51,6 @@ pub(crate) fn run_scan(config: &GuardConfig) -> Result<ScanResult, String> {
             &mut plan.issues,
         );
     }
-    check_failure_surface_aggregate(
-        config,
-        plan.stats.scanned_files,
-        &plan.scanned_source_dirs,
-        &plan.failure_surfaces,
-        &mut plan.issues,
-    );
-
     plan.issues.sort_by(|left, right| {
         (left.path.as_str(), left.line.unwrap_or(0), left.rule).cmp(&(
             right.path.as_str(),
@@ -151,8 +139,6 @@ struct ScanPlan {
     direct_children: BTreeMap<PathBuf, BTreeSet<String>>,
     source_files: Vec<SourceFileJob>,
     source_kinds: BTreeSet<SourceKind>,
-    scanned_source_dirs: BTreeMap<PathBuf, usize>,
-    failure_surfaces: Vec<FailureSurfaceSignal>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -168,7 +154,6 @@ struct SourceFileResult {
     relative: PathBuf,
     status: SourceFileStatus,
     issues: Vec<Issue>,
-    failure_surfaces: Vec<FailureSurfaceSignal>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -251,24 +236,20 @@ fn analyze_source_file(
             relative: job.relative.clone(),
             status: SourceFileStatus::Generated,
             issues: Vec::new(),
-            failure_surfaces: Vec::new(),
         });
     }
 
     debug!(path = %job.relative.display(), kind = ?job.kind, "scanning source file");
     let mut issues = Vec::new();
-    let mut failure_surfaces = Vec::new();
-    host.run_scope_with_signals(
+    host.run_scope(
         config,
         Scope::source_file(&job.relative, &job.path, &source, job.kind),
         &mut issues,
-        &mut failure_surfaces,
     );
     Ok(SourceFileResult {
         relative: job.relative.clone(),
         status: SourceFileStatus::Scanned,
         issues,
-        failure_surfaces,
     })
 }
 
@@ -281,9 +262,7 @@ fn reduce_source_results(results: Vec<SourceFileResult>, plan: &mut ScanPlan) {
             SourceFileStatus::Scanned => {
                 plan.stats.scanned_files += 1;
                 add_child_count(&mut plan.child_counts, &result.relative);
-                add_source_dir_counts(&mut plan.scanned_source_dirs, &result.relative);
                 plan.issues.extend(result.issues);
-                plan.failure_surfaces.extend(result.failure_surfaces);
             }
         }
     }
@@ -299,25 +278,6 @@ fn add_child_count(child_counts: &mut BTreeMap<PathBuf, usize>, relative: &Path)
         return;
     };
     *child_counts.entry(parent.to_path_buf()).or_default() += 1;
-}
-
-fn add_source_dir_counts(counts: &mut BTreeMap<PathBuf, usize>, relative: &Path) {
-    let mut current = normalize_dir(relative.parent().unwrap_or_else(|| Path::new(".")));
-    loop {
-        *counts.entry(current.clone()).or_default() += 1;
-        if current.as_os_str() == "." {
-            break;
-        }
-        current = normalize_dir(current.parent().unwrap_or_else(|| Path::new(".")));
-    }
-}
-
-fn normalize_dir(path: &Path) -> PathBuf {
-    if path.as_os_str().is_empty() {
-        PathBuf::from(".")
-    } else {
-        path.to_path_buf()
-    }
 }
 
 fn track_direct_child(child_map: &mut BTreeMap<PathBuf, BTreeSet<String>>, relative: &Path) {

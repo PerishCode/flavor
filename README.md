@@ -57,8 +57,8 @@ curl -fsSL https://flavor.perish.uk/manage.sh | sh -s -- uninstall --version v0.
 ## Usage
 
 ```bash
-flavor check                       # auto-discovers flavor.json at --root
-flavor check --config flavor.json  # explicit path
+flavor check                       # auto-discovers flavor.* at --root
+flavor check --config flavor.toml  # explicit path
 flavor check --format json
 flavor check --strict-warnings
 flavor rules                       # browse the built-in rule catalog
@@ -71,9 +71,9 @@ Run `flavor help` for the product boundary and `flavor rules` for the full rule 
 
 ## Config
 
-A `flavor.json` has one required top-level key, `scan`. Optional `preferences`
-expand named rule sets over consumer paths, and `overrides` remain the final
-rule adjustment layer.
+A `flavor.json`, `flavor.toml`, `flavor.yaml`, or `flavor.yml` has one required
+top-level key, `scan`. Optional `preferences` expand named rule sets over
+consumer paths, and `overrides` remain the final rule adjustment layer.
 
 ```json
 {
@@ -162,7 +162,7 @@ Use `flavor rules` to browse rule ids, default severity, and payload keys withou
 `flavor check` resolves the config in this order:
 
 1. The `--config <path>` argument if provided. Missing or malformed → error.
-2. `<root>/flavor.json` if it exists. flavor prints `flavor: using config <path>` on stderr so a stray file at the scan root never silently changes the check.
+2. The first supported config under `<root>` if it exists. Format priority is `flavor.toml`, `flavor.yaml`, `flavor.yml`, then `flavor.json`. flavor prints `flavor: using config <path>` on stderr so a stray file at the scan root never silently changes the check.
 3. Built-in defaults. In user repos these match nothing; the empty-scan warning will flag that.
 
 ## Workspace
@@ -188,7 +188,7 @@ python3 scripts/init.py                       # initialize hooks and verify loca
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 python3 scripts/dev/antlr.py check         # optional Dockerized G4 validation
 ```
 

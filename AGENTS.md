@@ -85,7 +85,7 @@ python3 scripts/init.py
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 python3 scripts/dev/antlr.py check
 runseal :pr --help
 ```
@@ -165,7 +165,7 @@ Every PR must pass these commands before review:
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 ```
 
 CI reruns them across Linux, Windows, and macOS.

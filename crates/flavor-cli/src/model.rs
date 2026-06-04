@@ -45,7 +45,7 @@ impl Report {
 
     /// Construct a report that opts out of the empty-scan failure.
     ///
-    /// Used when the active `flavor.json` declared `allowEmptyScan: true` —
+    /// Used when the active `flavor.*` config declared `allowEmptyScan: true` —
     /// typically a workspace-root config that intentionally excludes every
     /// submodule and delegates real checks to per-submodule configs.
     pub(crate) fn with_scan_allow_empty(

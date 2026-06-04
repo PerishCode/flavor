@@ -35,4 +35,4 @@ jobs:
         run: cargo test --locked --workspace
 
       - name: Flavor self-check
-        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.json
+        run: cargo run --locked -p flavor-cli -- check --root . --config flavor.toml

@@ -6,6 +6,15 @@ use std::{
 use crate::config::{resolve, ConfigSource, DEFAULT_CONFIG_FILENAME};
 
 const SAMPLE_CONFIG: &str = r#"{ "scan": { "include": ["**/*.rs"] } }"#;
+const SAMPLE_TOML_CONFIG: &str = r#"
+[scan]
+include = ["**/*.rs"]
+"#;
+const SAMPLE_YAML_CONFIG: &str = r#"
+scan:
+  include:
+    - "**/*.rs"
+"#;
 
 #[test]
 fn resolves_explicit_config_path() {
@@ -13,6 +22,34 @@ fn resolves_explicit_config_path() {
     fs::create_dir_all(&root).unwrap();
     let explicit = root.join("custom.json");
     fs::write(&explicit, SAMPLE_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), Some(explicit.clone())).unwrap();
+
+    assert_eq!(source, ConfigSource::Explicit(explicit));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn resolves_explicit_toml() {
+    let root = test_root("explicit-toml");
+    fs::create_dir_all(&root).unwrap();
+    let explicit = root.join("custom.toml");
+    fs::write(&explicit, SAMPLE_TOML_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), Some(explicit.clone())).unwrap();
+
+    assert_eq!(source, ConfigSource::Explicit(explicit));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn resolves_explicit_yaml() {
+    let root = test_root("explicit-yaml");
+    fs::create_dir_all(&root).unwrap();
+    let explicit = root.join("custom.yaml");
+    fs::write(&explicit, SAMPLE_YAML_CONFIG).unwrap();
 
     let (_, source) = resolve(root.clone(), Some(explicit.clone())).unwrap();
 
@@ -39,6 +76,48 @@ fn discovers_flavor_json_root() {
 }
 
 #[test]
+fn discovers_flavor_toml_root() {
+    let root = test_root("discovery-toml");
+    fs::create_dir_all(&root).unwrap();
+    let discovered = root.join("flavor.toml");
+    fs::write(&discovered, SAMPLE_TOML_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), None).unwrap();
+
+    assert_eq!(source, ConfigSource::Discovered(canonical(&discovered)));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn discovers_flavor_yaml_root() {
+    let root = test_root("discovery-yaml");
+    fs::create_dir_all(&root).unwrap();
+    let discovered = root.join("flavor.yaml");
+    fs::write(&discovered, SAMPLE_YAML_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), None).unwrap();
+
+    assert_eq!(source, ConfigSource::Discovered(canonical(&discovered)));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn discovers_flavor_yml_root() {
+    let root = test_root("discovery-yml");
+    fs::create_dir_all(&root).unwrap();
+    let discovered = root.join("flavor.yml");
+    fs::write(&discovered, SAMPLE_YAML_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), None).unwrap();
+
+    assert_eq!(source, ConfigSource::Discovered(canonical(&discovered)));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn walk_up_finds_ancestor() {
     let root = test_root("walk-up-ancestor");
     let nested = root.join("a/b/c");
@@ -51,6 +130,24 @@ fn walk_up_finds_ancestor() {
     assert_eq!(source, ConfigSource::Discovered(canonical(&config)));
     // Project root is the discovered config's directory, not the start path.
     assert_eq!(guard.root, canonical(&root));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn flavor_toml_wins_priority() {
+    let root = test_root("format-priority");
+    fs::create_dir_all(&root).unwrap();
+    let json = root.join(DEFAULT_CONFIG_FILENAME);
+    fs::write(&json, SAMPLE_CONFIG).unwrap();
+    let toml = root.join("flavor.toml");
+    fs::write(&toml, SAMPLE_TOML_CONFIG).unwrap();
+    fs::write(root.join("flavor.yaml"), SAMPLE_YAML_CONFIG).unwrap();
+    fs::write(root.join("flavor.yml"), SAMPLE_YAML_CONFIG).unwrap();
+
+    let (_, source) = resolve(root.clone(), None).unwrap();
+
+    assert_eq!(source, ConfigSource::Discovered(canonical(&toml)));
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -181,6 +278,23 @@ fn propagates_explicit_path_errors() {
     assert!(
         error.contains("failed to read config"),
         "expected read-failure message, got: {error}"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rejects_unsupported_format() {
+    let root = test_root("explicit-unsupported");
+    fs::create_dir_all(&root).unwrap();
+    let config_path = root.join("flavor.txt");
+    fs::write(&config_path, SAMPLE_CONFIG).unwrap();
+
+    let error = resolve(root.clone(), Some(config_path)).unwrap_err();
+
+    assert!(
+        error.contains("unsupported config format"),
+        "expected unsupported-format message, got: {error}"
     );
 
     let _ = fs::remove_dir_all(&root);

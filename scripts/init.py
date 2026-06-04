@@ -37,6 +37,7 @@ REQUIRED_PATHS = (
     "manage.ps1",
     "runseal.toml",
     ".runseal/lib/python-module",
+    ".runseal/wrappers/antlr",
     ".runseal/wrappers/cloudflare",
     ".runseal/wrappers/pr",
     ".runseal/wrappers/release",
@@ -49,7 +50,8 @@ REQUIRED_PATHS = (
     "scripts/cli/cloudflare.py",
     "scripts/cli/pr.py",
     "scripts/cli/release.py",
-    "scripts/dev/antlr.py",
+    "Dockerfile.antlr4",
+    "scripts/cli/antlr.py",
     "scripts/init.py",
 )
 
@@ -70,6 +72,7 @@ cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
 
 echo "==> shell syntax"
 sh -n .runseal/lib/python-module
+sh -n .runseal/wrappers/antlr
 sh -n .runseal/wrappers/cloudflare
 sh -n .runseal/wrappers/pr
 sh -n .runseal/wrappers/release
@@ -79,7 +82,7 @@ sh -n .github/scripts/release/smoke/smoke.sh
 
 echo "==> python syntax"
 python3 -m py_compile scripts/init.py
-python3 -m py_compile scripts/dev/antlr.py
+python3 -m py_compile scripts/cli/antlr.py
 python3 -m py_compile scripts/cli/cloudflare.py
 python3 -m py_compile scripts/cli/pr.py
 python3 -m py_compile scripts/cli/release.py

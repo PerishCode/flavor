@@ -19,14 +19,16 @@ files for plugin-facing grammar contracts.
 
 ```bash
 cargo test --locked -p flavor-grammar
-python3 scripts/dev/antlr.py check
+runseal :antlr init
+runseal :antlr check
 ```
 
 ## Standard Workflow
 
 - Define or update grammar shape in `.g4`; keep metadata focused on owner,
   entrypoint, facts, diagnostics, span mapping, recovery, and backend bindings.
-- Use `scripts/dev/antlr.py check` as the Dockerized ANTLR helper. It accepts
+- Use `runseal :antlr init` to build the pinned local ANTLR Docker image, then
+  `runseal :antlr check` as the Dockerized ANTLR helper. The check accepts
   optional `.g4` files under `grammars/`, groups them by path relative to
   `grammars/`, and runs ANTLR in dependency mode without Java artifact output.
 - Harnesses should prove conformance to this contract rather than merely

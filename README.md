@@ -189,13 +189,16 @@ cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 cargo run --locked -p flavor-cli -- check --root . --config flavor.toml
-python3 scripts/dev/antlr.py check         # optional Dockerized G4 validation
+runseal :antlr init                        # build the local ANTLR image once
+runseal :antlr check                       # optional Dockerized G4 validation
 ```
 
 Repo-local operator commands use runseal wrappers rather than the installable
 `flavor` binary:
 
 ```bash
+runseal :antlr init [options]
+runseal :antlr check [grammars/.../*.g4]
 runseal :cloudflare <command> [args]
 runseal :pr [options]
 runseal :release --channel=stable|beta [options]

@@ -21,6 +21,7 @@ REQUIRED_TOOLS = (
     "git",
     "python3",
     "cargo",
+    "runseal",
     "uv",
     "sh",
     "bash",
@@ -31,10 +32,14 @@ REQUIRED_TOOLS = (
 REQUIRED_PATHS = (
     "Cargo.toml",
     "Cargo.lock",
-    "cli.sh",
     "flavor.json",
     "manage.sh",
     "manage.ps1",
+    "runseal.toml",
+    ".runseal/lib/python-module",
+    ".runseal/wrappers/cloudflare",
+    ".runseal/wrappers/pr",
+    ".runseal/wrappers/release",
     ".github/workflows/guard.yml",
     ".github/scripts/release/r2/publish.sh",
     ".github/scripts/release/smoke/smoke.sh",
@@ -64,7 +69,10 @@ echo "==> flavor self-check"
 cargo run --locked -p flavor-cli -- check --root . --config flavor.json
 
 echo "==> shell syntax"
-sh -n cli.sh
+sh -n .runseal/lib/python-module
+sh -n .runseal/wrappers/cloudflare
+sh -n .runseal/wrappers/pr
+sh -n .runseal/wrappers/release
 sh -n manage.sh
 bash -n .github/scripts/release/r2/publish.sh
 sh -n .github/scripts/release/smoke/smoke.sh

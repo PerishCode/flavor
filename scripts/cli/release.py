@@ -42,8 +42,29 @@ def require_operator_tools() -> None:
     run_checked(["gh", "auth", "status"], stdout=subprocess.DEVNULL)
 
 
-def latest_run_id(workflow: str, ref: str) -> str:
-    for _ in range(6):
+def workflow_run_ids(workflow: str, ref: str) -> set[str]:
+    raw = output(
+        [
+            "gh",
+            "run",
+            "list",
+            "--workflow",
+            workflow,
+            "--branch",
+            ref,
+            "--event",
+            "workflow_dispatch",
+            "--limit",
+            "20",
+            "--json",
+            "databaseId",
+        ]
+    )
+    return {str(run["databaseId"]) for run in json.loads(raw)}
+
+
+def triggered_run_id(workflow: str, ref: str, previous_ids: set[str]) -> str:
+    for _ in range(12):
         raw = output(
             [
                 "gh",
@@ -56,16 +77,18 @@ def latest_run_id(workflow: str, ref: str) -> str:
                 "--event",
                 "workflow_dispatch",
                 "--limit",
-                "1",
+                "10",
                 "--json",
                 "databaseId",
             ]
         )
         runs = json.loads(raw)
-        if runs:
-            return str(runs[0]["databaseId"])
-        time.sleep(2)
-    raise CliError(f"could not find a recent run for {workflow} on {ref}")
+        for run in runs:
+            run_id = str(run["databaseId"])
+            if run_id not in previous_ids:
+                return run_id
+        time.sleep(5)
+    raise CliError(f"could not find the triggered run for {workflow} on {ref}")
 
 
 def cmd_default(args: list[str]) -> int:
@@ -96,6 +119,7 @@ def cmd_default(args: list[str]) -> int:
         print(" ".join(argv))
         return 0
     require_operator_tools()
+    previous_run_ids = workflow_run_ids(workflow, parsed.ref) if parsed.watch else set()
     result = run_checked(argv, stdout=subprocess.PIPE)
     trigger_output = result.stdout.decode("utf-8").strip()
     if trigger_output:
@@ -103,7 +127,7 @@ def cmd_default(args: list[str]) -> int:
     print(f"triggered {workflow} for ref {parsed.ref}")
     if parsed.watch:
         match = re.search(r"/actions/runs/([0-9]+)", trigger_output)
-        run_id = match.group(1) if match else latest_run_id(workflow, parsed.ref)
+        run_id = match.group(1) if match else triggered_run_id(workflow, parsed.ref, previous_run_ids)
         run_checked(["gh", "run", "watch", run_id, "--interval", "10"])
     return 0
 

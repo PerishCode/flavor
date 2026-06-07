@@ -2,7 +2,8 @@ use crate::{
     config::NodeKind,
     plugins::{AnalysisContext, PluginOutput},
     rules::{
-        DISPATCH_BRANCH_TOO_LONG, FUNCTION_TOO_LONG, NAMING_TOO_MANY_WORDS, PYTHON_PARSE_ERROR,
+        DISPATCH_BRANCH_TOO_LONG, FUNCTION_TOO_LONG, NAMING_AFFIX_PRESSURE, NAMING_TOO_MANY_WORDS,
+        PYTHON_PARSE_ERROR,
     },
 };
 
@@ -28,10 +29,14 @@ pub(crate) fn analyze_python_source<'a>(context: &AnalysisContext<'a>) -> Plugin
     let name_rule = context
         .config
         .rule(scope.relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
+    let affix_rule = context
+        .config
+        .rule(scope.relative, NodeKind::File, NAMING_AFFIX_PRESSURE);
     check_name_facts(
         &context.products,
         "python",
         &name_rule,
+        &affix_rule,
         scope.path,
         &mut issues,
     );

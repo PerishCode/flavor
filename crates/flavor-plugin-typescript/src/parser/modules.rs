@@ -9,10 +9,10 @@ impl<'a> Parser<'a> {
         if self.at(kind::STRING_LITERAL) {
             self.bump();
         } else if self.is_import_equals_start() {
-            self.parse_import_equals();
+            self.import_equals();
         } else {
-            self.parse_import_clause();
-            self.parse_from_clause("expected module source in import declaration");
+            self.import_clause();
+            self.module_source_clause("expected module source in import declaration");
         }
         self.parse_optional_semicolon();
         self.builder.finish_node();
@@ -25,19 +25,17 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         match self.current() {
-            kind::EQUALS => self.parse_export_assignment(),
-            kind::KEYWORD_AS if self.next_is(kind::KEYWORD_NAMESPACE) => {
-                self.parse_namespace_export()
-            }
-            kind::OPEN_BRACE => self.parse_export_clause(),
-            kind::STAR => self.parse_export_star_clause(),
+            kind::EQUALS => self.export_assignment(),
+            kind::KEYWORD_AS if self.next_is(kind::KEYWORD_NAMESPACE) => self.namespace_export(),
+            kind::OPEN_BRACE => self.export_clause(),
+            kind::STAR => self.export_star_clause(),
             kind::KEYWORD_TYPE if self.next_is(kind::STAR) => {
                 self.bump();
-                self.parse_export_star_clause();
+                self.export_star_clause();
             }
             kind::KEYWORD_TYPE if self.next_is(kind::OPEN_BRACE) => {
                 self.bump();
-                self.parse_export_clause();
+                self.export_clause();
             }
             kind::KEYWORD_CLASS => self.parse_class_declaration(false),
             kind::KEYWORD_CONST | kind::KEYWORD_LET => self.parse_variable_statement(),
@@ -46,7 +44,7 @@ impl<'a> Parser<'a> {
             kind::KEYWORD_INTERFACE => self.parse_interface_declaration(),
             kind::KEYWORD_MODULE | kind::KEYWORD_NAMESPACE => self.parse_namespace_declaration(),
             kind::KEYWORD_TYPE => self.parse_type_alias_declaration(),
-            _ => self.parse_modified_export(),
+            _ => self.modified_export(),
         }
         self.builder.finish_node();
     }
@@ -60,7 +58,7 @@ impl<'a> Parser<'a> {
         } else {
             self.error_here("expected enum name");
         }
-        self.parse_enum_body();
+        self.enum_body();
         self.builder.finish_node();
     }
 
@@ -68,7 +66,7 @@ impl<'a> Parser<'a> {
         self.builder.start_node(kind::NAMESPACE_DECLARATION);
         self.parse_modifier_list();
         self.bump();
-        self.parse_namespace_name();
+        self.namespace_name();
         self.builder.start_node(kind::NAMESPACE_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start namespace body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
@@ -89,7 +87,7 @@ impl<'a> Parser<'a> {
                 && self.token_kind_at(2) == kind::EQUALS
     }
 
-    fn parse_import_equals(&mut self) {
+    fn import_equals(&mut self) {
         self.builder.start_node(kind::IMPORT_EQUALS_DECLARATION);
         if self.at(kind::KEYWORD_TYPE) {
             self.bump();
@@ -97,7 +95,7 @@ impl<'a> Parser<'a> {
         self.bump();
         if self.expect(kind::EQUALS, "expected '=' in import assignment") {
             if self.is_require_call() {
-                self.parse_external_reference();
+                self.external_reference();
             } else {
                 self.parse_expression(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]);
             }
@@ -105,7 +103,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_external_reference(&mut self) {
+    fn external_reference(&mut self) {
         self.builder.start_node(kind::EXTERNAL_MODULE_REFERENCE);
         self.bump();
         self.parse_balanced_node(
@@ -117,7 +115,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_import_clause(&mut self) {
+    fn import_clause(&mut self) {
         self.builder.start_node(kind::IMPORT_CLAUSE);
         if self.at(kind::KEYWORD_TYPE) {
             self.bump();
@@ -129,15 +127,15 @@ impl<'a> Parser<'a> {
             }
         }
         if self.at(kind::STAR) {
-            self.parse_namespace_import();
+            self.namespace_import();
         } else if self.at(kind::OPEN_BRACE) {
-            self.parse_named_imports();
+            self.named_imports();
         }
         self.parse_balanced_tokens_until(&[kind::KEYWORD_FROM, kind::SEMICOLON, kind::END_OF_FILE]);
         self.builder.finish_node();
     }
 
-    fn parse_namespace_import(&mut self) {
+    fn namespace_import(&mut self) {
         self.builder.start_node(kind::NAMESPACE_IMPORT);
         self.bump();
         if self.at(kind::KEYWORD_AS) {
@@ -153,12 +151,12 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_named_imports(&mut self) {
+    fn named_imports(&mut self) {
         self.builder.start_node(kind::NAMED_IMPORTS);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start named imports") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 let start = self.cursor;
-                self.parse_import_specifier();
+                self.import_specifier();
                 if self.at(kind::COMMA) {
                     self.bump();
                 } else if !self.at(kind::CLOSE_BRACE) {
@@ -172,21 +170,21 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_import_specifier(&mut self) {
+    fn import_specifier(&mut self) {
         self.builder.start_node(kind::IMPORT_SPECIFIER);
-        self.parse_binding_specifier("expected import specifier");
+        self.binding_specifier("expected import specifier");
         self.builder.finish_node();
     }
 
-    fn parse_export_clause(&mut self) {
+    fn export_clause(&mut self) {
         self.builder.start_node(kind::EXPORT_CLAUSE);
-        self.parse_named_exports();
-        self.parse_from_clause("expected module source after export clause");
+        self.named_exports();
+        self.module_source_clause("expected module source after export clause");
         self.parse_optional_semicolon();
         self.builder.finish_node();
     }
 
-    fn parse_export_star_clause(&mut self) {
+    fn export_star_clause(&mut self) {
         self.builder.start_node(kind::EXPORT_CLAUSE);
         self.bump();
         if self.at(kind::KEYWORD_AS) {
@@ -197,12 +195,12 @@ impl<'a> Parser<'a> {
                 self.error_here("expected export namespace name");
             }
         }
-        self.parse_from_clause("expected module source after export star");
+        self.module_source_clause("expected module source after export star");
         self.parse_optional_semicolon();
         self.builder.finish_node();
     }
 
-    fn parse_export_assignment(&mut self) {
+    fn export_assignment(&mut self) {
         self.builder.start_node(kind::EXPORT_ASSIGNMENT);
         self.bump();
         self.parse_expression(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]);
@@ -210,7 +208,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_namespace_export(&mut self) {
+    fn namespace_export(&mut self) {
         self.builder.start_node(kind::NAMESPACE_EXPORT_DECLARATION);
         self.bump();
         self.bump();
@@ -223,12 +221,12 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_named_exports(&mut self) {
+    fn named_exports(&mut self) {
         self.builder.start_node(kind::NAMED_EXPORTS);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start named exports") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 let start = self.cursor;
-                self.parse_export_specifier();
+                self.export_specifier();
                 if self.at(kind::COMMA) {
                     self.bump();
                 } else if !self.at(kind::CLOSE_BRACE) {
@@ -242,13 +240,13 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_export_specifier(&mut self) {
+    fn export_specifier(&mut self) {
         self.builder.start_node(kind::EXPORT_SPECIFIER);
-        self.parse_binding_specifier("expected export specifier");
+        self.binding_specifier("expected export specifier");
         self.builder.finish_node();
     }
 
-    fn parse_binding_specifier(&mut self, message: &str) {
+    fn binding_specifier(&mut self, message: &str) {
         if self.at(kind::KEYWORD_TYPE) {
             self.bump();
         }
@@ -288,7 +286,7 @@ impl<'a> Parser<'a> {
             && self.next_is(kind::OPEN_PAREN)
     }
 
-    fn parse_modified_export(&mut self) {
+    fn modified_export(&mut self) {
         match self.kind_after_modifiers() {
             Some(kind::KEYWORD_CLASS) => self.parse_class_declaration(false),
             Some(kind::KEYWORD_CONST | kind::KEYWORD_LET) => self.parse_variable_statement(),
@@ -310,7 +308,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_from_clause(&mut self, message: &str) {
+    fn module_source_clause(&mut self, message: &str) {
         if self.at(kind::KEYWORD_FROM) {
             self.bump();
             if self.at(kind::STRING_LITERAL) {
@@ -323,12 +321,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_enum_body(&mut self) {
+    fn enum_body(&mut self) {
         self.builder.start_node(kind::ENUM_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start enum body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 let start = self.cursor;
-                self.parse_enum_member();
+                self.enum_member();
                 if self.at(kind::COMMA) {
                     self.bump();
                 } else if !self.at(kind::CLOSE_BRACE) {
@@ -342,7 +340,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_enum_member(&mut self) {
+    fn enum_member(&mut self) {
         self.builder.start_node(kind::ENUM_MEMBER);
         if self.at(kind::IDENTIFIER) || self.at(kind::STRING_LITERAL) {
             self.bump();
@@ -355,7 +353,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_namespace_name(&mut self) {
+    fn namespace_name(&mut self) {
         if self.at(kind::STRING_LITERAL) {
             self.bump();
             return;

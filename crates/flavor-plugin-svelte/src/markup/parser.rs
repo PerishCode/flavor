@@ -40,77 +40,77 @@ impl<'a> MarkupParser<'a> {
 
     fn parse(mut self) -> SvelteMarkupAst {
         self.builder.start_node(kind::ROOT);
-        self.parse_children(None);
+        self.children(None);
         self.builder.finish_node();
         SvelteMarkupAst::new(self.builder.finish(), self.diagnostics)
     }
 
-    fn parse_children(&mut self, parent_tag: Option<&str>) -> bool {
+    fn children(&mut self, parent_tag: Option<&str>) -> bool {
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("</") {
                 let name = self.peek_close_tag_name();
                 if parent_tag.is_some_and(|parent| name.as_deref() == Some(parent)) {
-                    self.parse_end_tag();
+                    self.end_tag();
                     return true;
                 }
                 if parent_tag.is_some() {
                     return false;
                 }
                 let start = self.cursor;
-                self.parse_end_tag();
+                self.end_tag();
                 self.error_at(start, "unexpected closing tag");
             } else if self.source[self.cursor..].starts_with("{/") {
                 if parent_tag.is_some() {
                     return false;
                 }
-                self.parse_unexpected_block_close();
+                self.unexpected_block_close();
             } else {
-                self.parse_child();
+                self.child();
             }
         }
         parent_tag.is_none()
     }
 
-    fn parse_block_children(&mut self, keyword: &str) -> bool {
+    fn block_children(&mut self, keyword: &str) -> bool {
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("{/") {
                 let close_keyword = self.peek_block_keyword(2);
                 if close_keyword.as_deref() == Some(keyword) {
-                    self.parse_block_tag(kind::BLOCK_CLOSE, 2);
+                    self.block_tag(kind::BLOCK_CLOSE, 2);
                     return true;
                 }
                 return false;
             }
             if self.source[self.cursor..].starts_with("{:") {
-                self.parse_block_tag(kind::BLOCK_BRANCH, 2);
+                self.block_tag(kind::BLOCK_BRANCH, 2);
             } else {
-                self.parse_child();
+                self.child();
             }
         }
         false
     }
 
-    fn parse_child(&mut self) {
+    fn child(&mut self) {
         if self.source[self.cursor..].starts_with("<!--") {
-            self.parse_comment();
+            self.comment();
         } else if self.source[self.cursor..].starts_with('<') {
-            self.parse_element();
+            self.element();
         } else if self.source[self.cursor..].starts_with("{#") {
-            self.parse_block();
+            self.block();
         } else if self.source[self.cursor..].starts_with("{@") {
-            self.parse_special_tag();
+            self.special_tag();
         } else if self.source[self.cursor..].starts_with("{:") {
             let start = self.cursor;
-            self.parse_block_tag(kind::BLOCK_BRANCH, 2);
+            self.block_tag(kind::BLOCK_BRANCH, 2);
             self.error_at(start, "unexpected block branch");
         } else if self.source[self.cursor..].starts_with('{') {
-            self.parse_mustache();
+            self.mustache();
         } else {
-            self.parse_text();
+            self.text();
         }
     }
 
-    fn parse_element(&mut self) {
+    fn element(&mut self) {
         let start = self.cursor;
         let Some(tag_name) = self.peek_open_tag_name() else {
             self.parse_error_char();
@@ -121,12 +121,12 @@ impl<'a> MarkupParser<'a> {
         } else {
             kind::ELEMENT
         });
-        let Some(tag) = self.parse_start_tag() else {
+        let Some(tag) = self.start_tag() else {
             self.builder.finish_node();
             return;
         };
         if !tag.self_closing && !is_html_void_element(&tag.name) {
-            let matched = self.parse_children(Some(&tag.name));
+            let matched = self.children(Some(&tag.name));
             if !matched {
                 self.error_at(start, format!("missing closing </{}> tag", tag.name));
             }
@@ -134,26 +134,26 @@ impl<'a> MarkupParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_start_tag(&mut self) -> Option<ParsedTag> {
+    fn start_tag(&mut self) -> Option<ParsedTag> {
         self.builder.start_node(kind::START_TAG);
         self.token_len(kind::LESS_THAN, 1);
         let name_start = self.cursor;
         self.cursor = scan_markup_name(self.source, self.cursor, is_tag_name_char);
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(1), "expected tag name");
-            self.parse_bad_tag_tail();
+            self.bad_tag_tail();
             self.builder.finish_node();
             return None;
         }
         let name = self.source[name_start..self.cursor].to_string();
         self.builder
             .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
-        let self_closing = self.parse_tag_tail();
+        let self_closing = self.tag_tail();
         self.builder.finish_node();
         Some(ParsedTag { name, self_closing })
     }
 
-    fn parse_end_tag(&mut self) {
+    fn end_tag(&mut self) {
         self.builder.start_node(kind::END_TAG);
         self.token_len(kind::LESS_THAN, 1);
         self.token_len(kind::SLASH, 1);
@@ -165,11 +165,11 @@ impl<'a> MarkupParser<'a> {
             self.builder
                 .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
         }
-        self.parse_tag_tail();
+        self.tag_tail();
         self.builder.finish_node();
     }
 
-    fn parse_tag_tail(&mut self) -> bool {
+    fn tag_tail(&mut self) -> bool {
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("/>") {
                 self.token_len(kind::SLASH, 1);
@@ -190,19 +190,19 @@ impl<'a> MarkupParser<'a> {
         false
     }
 
-    fn parse_block(&mut self) {
+    fn block(&mut self) {
         let start = self.cursor;
         self.builder.start_node(kind::BLOCK);
-        let keyword = self.parse_block_tag(kind::BLOCK_OPEN, 2);
+        let keyword = self.block_tag(kind::BLOCK_OPEN, 2);
         if let Some(keyword) = keyword {
-            if !self.parse_block_children(&keyword) {
+            if !self.block_children(&keyword) {
                 self.error_at(start, format!("missing closing {{/{keyword}}} block"));
             }
         }
         self.builder.finish_node();
     }
 
-    fn parse_block_tag(&mut self, kind: Kind, opener_len: usize) -> Option<String> {
+    fn block_tag(&mut self, kind: Kind, opener_len: usize) -> Option<String> {
         self.builder.start_node(kind);
         self.token_len(kind::MUSTACHE_OPEN, opener_len);
         let keyword_start = self.cursor;
@@ -223,12 +223,12 @@ impl<'a> MarkupParser<'a> {
             );
             None
         };
-        self.parse_expression_tail();
+        self.expression_tail();
         self.builder.finish_node();
         keyword
     }
 
-    fn parse_render_tag(&mut self) {
+    fn render_tag(&mut self) {
         self.builder.start_node(kind::RENDER_TAG);
         self.token_len(kind::MUSTACHE_OPEN, 2);
         let keyword_start = self.cursor;
@@ -241,25 +241,25 @@ impl<'a> MarkupParser<'a> {
                 &self.source[keyword_start..self.cursor],
             );
         }
-        self.parse_expression_tail();
+        self.expression_tail();
         self.builder.finish_node();
     }
 
-    fn parse_special_tag(&mut self) {
+    fn special_tag(&mut self) {
         if self.peek_block_keyword(2).as_deref() == Some("render") {
-            self.parse_render_tag();
+            self.render_tag();
             return;
         }
-        self.parse_block_tag(kind::SPECIAL_TAG, 2);
+        self.block_tag(kind::SPECIAL_TAG, 2);
     }
 
-    fn parse_unexpected_block_close(&mut self) {
+    fn unexpected_block_close(&mut self) {
         let start = self.cursor;
-        self.parse_block_tag(kind::BLOCK_CLOSE, 2);
+        self.block_tag(kind::BLOCK_CLOSE, 2);
         self.error_at(start, "unexpected block close");
     }
 
-    fn parse_mustache(&mut self) {
+    fn mustache(&mut self) {
         self.parse_mustache_like(kind::MUSTACHE);
     }
 
@@ -290,7 +290,7 @@ impl<'a> MarkupParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_expression_tail(&mut self) {
+    fn expression_tail(&mut self) {
         let expr_start = self.cursor;
         let end = find_mustache_end(self.source, expr_start);
         match end {
@@ -313,7 +313,7 @@ impl<'a> MarkupParser<'a> {
         }
     }
 
-    fn parse_comment(&mut self) {
+    fn comment(&mut self) {
         let start = self.cursor;
         self.builder.start_node(kind::COMMENT);
         match find_html_comment_close(self.source, self.cursor) {
@@ -328,7 +328,7 @@ impl<'a> MarkupParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_text(&mut self) {
+    fn text(&mut self) {
         let start = self.cursor;
         while self.cursor < self.source.len()
             && !self.source[self.cursor..].starts_with('<')
@@ -351,7 +351,7 @@ impl<'a> MarkupParser<'a> {
             .token(kind::WHITESPACE, &self.source[start..self.cursor]);
     }
 
-    fn parse_bad_tag_tail(&mut self) {
+    fn bad_tag_tail(&mut self) {
         let start = self.cursor;
         while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with('>') {
             self.bump();

@@ -1,8 +1,14 @@
 use crate::{
     config::RuleSettings,
     model::{issue, Issue},
-    rules::PAYLOAD_MAX_WORDS,
+    rules::{PAYLOAD_MAX_WORDS, PAYLOAD_MIN_OCCURRENCES},
 };
+
+const DEFAULT_AFFIX_MIN_OCCURRENCES: usize = 15;
+const MAX_EXAMPLES: usize = 5;
+const IGNORED_AFFIXES: &[&str] = &[
+    "new", "default", "test", "tests", "ok", "run", "runs", "main", "mod",
+];
 
 pub(crate) fn check_name(
     issues: &mut Vec<Issue>,
@@ -31,11 +37,53 @@ pub(crate) fn check_name(
     ));
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct NameFact {
+    pub(crate) kind: String,
+    pub(crate) name: String,
+    pub(crate) line: usize,
+}
+
+pub(crate) fn check_affix_pressure(
+    issues: &mut Vec<Issue>,
+    rule: &RuleSettings,
+    path: &str,
+    names: &[NameFact],
+) {
+    if !rule.enabled {
+        return;
+    }
+    let min_occurrences = rule
+        .usize(PAYLOAD_MIN_OCCURRENCES)
+        .unwrap_or(DEFAULT_AFFIX_MIN_OCCURRENCES);
+    for bucket in affix_buckets(names) {
+        if bucket.names.len() < min_occurrences {
+            continue;
+        }
+        issues.push(issue(
+            rule.severity,
+            rule.id,
+            path,
+            Some(bucket.line),
+            format!(
+                "{} {} names share the {} `{}`; consider whether `{}` wants to move from the name into a module, namespace, type, or factory; if the remaining names do not form a clear family, `{}` may be too broad and should be named more sharply; examples: {}",
+                bucket.names.len(),
+                bucket.kind,
+                bucket.side.label(),
+                bucket.affix,
+                bucket.affix,
+                bucket.affix,
+                examples(&bucket.names),
+            ),
+        ));
+    }
+}
+
 pub(crate) fn count_name_words(name: &str) -> usize {
     split_name_words(name).len()
 }
 
-fn split_name_words(name: &str) -> Vec<String> {
+pub(crate) fn split_name_words(name: &str) -> Vec<String> {
     let mut words = Vec::new();
     let normalized = name
         .strip_prefix("r#")
@@ -51,6 +99,71 @@ fn split_name_words(name: &str) -> Vec<String> {
     }
 
     words
+}
+
+#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+enum AffixSide {
+    Prefix,
+    Suffix,
+}
+
+impl AffixSide {
+    fn label(self) -> &'static str {
+        match self {
+            AffixSide::Prefix => "prefix",
+            AffixSide::Suffix => "suffix",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct AffixBucket {
+    kind: String,
+    side: AffixSide,
+    affix: String,
+    line: usize,
+    names: Vec<String>,
+}
+
+fn affix_buckets(names: &[NameFact]) -> Vec<AffixBucket> {
+    use std::collections::BTreeMap;
+
+    let mut buckets = BTreeMap::<(String, AffixSide, String), AffixBucket>::new();
+    for fact in names {
+        let words = split_name_words(&fact.name);
+        if words.len() < 2 {
+            continue;
+        }
+        for (side, affix) in [
+            (AffixSide::Prefix, words.first().unwrap()),
+            (AffixSide::Suffix, words.last().unwrap()),
+        ] {
+            let affix = affix.to_ascii_lowercase();
+            if IGNORED_AFFIXES.contains(&affix.as_str()) {
+                continue;
+            }
+            let key = (fact.kind.clone(), side, affix.clone());
+            let bucket = buckets.entry(key).or_insert_with(|| AffixBucket {
+                kind: fact.kind.clone(),
+                side,
+                affix,
+                line: fact.line,
+                names: Vec::new(),
+            });
+            bucket.line = bucket.line.min(fact.line);
+            bucket.names.push(fact.name.clone());
+        }
+    }
+    buckets.into_values().collect()
+}
+
+fn examples(names: &[String]) -> String {
+    names
+        .iter()
+        .take(MAX_EXAMPLES)
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn split_camel_part(part: &str, words: &mut Vec<String>) {

@@ -4,30 +4,30 @@ use super::Parser;
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_return_statement(&mut self) {
-        self.parse_expression_tail_statement(kind::RETURN_STATEMENT, kind::KEYWORD_RETURN);
+        self.expression_tail_statement(kind::RETURN_STATEMENT, kind::KEYWORD_RETURN);
     }
 
     pub(super) fn parse_throw_statement(&mut self) {
-        self.parse_expression_tail_statement(kind::THROW_STATEMENT, kind::KEYWORD_THROW);
+        self.expression_tail_statement(kind::THROW_STATEMENT, kind::KEYWORD_THROW);
     }
 
     pub(super) fn parse_break_statement(&mut self) {
-        self.parse_label_tail_statement(kind::BREAK_STATEMENT);
+        self.label_tail_statement(kind::BREAK_STATEMENT);
     }
 
     pub(super) fn parse_continue_statement(&mut self) {
-        self.parse_label_tail_statement(kind::CONTINUE_STATEMENT);
+        self.label_tail_statement(kind::CONTINUE_STATEMENT);
     }
 
     pub(super) fn parse_if_statement(&mut self) {
         self.builder.start_node(kind::IF_STATEMENT);
         self.bump();
-        self.parse_parenthesized_condition("expected '(' to start if condition");
-        self.parse_statement_or_block();
+        self.parenthesized_condition("expected '(' to start if condition");
+        self.statement_or_block();
         if self.at(kind::KEYWORD_ELSE) {
             self.builder.start_node(kind::ELSE_CLAUSE);
             self.bump();
-            self.parse_statement_or_block();
+            self.statement_or_block();
             self.builder.finish_node();
         }
         self.builder.finish_node();
@@ -36,26 +36,26 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_for_statement(&mut self) {
         self.builder.start_node(kind::FOR_STATEMENT);
         self.bump();
-        self.parse_parenthesized_condition("expected '(' to start for header");
-        self.parse_statement_or_block();
+        self.parenthesized_condition("expected '(' to start for header");
+        self.statement_or_block();
         self.builder.finish_node();
     }
 
     pub(super) fn parse_while_statement(&mut self) {
         self.builder.start_node(kind::WHILE_STATEMENT);
         self.bump();
-        self.parse_parenthesized_condition("expected '(' to start while condition");
-        self.parse_statement_or_block();
+        self.parenthesized_condition("expected '(' to start while condition");
+        self.statement_or_block();
         self.builder.finish_node();
     }
 
     pub(super) fn parse_do_statement(&mut self) {
         self.builder.start_node(kind::DO_STATEMENT);
         self.bump();
-        self.parse_statement_or_block();
+        self.statement_or_block();
         if self.at(kind::KEYWORD_WHILE) {
             self.bump();
-            self.parse_parenthesized_condition("expected '(' to start do-while condition");
+            self.parenthesized_condition("expected '(' to start do-while condition");
             self.parse_optional_semicolon();
         } else {
             self.error_here("expected while after do statement");
@@ -66,8 +66,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_switch_statement(&mut self) {
         self.builder.start_node(kind::SWITCH_STATEMENT);
         self.bump();
-        self.parse_parenthesized_condition("expected '(' to start switch condition");
-        self.parse_switch_body();
+        self.parenthesized_condition("expected '(' to start switch condition");
+        self.switch_body();
         self.builder.finish_node();
     }
 
@@ -78,11 +78,11 @@ impl<'a> Parser<'a> {
         let mut has_handler = false;
         if self.at(kind::KEYWORD_CATCH) {
             has_handler = true;
-            self.parse_catch_clause();
+            self.catch_clause();
         }
         if self.at(kind::KEYWORD_FINALLY) {
             has_handler = true;
-            self.parse_finally_clause();
+            self.finally_clause();
         }
         if !has_handler {
             self.error_here("expected catch or finally after try block");
@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_expression_tail_statement(&mut self, kind: Kind, keyword: Kind) {
+    fn expression_tail_statement(&mut self, kind: Kind, keyword: Kind) {
         self.builder.start_node(kind);
         debug_assert!(self.at(keyword));
         self.bump();
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_label_tail_statement(&mut self, kind: Kind) {
+    fn label_tail_statement(&mut self, kind: Kind) {
         self.builder.start_node(kind);
         self.bump();
         self.parse_balanced_tokens_until(&[kind::SEMICOLON, kind::CLOSE_BRACE, kind::END_OF_FILE]);
@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_parenthesized_condition(&mut self, message: &str) {
+    fn parenthesized_condition(&mut self, message: &str) {
         self.parse_balanced_node(
             kind::PARENTHESIZED_EXPRESSION,
             kind::OPEN_PAREN,
@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
         );
     }
 
-    fn parse_statement_or_block(&mut self) {
+    fn statement_or_block(&mut self) {
         if self.at(kind::OPEN_BRACE) {
             self.parse_block(kind::BLOCK);
         } else if self.at(kind::END_OF_FILE) {
@@ -128,12 +128,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_switch_body(&mut self) {
+    fn switch_body(&mut self) {
         self.builder.start_node(kind::SWITCH_BODY);
         if self.expect(kind::OPEN_BRACE, "expected '{' to start switch body") {
             while !self.at_any(&[kind::CLOSE_BRACE, kind::END_OF_FILE]) {
                 let start = self.cursor;
-                self.parse_switch_case();
+                self.switch_case();
                 self.ensure_progress(start, "switch body");
             }
             self.expect(kind::CLOSE_BRACE, "expected '}' to close switch body");
@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_switch_case(&mut self) {
+    fn switch_case(&mut self) {
         self.builder.start_node(kind::SWITCH_CASE);
         if self.at(kind::KEYWORD_CASE) {
             self.bump();
@@ -172,17 +172,17 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_catch_clause(&mut self) {
+    fn catch_clause(&mut self) {
         self.builder.start_node(kind::CATCH_CLAUSE);
         self.bump();
         if self.at(kind::OPEN_PAREN) {
-            self.parse_catch_binding();
+            self.catch_binding();
         }
         self.parse_block(kind::BLOCK);
         self.builder.finish_node();
     }
 
-    fn parse_catch_binding(&mut self) {
+    fn catch_binding(&mut self) {
         self.builder.start_node(kind::CATCH_BINDING);
         self.bump();
         if !self.at_any(&[kind::CLOSE_PAREN, kind::END_OF_FILE]) {
@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_finally_clause(&mut self) {
+    fn finally_clause(&mut self) {
         self.builder.start_node(kind::FINALLY_CLAUSE);
         self.bump();
         self.parse_block(kind::BLOCK);

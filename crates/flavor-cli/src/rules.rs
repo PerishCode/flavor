@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::model::Severity;
 
 pub(crate) const NAMING_TOO_MANY_WORDS: &str = "core/naming/too-many-words";
+pub(crate) const NAMING_AFFIX_PRESSURE: &str = "core/naming/affix-pressure";
 pub(crate) const DISPATCH_BRANCH_TOO_LONG: &str = "core/dispatch/branch-too-long";
 pub(crate) const FUNCTION_TOO_LONG: &str = "core/function/too-long";
 pub(crate) const FS_CHILDREN_SHAPE: &str = "core/fs/children-shape";
@@ -80,6 +81,15 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
             default_payload: payload([(PAYLOAD_MAX_WORDS, 4)]),
             bad_flavor: "Names may be carrying scenario, path, or assertion context that belongs near an owner boundary.",
             action_hint: "Consider lifting repeated context into a namespace, object, class, module, impl block, or test module before shortening names.",
+        }),
+        NAMING_AFFIX_PRESSURE => Some(RuleDescriptor {
+            id: NAMING_AFFIX_PRESSURE,
+            target: RuleTarget::File,
+            default_enabled: true,
+            default_severity: Severity::Warning,
+            default_payload: payload([(PAYLOAD_MIN_OCCURRENCES, 15)]),
+            bad_flavor: "A repeated naming prefix or suffix may be acting like structure while still living inside identifiers.",
+            action_hint: "Consider moving the affix into a module, namespace, type, or factory; if the remaining names do not form a clear family, sharpen the repeated word instead.",
         }),
         DISPATCH_BRANCH_TOO_LONG => Some(RuleDescriptor {
             id: DISPATCH_BRANCH_TOO_LONG,
@@ -299,6 +309,7 @@ pub(crate) fn descriptor(rule_id: &str) -> Option<RuleDescriptor> {
 pub(crate) fn known_rule_ids() -> Vec<&'static str> {
     vec![
         NAMING_TOO_MANY_WORDS,
+        NAMING_AFFIX_PRESSURE,
         DISPATCH_BRANCH_TOO_LONG,
         FUNCTION_TOO_LONG,
         FS_CHILDREN_SHAPE,

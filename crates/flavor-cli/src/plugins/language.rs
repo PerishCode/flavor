@@ -22,12 +22,12 @@ use crate::{
     model::{issue, Issue},
     plugins::{AnalysisContext, PluginOutput, ProductSet, SourceFileScope},
     rules::{
-        DISPATCH_BRANCH_TOO_LONG, NAMING_TOO_MANY_WORDS, PAYLOAD_ALLOWED_INTRINSICS,
-        PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_LINES, PAYLOAD_PRIMITIVE_SOURCES, RUST_PARSE_ERROR,
-        RUST_TESTS_IN_SOURCE, SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG,
-        SVELTE_PARSE_ERROR, SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG,
-        SVELTE_TEMPLATE_TOO_COMPLEX, TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR,
-        VUE_PARSE_ERROR,
+        DISPATCH_BRANCH_TOO_LONG, NAMING_AFFIX_PRESSURE, NAMING_TOO_MANY_WORDS,
+        PAYLOAD_ALLOWED_INTRINSICS, PAYLOAD_MAX_BLOCKS, PAYLOAD_MAX_LINES,
+        PAYLOAD_PRIMITIVE_SOURCES, RUST_PARSE_ERROR, RUST_TESTS_IN_SOURCE,
+        SHAPE_REPEATED_TOKEN_PATTERN, SVELTE_COMPONENT_TOO_LONG, SVELTE_PARSE_ERROR,
+        SVELTE_SCRIPT_TOO_LONG, SVELTE_STYLE_TOO_LONG, SVELTE_TEMPLATE_TOO_COMPLEX,
+        TSX_NO_INTRINSICS, TSX_REQUIRES_PRIMITIVE, TS_PARSE_ERROR, VUE_PARSE_ERROR,
     },
 };
 use flavor_core::{Fact, ProductDiagnostic};
@@ -52,10 +52,14 @@ pub(crate) fn analyze_rust_source<'a>(context: &AnalysisContext<'a>) -> PluginOu
     let name_rule = context
         .config
         .rule(scope.relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
+    let affix_rule = context
+        .config
+        .rule(scope.relative, NodeKind::File, NAMING_AFFIX_PRESSURE);
     check_name_facts(
         &context.products,
         "rust",
         &name_rule,
+        &affix_rule,
         scope.path,
         &mut issues,
     );
@@ -164,7 +168,15 @@ fn analyze_typescript_products(
     check_tsx_rules(config, scope, products, issues);
 
     let name_rule = config.rule(scope.relative, NodeKind::File, NAMING_TOO_MANY_WORDS);
-    check_name_facts(products, "typescript", &name_rule, scope.path, issues);
+    let affix_rule = config.rule(scope.relative, NodeKind::File, NAMING_AFFIX_PRESSURE);
+    check_name_facts(
+        products,
+        "typescript",
+        &name_rule,
+        &affix_rule,
+        scope.path,
+        issues,
+    );
 
     let dispatch_rule = config.rule(scope.relative, NodeKind::File, DISPATCH_BRANCH_TOO_LONG);
     check_dispatch_branches(

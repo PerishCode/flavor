@@ -38,39 +38,39 @@ impl<'a> TemplateParser<'a> {
 
     fn parse(mut self) -> TemplateAst {
         self.builder.start_node(kind::ROOT);
-        self.parse_children(None);
+        self.children(None);
         self.builder.finish_node();
         TemplateAst::new(self.builder.finish(), self.diagnostics)
     }
 
-    fn parse_children(&mut self, parent_tag: Option<&str>) -> bool {
+    fn children(&mut self, parent_tag: Option<&str>) -> bool {
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("</") {
                 let name = self.peek_close_tag_name();
                 if parent_tag.is_some_and(|parent| name.as_deref() == Some(parent)) {
-                    self.parse_end_tag();
+                    self.end_tag();
                     return true;
                 }
                 if parent_tag.is_some() {
                     return false;
                 }
                 let start = self.cursor;
-                self.parse_end_tag();
+                self.end_tag();
                 self.error_at(start, "unexpected closing tag");
             } else if self.source[self.cursor..].starts_with("{{") {
-                self.parse_interpolation();
+                self.interpolation();
             } else if self.source[self.cursor..].starts_with("<!--") {
-                self.parse_comment();
+                self.comment();
             } else if self.source[self.cursor..].starts_with('<') {
-                self.parse_element();
+                self.element();
             } else {
-                self.parse_text();
+                self.text();
             }
         }
         parent_tag.is_none()
     }
 
-    fn parse_interpolation(&mut self) {
+    fn interpolation(&mut self) {
         let start = self.cursor;
         self.builder.start_node(kind::INTERPOLATION);
         self.token_len(kind::INTERPOLATION_OPEN, 2);
@@ -90,7 +90,7 @@ impl<'a> TemplateParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_comment(&mut self) {
+    fn comment(&mut self) {
         let start = self.cursor;
         self.builder.start_node(kind::COMMENT);
         match find_html_comment_close(self.source, self.cursor) {
@@ -105,20 +105,20 @@ impl<'a> TemplateParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_element(&mut self) {
+    fn element(&mut self) {
         let start = self.cursor;
         self.builder.start_node(kind::ELEMENT);
-        let Some(tag) = self.parse_start_tag() else {
+        let Some(tag) = self.start_tag() else {
             self.builder.finish_node();
             return;
         };
         if tag.v_pre {
-            let matched = self.parse_raw_children(&tag.name);
+            let matched = self.raw_children(&tag.name);
             if !matched {
                 self.error_at(start, format!("missing closing </{}> tag", tag.name));
             }
         } else if !tag.self_closing && !is_html_void_element(&tag.name) {
-            let matched = self.parse_children(Some(&tag.name));
+            let matched = self.children(Some(&tag.name));
             if !matched {
                 self.error_at(start, format!("missing closing </{}> tag", tag.name));
             }
@@ -126,21 +126,21 @@ impl<'a> TemplateParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_start_tag(&mut self) -> Option<ParsedTag> {
+    fn start_tag(&mut self) -> Option<ParsedTag> {
         self.builder.start_node(kind::START_TAG);
         self.token_len(kind::LESS_THAN, 1);
         let name_start = self.cursor;
         self.cursor = scan_markup_name(self.source, self.cursor, is_markup_name_char);
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(1), "expected tag name");
-            self.parse_bad_tag_tail();
+            self.bad_tag_tail();
             self.builder.finish_node();
             return None;
         }
         let name = self.source[name_start..self.cursor].to_string();
         self.builder
             .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
-        let tail = self.parse_tag_tail();
+        let tail = self.tag_tail();
         self.builder.finish_node();
         Some(ParsedTag {
             name,
@@ -149,7 +149,7 @@ impl<'a> TemplateParser<'a> {
         })
     }
 
-    fn parse_end_tag(&mut self) {
+    fn end_tag(&mut self) {
         self.builder.start_node(kind::END_TAG);
         self.token_len(kind::LESS_THAN, 1);
         self.token_len(kind::SLASH, 1);
@@ -161,11 +161,11 @@ impl<'a> TemplateParser<'a> {
             self.builder
                 .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
         }
-        self.parse_tag_tail();
+        self.tag_tail();
         self.builder.finish_node();
     }
 
-    fn parse_tag_tail(&mut self) -> ParsedTagTail {
+    fn tag_tail(&mut self) -> ParsedTagTail {
         let mut tail = ParsedTagTail::default();
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("/>") {
@@ -179,22 +179,22 @@ impl<'a> TemplateParser<'a> {
                 return tail;
             }
             if self.peek().is_some_and(is_whitespace) {
-                self.parse_whitespace();
+                self.whitespace();
             } else {
-                tail.v_pre |= self.parse_attribute();
+                tail.v_pre |= self.attribute();
             }
         }
         self.error_at(self.source.len(), "missing tag close delimiter");
         tail
     }
 
-    fn parse_attribute(&mut self) -> bool {
+    fn attribute(&mut self) -> bool {
         let name_start = self.cursor;
         while self.peek().is_some_and(is_attribute_name_char) {
             self.bump();
         }
         if self.cursor == name_start {
-            self.parse_error_char();
+            self.error_char();
             return false;
         }
         let name = &self.source[name_start..self.cursor];
@@ -206,31 +206,31 @@ impl<'a> TemplateParser<'a> {
             kind::ATTRIBUTE
         });
         if is_directive {
-            self.parse_directive_name(name);
+            self.directive_name(name);
         } else {
             self.builder.token(kind::ATTRIBUTE_NAME, name);
         }
         while self.peek().is_some_and(is_whitespace) {
-            self.parse_whitespace();
+            self.whitespace();
         }
         if self.source[self.cursor..].starts_with('=') {
             self.token_len(kind::EQUALS, 1);
             while self.peek().is_some_and(is_whitespace) {
-                self.parse_whitespace();
+                self.whitespace();
             }
             if is_directive {
                 self.builder.start_node(kind::DIRECTIVE_EXPRESSION);
-                self.parse_attribute_value();
+                self.attribute_value();
                 self.builder.finish_node();
             } else {
-                self.parse_attribute_value();
+                self.attribute_value();
             }
         }
         self.builder.finish_node();
         is_v_pre
     }
 
-    fn parse_directive_name(&mut self, name: &str) {
+    fn directive_name(&mut self, name: &str) {
         self.builder.start_node(kind::DIRECTIVE_NAME);
         let shorthand = is_shorthand_directive(name);
         let mut offset = directive_base_len(name);
@@ -259,7 +259,7 @@ impl<'a> TemplateParser<'a> {
         self.builder.finish_node();
     }
 
-    fn parse_attribute_value(&mut self) {
+    fn attribute_value(&mut self) {
         let start = self.cursor;
         let Some(ch) = self.peek() else {
             return;
@@ -290,7 +290,7 @@ impl<'a> TemplateParser<'a> {
         }
     }
 
-    fn parse_whitespace(&mut self) {
+    fn whitespace(&mut self) {
         let start = self.cursor;
         while self.peek().is_some_and(is_whitespace) {
             self.bump();
@@ -299,7 +299,7 @@ impl<'a> TemplateParser<'a> {
             .token(kind::WHITESPACE, &self.source[start..self.cursor]);
     }
 
-    fn parse_text(&mut self) {
+    fn text(&mut self) {
         let start = self.cursor;
         while self.cursor < self.source.len()
             && !self.source[self.cursor..].starts_with('<')
@@ -313,7 +313,7 @@ impl<'a> TemplateParser<'a> {
         }
     }
 
-    fn parse_raw_children(&mut self, parent_tag: &str) -> bool {
+    fn raw_children(&mut self, parent_tag: &str) -> bool {
         let start = self.cursor;
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("</") {
@@ -323,7 +323,7 @@ impl<'a> TemplateParser<'a> {
                         self.builder
                             .token(kind::TEXT, &self.source[start..self.cursor]);
                     }
-                    self.parse_end_tag();
+                    self.end_tag();
                     return true;
                 }
             }
@@ -336,7 +336,7 @@ impl<'a> TemplateParser<'a> {
         false
     }
 
-    fn parse_bad_tag_tail(&mut self) {
+    fn bad_tag_tail(&mut self) {
         let start = self.cursor;
         while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with('>') {
             self.bump();
@@ -350,7 +350,7 @@ impl<'a> TemplateParser<'a> {
         }
     }
 
-    fn parse_error_char(&mut self) {
+    fn error_char(&mut self) {
         let start = self.cursor;
         self.bump();
         self.builder

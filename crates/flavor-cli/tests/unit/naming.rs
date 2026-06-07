@@ -1,5 +1,7 @@
 use std::{
+    fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicUsize, Ordering},
     sync::LazyLock,
 };
 
@@ -9,10 +11,11 @@ use crate::{
     naming::count_name_words,
     path_match::path_string,
     plugins::{PluginHost, Scope},
-    rules::{DISPATCH_BRANCH_TOO_LONG, VUE_PARSE_ERROR},
+    rules::{DISPATCH_BRANCH_TOO_LONG, NAMING_AFFIX_PRESSURE, VUE_PARSE_ERROR},
 };
 
 static CONFIG: LazyLock<GuardConfig> = LazyLock::new(|| GuardConfig::core(PathBuf::from(".")));
+static TEMP_SEQ: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
 fn counts_name_words() {
@@ -75,6 +78,51 @@ fn ts_detects_long_names() {
     assert!(issues[1]
         .message
         .contains("controllerRuntimeResultValueText"));
+}
+
+#[test]
+fn ignores_small_affix_buckets() {
+    let relative = Path::new("sample.rs");
+    let issues = source_issues(
+        relative,
+        r#"
+fn name_fact() {}
+fn line_count_fact() {}
+fn descriptor_block_fact() {}
+fn embedded_script_fact() {}
+fn named_span_fact() {}
+"#,
+    );
+
+    assert!(!issues
+        .iter()
+        .any(|issue| issue.rule == NAMING_AFFIX_PRESSURE));
+}
+
+#[test]
+fn reports_affix_pressure() {
+    let relative = Path::new("sample.rs");
+    let config = config_with_affix_threshold(3);
+    let issues = source_issues_with_config(
+        &config,
+        relative,
+        r#"
+fn parse_token() {}
+fn parse_statement() {}
+fn parse_expression() {}
+"#,
+    );
+
+    let issue = issues
+        .iter()
+        .find(|issue| issue.rule == NAMING_AFFIX_PRESSURE)
+        .expect("affix pressure issue");
+    assert_eq!(issue.line, Some(2));
+    assert!(issue
+        .message
+        .contains("3 function names share the prefix `parse`"));
+    assert!(issue.message.contains("move from the name into"));
+    assert!(issue.message.contains("too broad"));
 }
 
 #[test]
@@ -168,14 +216,51 @@ fn flags_switch_case() {
 }
 
 fn source_issues(relative: &Path, source: &str) -> Vec<Issue> {
+    source_issues_with_config(&CONFIG, relative, source)
+}
+
+fn source_issues_with_config(config: &GuardConfig, relative: &Path, source: &str) -> Vec<Issue> {
     let host = PluginHost::bundled();
     let path = path_string(relative);
     let kind = source_file_kind(relative).expect("test source should have supported extension");
     let mut issues = Vec::new();
     host.run_scope(
-        &CONFIG,
+        config,
         Scope::source_file(relative, &path, source, kind),
         &mut issues,
     );
     issues
+}
+
+fn config_with_affix_threshold(min_occurrences: usize) -> GuardConfig {
+    let root = temp_root("naming-affix");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("flavor.toml");
+    fs::write(
+        &path,
+        format!(
+            r#"[scan]
+include = ["**/*.rs"]
+
+[[overrides]]
+match = "**/*.rs"
+kind = "file"
+
+[overrides.rules."core/naming/affix-pressure".payload]
+min_occurrences = {min_occurrences}
+"#
+        ),
+    )
+    .unwrap();
+    let config = GuardConfig::from_file(root.clone(), &path).unwrap();
+    fs::remove_dir_all(root).unwrap();
+    config
+}
+
+fn temp_root(slug: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "flavor-{slug}-{}-{}",
+        std::process::id(),
+        TEMP_SEQ.fetch_add(1, Ordering::Relaxed)
+    ))
 }

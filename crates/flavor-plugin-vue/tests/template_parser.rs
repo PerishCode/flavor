@@ -5,14 +5,15 @@ use flavor_plugin_vue::{run, VuePluginConfig};
 mod ast;
 #[path = "../src/template/kind.rs"]
 pub mod kind;
-#[path = "../src/template/names.rs"]
-mod names;
-#[path = "../src/template/parser.rs"]
-mod parser;
 
 use ast::TemplateAst;
 use kind::Kind;
-use parser::parse_template;
+
+fn parse_template(source: &str) -> TemplateAst {
+    let output =
+        flavor_grammar::parse_vue_template(kind::bundle(), SourceText::new("vue-template", source));
+    TemplateAst::new(output.syntax, output.diagnostics)
+}
 
 fn has_node(ast: &TemplateAst, kind: Kind) -> bool {
     ast.syntax()

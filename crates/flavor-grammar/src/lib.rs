@@ -9,6 +9,7 @@ mod source;
 #[cfg(feature = "tree-sitter-backend")]
 mod tree_sitter_raw;
 mod view;
+mod vue_template;
 
 pub use markup::{
     find_balanced_brace_close, find_html_comment_close, is_html_void_element, is_markup_name_char,
@@ -29,6 +30,7 @@ pub use tree_sitter_raw::{
     parse_tree_sitter, tree_sitter_error_span, TreeSitterParseConfig, TreeSitterRawAstAdapter,
 };
 pub use view::{GrammarContext, GrammarNode, GrammarToken, GrammarTree, TokenTextRun};
+pub use vue_template::parse_vue_template;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GrammarMetadata {

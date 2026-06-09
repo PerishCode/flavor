@@ -182,7 +182,6 @@ fn plugin_raw_builders_tracked() {
         vec![
             "crates/flavor-plugin-svelte/src/markup/parser.rs".to_string(),
             "crates/flavor-plugin-typescript/src/parser/mod.rs".to_string(),
-            "crates/flavor-plugin-vue/src/template/parser.rs".to_string(),
         ],
         "remaining plugin-side raw CST builders must stay explicit until migrated into flavor-grammar"
     );
@@ -205,16 +204,17 @@ fn markup_atoms_in_grammar() {
         );
     }
 
-    for path in [
-        "crates/flavor-plugin-vue/src/template/names.rs",
-        "crates/flavor-plugin-svelte/src/markup/names.rs",
-    ] {
-        let source = read_repo(path);
-        assert!(
-            !source.contains("fn source_char_at") && !source.contains("fn is_void_tag"),
-            "{path} should not duplicate grammar-owned markup cursor or void-element atoms"
-        );
-    }
+    let source = read_repo("crates/flavor-plugin-svelte/src/markup/names.rs");
+    assert!(
+        !source.contains("fn source_char_at") && !source.contains("fn is_void_tag"),
+        "Svelte markup names should not duplicate grammar-owned markup cursor or void-element atoms"
+    );
+    let vue_template = read_repo("crates/flavor-grammar/src/vue_template.rs");
+    assert!(
+        vue_template.contains("fn is_directive_name")
+            && vue_template.contains("fn is_attribute_name_char"),
+        "Vue template parser atoms should live with the grammar-owned backend"
+    );
     assert!(
         !repo_path("crates/flavor-plugin-svelte/src/markup/cursor.rs").exists(),
         "Svelte markup should use grammar-owned brace close scanning"
@@ -259,7 +259,6 @@ fn parser_escapes_tracked() {
             "crates/flavor-plugin-typescript/src/parser/statements.rs".to_string(),
             "crates/flavor-plugin-typescript/src/parser/types.rs".to_string(),
             "crates/flavor-plugin-vue/src/sfc/parser.rs".to_string(),
-            "crates/flavor-plugin-vue/src/template/parser.rs".to_string(),
         ],
         "remaining plugin-side parser execution files must stay explicit until migrated into flavor-grammar"
     );
@@ -305,7 +304,7 @@ fn fact_atoms_used() {
 fn builder_files() -> Vec<String> {
     let mut files = vec![
         "crates/flavor-grammar/src/tree_sitter_raw.rs".to_string(),
-        "crates/flavor-plugin-vue/src/template/parser.rs".to_string(),
+        "crates/flavor-grammar/src/vue_template.rs".to_string(),
     ];
     collect_rs_files("crates/flavor-plugin-typescript/src/parser", &mut files);
     collect_rs_files("crates/flavor-plugin-svelte/src/markup", &mut files);

@@ -1,46 +1,70 @@
-use flavor_core::{Diagnostic, Span};
-use flavor_grammar::{
+use flavor_core::{Diagnostic, SourceText, Span};
+
+use crate::{
     find_html_comment_close, is_html_void_element, is_markup_name_char, markup_char_at,
-    scan_markup_name, RawAstBuilder,
+    scan_markup_name, GrammarBundle, GrammarParseOutput, RawAstBuilder,
 };
 
-use super::{
-    kind,
-    kind::Kind,
-    names::{
-        directive_base_len, is_attribute_name_char, is_directive_name, is_shorthand_directive,
-        is_whitespace,
-    },
-    TemplateAst,
-};
+type Kind = &'static str;
 
-pub fn parse_template(source: &str) -> TemplateAst {
-    let parser = TemplateParser::new(source);
-    parser.parse()
+const ROOT: Kind = "root";
+const ELEMENT: Kind = "element";
+const START_TAG: Kind = "start_tag";
+const END_TAG: Kind = "end_tag";
+const INTERPOLATION: Kind = "interpolation";
+const DIRECTIVE: Kind = "directive";
+const DIRECTIVE_NAME: Kind = "directive_name";
+const DIRECTIVE_EXPRESSION: Kind = "directive_expression";
+const COMMENT: Kind = "comment";
+const ATTRIBUTE: Kind = "attribute";
+const COMMENT_TEXT: Kind = "COMMENT_TEXT";
+const INTERPOLATION_OPEN: Kind = "INTERPOLATION_OPEN";
+const INTERPOLATION_CLOSE: Kind = "INTERPOLATION_CLOSE";
+const LESS_THAN: Kind = "LESS_THAN";
+const GREATER_THAN: Kind = "GREATER_THAN";
+const SLASH: Kind = "SLASH";
+const EQUALS: Kind = "EQUALS";
+const DIRECTIVE_BASE: Kind = "DIRECTIVE_BASE";
+const DIRECTIVE_ARGUMENT: Kind = "DIRECTIVE_ARGUMENT";
+const DIRECTIVE_MODIFIER: Kind = "DIRECTIVE_MODIFIER";
+const TAG_NAME: Kind = "TAG_NAME";
+const ATTRIBUTE_NAME: Kind = "ATTRIBUTE_NAME";
+const ATTRIBUTE_VALUE: Kind = "ATTRIBUTE_VALUE";
+const EXPRESSION_TEXT: Kind = "EXPRESSION_TEXT";
+const TEXT: Kind = "TEXT";
+const WHITESPACE: Kind = "WHITESPACE";
+const ERROR: Kind = "ERROR";
+
+pub fn parse_vue_template(bundle: &GrammarBundle, source: SourceText) -> GrammarParseOutput {
+    let (syntax, diagnostics) = {
+        let parser = VueTemplateParser::new(source.as_str(), bundle);
+        parser.parse()
+    };
+    GrammarParseOutput::new(source, syntax, diagnostics)
 }
 
-struct TemplateParser<'a> {
-    source: &'a str,
+struct VueTemplateParser<'source, 'schema> {
+    source: &'source str,
     cursor: usize,
-    builder: RawAstBuilder<'static>,
+    builder: RawAstBuilder<'schema>,
     diagnostics: Vec<Diagnostic>,
 }
 
-impl<'a> TemplateParser<'a> {
-    fn new(source: &'a str) -> Self {
+impl<'source, 'schema> VueTemplateParser<'source, 'schema> {
+    fn new(source: &'source str, bundle: &'schema GrammarBundle) -> Self {
         Self {
             source,
             cursor: 0,
-            builder: RawAstBuilder::new(kind::schema()),
+            builder: RawAstBuilder::new(bundle.schema()),
             diagnostics: Vec::new(),
         }
     }
 
-    fn parse(mut self) -> TemplateAst {
-        self.builder.start_node(kind::ROOT);
+    fn parse(mut self) -> (flavor_core::SyntaxNode, Vec<Diagnostic>) {
+        self.builder.start_node(ROOT);
         self.children(None);
         self.builder.finish_node();
-        TemplateAst::new(self.builder.finish(), self.diagnostics)
+        (self.builder.finish(), self.diagnostics)
     }
 
     fn children(&mut self, parent_tag: Option<&str>) -> bool {
@@ -72,18 +96,18 @@ impl<'a> TemplateParser<'a> {
 
     fn interpolation(&mut self) {
         let start = self.cursor;
-        self.builder.start_node(kind::INTERPOLATION);
-        self.token_len(kind::INTERPOLATION_OPEN, 2);
+        self.builder.start_node(INTERPOLATION);
+        self.token_len(INTERPOLATION_OPEN, 2);
         let expr_start = self.cursor;
         while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with("}}") {
             self.bump();
         }
         if self.cursor > expr_start {
             self.builder
-                .token(kind::EXPRESSION_TEXT, &self.source[expr_start..self.cursor]);
+                .token(EXPRESSION_TEXT, &self.source[expr_start..self.cursor]);
         }
         if self.source[self.cursor..].starts_with("}}") {
-            self.token_len(kind::INTERPOLATION_CLOSE, 2);
+            self.token_len(INTERPOLATION_CLOSE, 2);
         } else {
             self.error_at(start, "missing interpolation close delimiter");
         }
@@ -92,7 +116,7 @@ impl<'a> TemplateParser<'a> {
 
     fn comment(&mut self) {
         let start = self.cursor;
-        self.builder.start_node(kind::COMMENT);
+        self.builder.start_node(COMMENT);
         match find_html_comment_close(self.source, self.cursor) {
             Some(end) => self.cursor = end,
             None => {
@@ -101,13 +125,13 @@ impl<'a> TemplateParser<'a> {
             }
         }
         self.builder
-            .token(kind::COMMENT_TEXT, &self.source[start..self.cursor]);
+            .token(COMMENT_TEXT, &self.source[start..self.cursor]);
         self.builder.finish_node();
     }
 
     fn element(&mut self) {
         let start = self.cursor;
-        self.builder.start_node(kind::ELEMENT);
+        self.builder.start_node(ELEMENT);
         let Some(tag) = self.start_tag() else {
             self.builder.finish_node();
             return;
@@ -127,8 +151,8 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn start_tag(&mut self) -> Option<ParsedTag> {
-        self.builder.start_node(kind::START_TAG);
-        self.token_len(kind::LESS_THAN, 1);
+        self.builder.start_node(START_TAG);
+        self.token_len(LESS_THAN, 1);
         let name_start = self.cursor;
         self.cursor = scan_markup_name(self.source, self.cursor, is_markup_name_char);
         if self.cursor == name_start {
@@ -139,7 +163,7 @@ impl<'a> TemplateParser<'a> {
         }
         let name = self.source[name_start..self.cursor].to_string();
         self.builder
-            .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
+            .token(TAG_NAME, &self.source[name_start..self.cursor]);
         let tail = self.tag_tail();
         self.builder.finish_node();
         Some(ParsedTag {
@@ -150,16 +174,16 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn end_tag(&mut self) {
-        self.builder.start_node(kind::END_TAG);
-        self.token_len(kind::LESS_THAN, 1);
-        self.token_len(kind::SLASH, 1);
+        self.builder.start_node(END_TAG);
+        self.token_len(LESS_THAN, 1);
+        self.token_len(SLASH, 1);
         let name_start = self.cursor;
         self.cursor = scan_markup_name(self.source, self.cursor, is_markup_name_char);
         if self.cursor == name_start {
             self.error_at(name_start.saturating_sub(2), "expected closing tag name");
         } else {
             self.builder
-                .token(kind::TAG_NAME, &self.source[name_start..self.cursor]);
+                .token(TAG_NAME, &self.source[name_start..self.cursor]);
         }
         self.tag_tail();
         self.builder.finish_node();
@@ -169,13 +193,13 @@ impl<'a> TemplateParser<'a> {
         let mut tail = ParsedTagTail::default();
         while self.cursor < self.source.len() {
             if self.source[self.cursor..].starts_with("/>") {
-                self.token_len(kind::SLASH, 1);
-                self.token_len(kind::GREATER_THAN, 1);
+                self.token_len(SLASH, 1);
+                self.token_len(GREATER_THAN, 1);
                 tail.self_closing = true;
                 return tail;
             }
             if self.source[self.cursor..].starts_with('>') {
-                self.token_len(kind::GREATER_THAN, 1);
+                self.token_len(GREATER_THAN, 1);
                 return tail;
             }
             if self.peek().is_some_and(is_whitespace) {
@@ -200,26 +224,23 @@ impl<'a> TemplateParser<'a> {
         let name = &self.source[name_start..self.cursor];
         let is_directive = is_directive_name(name);
         let is_v_pre = name == "v-pre";
-        self.builder.start_node(if is_directive {
-            kind::DIRECTIVE
-        } else {
-            kind::ATTRIBUTE
-        });
+        self.builder
+            .start_node(if is_directive { DIRECTIVE } else { ATTRIBUTE });
         if is_directive {
             self.directive_name(name);
         } else {
-            self.builder.token(kind::ATTRIBUTE_NAME, name);
+            self.builder.token(ATTRIBUTE_NAME, name);
         }
         while self.peek().is_some_and(is_whitespace) {
             self.whitespace();
         }
         if self.source[self.cursor..].starts_with('=') {
-            self.token_len(kind::EQUALS, 1);
+            self.token_len(EQUALS, 1);
             while self.peek().is_some_and(is_whitespace) {
                 self.whitespace();
             }
             if is_directive {
-                self.builder.start_node(kind::DIRECTIVE_EXPRESSION);
+                self.builder.start_node(DIRECTIVE_EXPRESSION);
                 self.attribute_value();
                 self.builder.finish_node();
             } else {
@@ -231,21 +252,19 @@ impl<'a> TemplateParser<'a> {
     }
 
     fn directive_name(&mut self, name: &str) {
-        self.builder.start_node(kind::DIRECTIVE_NAME);
+        self.builder.start_node(DIRECTIVE_NAME);
         let shorthand = is_shorthand_directive(name);
         let mut offset = directive_base_len(name);
-        self.builder.token(kind::DIRECTIVE_BASE, &name[..offset]);
+        self.builder.token(DIRECTIVE_BASE, &name[..offset]);
         if shorthand && offset < name.len() {
             let start = offset;
             offset = scan_arg(name, offset);
-            self.builder
-                .token(kind::DIRECTIVE_ARGUMENT, &name[start..offset]);
+            self.builder.token(DIRECTIVE_ARGUMENT, &name[start..offset]);
         } else if offset < name.len() && name.as_bytes()[offset] == b':' {
             let start = offset;
             offset += 1;
             offset = scan_arg(name, offset);
-            self.builder
-                .token(kind::DIRECTIVE_ARGUMENT, &name[start..offset]);
+            self.builder.token(DIRECTIVE_ARGUMENT, &name[start..offset]);
         }
         while offset < name.len() && name.as_bytes()[offset] == b'.' {
             let start = offset;
@@ -253,8 +272,7 @@ impl<'a> TemplateParser<'a> {
             while offset < name.len() && name.as_bytes()[offset] != b'.' {
                 offset += 1;
             }
-            self.builder
-                .token(kind::DIRECTIVE_MODIFIER, &name[start..offset]);
+            self.builder.token(DIRECTIVE_MODIFIER, &name[start..offset]);
         }
         self.builder.finish_node();
     }
@@ -286,7 +304,7 @@ impl<'a> TemplateParser<'a> {
         }
         if self.cursor > start {
             self.builder
-                .token(kind::ATTRIBUTE_VALUE, &self.source[start..self.cursor]);
+                .token(ATTRIBUTE_VALUE, &self.source[start..self.cursor]);
         }
     }
 
@@ -296,7 +314,7 @@ impl<'a> TemplateParser<'a> {
             self.bump();
         }
         self.builder
-            .token(kind::WHITESPACE, &self.source[start..self.cursor]);
+            .token(WHITESPACE, &self.source[start..self.cursor]);
     }
 
     fn text(&mut self) {
@@ -308,8 +326,7 @@ impl<'a> TemplateParser<'a> {
             self.bump();
         }
         if self.cursor > start {
-            self.builder
-                .token(kind::TEXT, &self.source[start..self.cursor]);
+            self.builder.token(TEXT, &self.source[start..self.cursor]);
         }
     }
 
@@ -320,8 +337,7 @@ impl<'a> TemplateParser<'a> {
                 let name = self.peek_close_tag_name();
                 if name.as_deref() == Some(parent_tag) {
                     if self.cursor > start {
-                        self.builder
-                            .token(kind::TEXT, &self.source[start..self.cursor]);
+                        self.builder.token(TEXT, &self.source[start..self.cursor]);
                     }
                     self.end_tag();
                     return true;
@@ -330,8 +346,7 @@ impl<'a> TemplateParser<'a> {
             self.bump();
         }
         if self.cursor > start {
-            self.builder
-                .token(kind::TEXT, &self.source[start..self.cursor]);
+            self.builder.token(TEXT, &self.source[start..self.cursor]);
         }
         false
     }
@@ -342,19 +357,17 @@ impl<'a> TemplateParser<'a> {
             self.bump();
         }
         if self.cursor > start {
-            self.builder
-                .token(kind::ERROR, &self.source[start..self.cursor]);
+            self.builder.token(ERROR, &self.source[start..self.cursor]);
         }
         if self.source[self.cursor..].starts_with('>') {
-            self.token_len(kind::GREATER_THAN, 1);
+            self.token_len(GREATER_THAN, 1);
         }
     }
 
     fn error_char(&mut self) {
         let start = self.cursor;
         self.bump();
-        self.builder
-            .token(kind::ERROR, &self.source[start..self.cursor]);
+        self.builder.token(ERROR, &self.source[start..self.cursor]);
         self.error_at(start, "unexpected token in tag");
     }
 
@@ -400,6 +413,32 @@ struct ParsedTag {
 struct ParsedTagTail {
     self_closing: bool,
     v_pre: bool,
+}
+
+fn is_attribute_name_char(ch: char) -> bool {
+    !is_whitespace(ch) && !matches!(ch, '=' | '>' | '/' | '"' | '\'')
+}
+
+fn is_directive_name(name: &str) -> bool {
+    name.starts_with("v-")
+        || name.starts_with(':')
+        || name.starts_with('@')
+        || name.starts_with('#')
+}
+
+fn directive_base_len(name: &str) -> usize {
+    if is_shorthand_directive(name) {
+        return 1;
+    }
+    name.find([':', '.']).unwrap_or(name.len())
+}
+
+fn is_shorthand_directive(name: &str) -> bool {
+    name.starts_with(':') || name.starts_with('@') || name.starts_with('#')
+}
+
+fn is_whitespace(ch: char) -> bool {
+    matches!(ch, ' ' | '\n' | '\r' | '\t')
 }
 
 fn scan_arg(name: &str, mut offset: usize) -> usize {

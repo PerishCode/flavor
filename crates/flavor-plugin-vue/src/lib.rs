@@ -43,7 +43,7 @@ impl VuePluginAnalyzer {
             .collect();
         let template = if self.state.config().template.ast {
             descriptor.template.as_ref().map(|block| {
-                let ast = template::parse_template(&block.content);
+                let ast = template::parse(&block.content);
                 diagnostics.extend(
                     ast.diagnostics()
                         .iter()

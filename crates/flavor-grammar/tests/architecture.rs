@@ -209,7 +209,7 @@ fn markup_atoms_in_grammar() {
         !source.contains("fn source_char_at") && !source.contains("fn is_void_tag"),
         "Svelte markup names should not duplicate grammar-owned markup cursor or void-element atoms"
     );
-    let vue_template = read_repo("crates/flavor-grammar/src/vue_template.rs");
+    let vue_template = read_repo("crates/flavor-grammar/src/vue/template.rs");
     assert!(
         vue_template.contains("fn is_directive_name")
             && vue_template.contains("fn is_attribute_name_char"),
@@ -258,7 +258,6 @@ fn parser_escapes_tracked() {
             "crates/flavor-plugin-typescript/src/parser/modules.rs".to_string(),
             "crates/flavor-plugin-typescript/src/parser/statements.rs".to_string(),
             "crates/flavor-plugin-typescript/src/parser/types.rs".to_string(),
-            "crates/flavor-plugin-vue/src/sfc/parser.rs".to_string(),
         ],
         "remaining plugin-side parser execution files must stay explicit until migrated into flavor-grammar"
     );
@@ -304,7 +303,8 @@ fn fact_atoms_used() {
 fn builder_files() -> Vec<String> {
     let mut files = vec![
         "crates/flavor-grammar/src/tree_sitter_raw.rs".to_string(),
-        "crates/flavor-grammar/src/vue_template.rs".to_string(),
+        "crates/flavor-grammar/src/vue/template.rs".to_string(),
+        "crates/flavor-grammar/src/vue/sfc.rs".to_string(),
     ];
     collect_rs_files("crates/flavor-plugin-typescript/src/parser", &mut files);
     collect_rs_files("crates/flavor-plugin-svelte/src/markup", &mut files);

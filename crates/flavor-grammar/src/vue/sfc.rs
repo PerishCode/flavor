@@ -38,7 +38,7 @@ struct CloseTag {
     end: usize,
 }
 
-pub fn parse_sfc(source: &str) -> VueSfcDescriptor {
+pub fn parse_vue_sfc(source: &str) -> VueSfcDescriptor {
     let mut descriptor = VueSfcDescriptor::default();
     let mut cursor = 0;
 

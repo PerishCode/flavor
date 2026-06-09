@@ -1,11 +1,8 @@
-#[path = "../src/sfc/parser.rs"]
-mod sfc_parser;
-
-use sfc_parser::parse_sfc;
+use flavor_grammar::parse_vue_sfc;
 
 #[test]
 fn parses_sfc_descriptor() {
-    let descriptor = parse_sfc(
+    let descriptor = parse_vue_sfc(
         "<!-- header -->\n\
          <template lang=\"pug\">\n\
          div {{ message }}\n\
@@ -61,7 +58,7 @@ fn parses_sfc_descriptor() {
 
 #[test]
 fn reports_duplicate_script_setup() {
-    let descriptor = parse_sfc(
+    let descriptor = parse_vue_sfc(
         "<script setup>const first = 1;</script>\n\
          <script setup>const second = 2;</script>",
     );
@@ -75,7 +72,8 @@ fn reports_duplicate_script_setup() {
 
 #[test]
 fn reports_missing_closing_block() {
-    let descriptor = parse_sfc("<template><div></div></template>\n<script setup>const value = 1;");
+    let descriptor =
+        parse_vue_sfc("<template><div></div></template>\n<script setup>const value = 1;");
 
     assert_eq!(descriptor.errors.len(), 1);
     assert_eq!(descriptor.errors[0].line, 2);
@@ -86,7 +84,7 @@ fn reports_missing_closing_block() {
 
 #[test]
 fn reports_script_setup_src() {
-    let descriptor = parse_sfc("<script setup src=\"./setup.ts\"></script>");
+    let descriptor = parse_vue_sfc("<script setup src=\"./setup.ts\"></script>");
 
     assert_eq!(descriptor.errors.len(), 1);
     assert!(descriptor.errors[0].message.contains("cannot use src"));
@@ -94,7 +92,7 @@ fn reports_script_setup_src() {
 
 #[test]
 fn rejects_script_src_setup() {
-    let descriptor = parse_sfc(
+    let descriptor = parse_vue_sfc(
         "<script src=\"./options.ts\"></script>\n\
          <script setup lang=\"ts\">const value = 1;</script>",
     );
@@ -108,7 +106,7 @@ fn rejects_script_src_setup() {
 
 #[test]
 fn reports_missing_main_block() {
-    let descriptor = parse_sfc("<style>.root { color: red; }</style>");
+    let descriptor = parse_vue_sfc("<style>.root { color: red; }</style>");
 
     assert_eq!(descriptor.errors.len(), 1);
     assert!(descriptor.errors[0]
@@ -118,7 +116,7 @@ fn reports_missing_main_block() {
 
 #[test]
 fn maps_script_line_offset() {
-    let descriptor = parse_sfc(
+    let descriptor = parse_vue_sfc(
         "<template></template>\n\
          <script setup lang=\"ts\">\n\
          const value = 1;\n\

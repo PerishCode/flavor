@@ -96,11 +96,33 @@ mod tsx {
 
     #[test]
     fn comparison_stays_expression() {
-        let output = ts_output("const ok = left < right;");
+        let output = tsx_output(
+            "function inspectionLabelsOverlap(a: InspectionLabelBox, b: InspectionLabelBox) {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}",
+        );
 
         assert!(has_node(&output, kind::BINARY_EXPRESSION));
+        assert!(has_node(&output, kind::MEMBER_EXPRESSION));
         assert!(!has_node(&output, kind::JSX_ELEMENT));
-        assert!(output.diagnostics.is_empty());
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+    }
+
+    #[test]
+    fn satisfies_generics_stay_type() {
+        let output = tsx_output(
+            r#"type InspectDomain = "session" | "message";
+type InspectDomainPanel = (props: InspectDomainPanelProps) => ReactNode;
+const inspectDomainRegistry = {
+  message: MessageInspectDomain,
+  session: SessionInspectDomain,
+} satisfies Record<InspectDomain, InspectDomainPanel>;"#,
+        );
+
+        assert!(has_node(&output, kind::BINARY_EXPRESSION));
+        assert!(has_node(&output, kind::TYPE_REFERENCE));
+        assert!(!has_node(&output, kind::JSX_ELEMENT));
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
     }
 }
 

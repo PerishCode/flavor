@@ -32,8 +32,11 @@ impl<'a> Parser<'a> {
         while !self.at(kind::END_OF_FILE) && !self.at_any(stops) {
             let start = self.cursor;
             match self.current() {
-                kind::LESS_THAN if self.jsx_enabled() && self.starts_jsx_open() => {
+                kind::LESS_THAN if self.jsx_enabled() && self.starts_jsx_expression_open() => {
                     self.parse_jsx_element();
+                }
+                kind::KEYWORD_AS | kind::KEYWORD_SATISFIES => {
+                    self.parse_type_expression_tail(stops)
                 }
                 kind::KEYWORD_AWAIT => self.parse_await_expression(),
                 kind::KEYWORD_NEW => self.parse_new_expression(),
@@ -137,6 +140,11 @@ impl<'a> Parser<'a> {
         self.bump();
         self.parse_expression_operand();
         self.builder.finish_node();
+    }
+
+    fn parse_type_expression_tail(&mut self, stops: &[Kind]) {
+        self.bump();
+        self.parse_type(stops);
     }
 
     fn parse_expression_operand(&mut self) {

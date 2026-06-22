@@ -45,6 +45,10 @@ impl<'a> Parser<'a> {
         self.at(kind::LESS_THAN) && is_jsx_name_start(self.token_kind_at(1))
     }
 
+    pub(super) fn starts_jsx_expression_open(&self) -> bool {
+        self.starts_jsx_open() && can_start_jsx_after(self.token_kind_at_back(1))
+    }
+
     fn parse_jsx_opening(&mut self) -> Option<String> {
         self.builder.start_node(kind::JSX_OPENING_ELEMENT);
         self.bump();
@@ -208,4 +212,33 @@ fn is_jsx_name_part(kind: Kind) -> bool {
 
 fn is_jsx_name_join(kind: Kind) -> bool {
     matches!(kind, kind::DOT | kind::COLON | kind::MINUS)
+}
+
+fn can_start_jsx_after(kind: Kind) -> bool {
+    matches!(
+        kind,
+        kind::END_OF_FILE
+            | kind::OPEN_PAREN
+            | kind::OPEN_BRACKET
+            | kind::OPEN_BRACE
+            | kind::COMMA
+            | kind::SEMICOLON
+            | kind::COLON
+            | kind::QUESTION
+            | kind::EQUALS
+            | kind::ARROW
+            | kind::BANG
+            | kind::PLUS
+            | kind::MINUS
+            | kind::STAR
+            | kind::SLASH
+            | kind::PERCENT
+            | kind::AMPERSAND_AMPERSAND
+            | kind::PIPE_PIPE
+            | kind::QUESTION_QUESTION
+            | kind::KEYWORD_RETURN
+            | kind::KEYWORD_THROW
+            | kind::KEYWORD_CASE
+            | kind::KEYWORD_YIELD
+    )
 }

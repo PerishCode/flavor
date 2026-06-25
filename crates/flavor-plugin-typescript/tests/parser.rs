@@ -141,6 +141,19 @@ mod declarations {
     }
 
     #[test]
+    fn contextual_function_name() {
+        let output = ts_output(
+            r#"function get(name: string, fallback = ""): string { return Deno.env.get(name) ?? fallback; } export const env = { get };"#,
+        );
+
+        assert!(has_node(&output, kind::FUNCTION_DECLARATION));
+        assert!(has_node(&output, kind::PARAMETER_LIST));
+        assert!(has_node(&output, kind::RETURN_TYPE));
+        assert!(has_node(&output, kind::EXPORT_DECLARATION));
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+    }
+
+    #[test]
     fn function_return_object_type() {
         let output = ts_output(
             "function splitPath(path: string): { dir: string; name: string } { return { dir: '', name: path }; }",

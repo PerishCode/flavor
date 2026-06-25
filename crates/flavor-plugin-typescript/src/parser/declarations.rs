@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
         }
         self.parse_modifier_list();
         self.bump();
-        if self.at(kind::IDENTIFIER) {
+        if is_function_name(self.current()) {
             self.bump();
         } else {
             self.error_here("expected function name");
@@ -261,4 +261,11 @@ impl<'a> Parser<'a> {
         }
         self.builder.finish_node();
     }
+}
+
+fn is_function_name(kind: kind::Kind) -> bool {
+    matches!(
+        kind,
+        kind::IDENTIFIER | kind::KEYWORD_GET | kind::KEYWORD_SET
+    )
 }

@@ -120,52 +120,26 @@ the commit subject shape.
 Open <https://github.com/PerishCode/flavor/issues> first when the right shape is
 not obvious from behavior or this AGENTS tree. Examples include a new rule with a
 payload decision, a CLI shape change that affects output stability, or a release
-flow tweak. For clear, scoped fixes that do not need the issue hot follow-up
-loop below, open a PR directly and reference any related issue from the PR body
-with `Closes #N`.
+flow tweak. For clear, scoped fixes that are not part of the global PerishCode
+issue operations SOP, open a PR directly and reference any related issue from
+the PR body with `Closes #N`.
 
-### Issue Hot Follow-Up Flow
+### PerishCode Issue SOP
 
-Use this flow for active issue follow-up where the reporter needs to verify a
-real installed CLI before the fix is considered resolved:
+The cross-repo issue handling and reporter verification loop is maintained in
+the user's global Codex instructions at `~/.codex/AGENTS.md`. Do not duplicate
+that cadence, role split, GitHub comment policy, or token policy here.
 
-1. Create a branch from `main`, complete the code change there, and run
-   no-install validation from the checkout. This means validating through local
-   build/test/check commands such as the Pre-PR checks and direct
-   `cargo run --locked -p flavor-cli -- ...` invocations, without installing a
-   new released `flavor`.
-2. Push the branch, publish a beta release from that branch, update the local
-   installed CLI to the beta, and comment on the issue with the branch, beta
-   version or run, local verification result, and what the reporter should
-   retry. Use the GitHub text payload hygiene rules for the issue comment.
-3. After updating the local CLI and posting the issue comment, stop and wait for
-   explicit human direction. The user owns the cadence and will tell the agent
-   when to continue; do not poll, watch, or loop-listen for issue activity.
-   When directed to continue, repeat the branch change, no-install validation,
-   push, beta release, local CLI update, and issue-comment cycle until the
-   issue reporter actively closes the issue. Do not close the issue on the
-   reporter's behalf, and do not use a PR body `Closes #N` to bypass this
-   verification loop.
-4. After the reporter closes the issue, use the repo-local `runseal :pr` flow
-   to merge the already-verified branch into `main`, publish a stable release,
-   and update the local installed CLI to the stable version.
+Flavor-specific facts for that SOP:
 
-Keep beta/stable publication and local CLI update as required parts of this hot
-path. A green branch check without installing the published artifact is not
-enough to finish reporter-driven issue follow-up.
-
-### GitHub Tool Auth
-
-For `runseal @tool github ...` writes, prefer runseal profile env injection over
-ad hoc shell substitution. Generate a dedicated GitHub token for repo operator
-writes, keep it in repo-local private state such as `.local/secrets/`, expose it
-through the runseal profile as an environment variable, and call the tool with
-`--token-env <name>` plus `--prefix-enable=true`.
-
-Do not commit token material, do not paste tokens into command lines, and do not
-fall back to `GITHUB_TOKEN="$(gh auth token)" ...` unless the dedicated
-profile-injected token is unavailable and the user explicitly accepts the
-fallback for that one operation.
+- No-install validation is the Pre-PR checks below plus any focused
+  `cargo run --locked -p flavor-cli -- ...` reproduction commands needed for
+  the issue.
+- Beta and stable publication use the repo-local release entrypoint
+  `runseal :release`.
+- After reporter closure, merge through the repo-local `runseal :pr` flow.
+- Local installed CLI updates use the root manager entrypoints `manage.sh` and
+  `manage.ps1`, with release metadata and artifacts coming from R2.
 
 ### Branch Names
 

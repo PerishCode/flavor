@@ -22,7 +22,17 @@ impl<'a> Parser<'a> {
             let mut segment_stops = stops.to_vec();
             segment_stops.push(kind::PIPE);
             segment_stops.push(kind::AMPERSAND);
-            self.parse_type_segment_until(&segment_stops);
+            if self.at(kind::OPEN_BRACE) && stops.contains(&kind::OPEN_BRACE) {
+                if self.is_mapped_type_start() {
+                    self.parse_mapped_type();
+                } else {
+                    self.parse_object_type();
+                }
+            } else if self.at_any(stops) {
+                break;
+            } else {
+                self.parse_type_segment_until(&segment_stops);
+            }
             if self.at(kind::PIPE) || self.at(kind::AMPERSAND) {
                 self.bump();
                 self.ensure_progress(start, "type");

@@ -36,6 +36,9 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_for_statement(&mut self) {
         self.builder.start_node(kind::FOR_STATEMENT);
         self.bump();
+        if self.at(kind::KEYWORD_AWAIT) {
+            self.bump();
+        }
         self.parenthesized_condition("expected '(' to start for header");
         self.statement_or_block();
         self.builder.finish_node();

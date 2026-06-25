@@ -141,6 +141,32 @@ mod declarations {
     }
 
     #[test]
+    fn function_return_object_type() {
+        let output = ts_output(
+            "function splitPath(path: string): { dir: string; name: string } { return { dir: '', name: path }; }",
+        );
+
+        assert!(has_node(&output, kind::FUNCTION_DECLARATION));
+        assert!(has_node(&output, kind::RETURN_TYPE));
+        assert!(has_node(&output, kind::OBJECT_TYPE));
+        assert!(has_node(&output, kind::BLOCK));
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+    }
+
+    #[test]
+    fn object_intersection_return() {
+        let output = ts_output(
+            "type Options = { raw: boolean }; function parseArgs(args: string[]): Options & { help: boolean } { return { raw: false, help: false }; }",
+        );
+
+        assert!(has_node(&output, kind::FUNCTION_DECLARATION));
+        assert!(has_node(&output, kind::RETURN_TYPE));
+        assert!(has_node(&output, kind::INTERSECTION_TYPE));
+        assert!(has_node(&output, kind::OBJECT_TYPE));
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+    }
+
+    #[test]
     fn decorated_class() {
         let output = ts_output("@sealed() class Example<T> extends Base { value!: string; }");
 
@@ -267,6 +293,18 @@ mod control_flow {
         assert!(has_node(&output, kind::BREAK_STATEMENT));
         assert!(has_node(&output, kind::CONTINUE_STATEMENT));
         assert!(output.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn async_iterator_statement() {
+        let output = ts_output(
+            "async function list(path: string): Promise<void> { for await (const entry of Deno.readDir(path)) { console.log(entry.name); } }",
+        );
+
+        assert!(has_node(&output, kind::FUNCTION_DECLARATION));
+        assert!(has_node(&output, kind::FOR_STATEMENT));
+        assert!(has_token(&output, kind::KEYWORD_AWAIT));
+        assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
     }
 }
 
